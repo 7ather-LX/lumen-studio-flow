@@ -14,7 +14,7 @@ let comfyLog = null;
 const DEFAULT_CONFIG = {
   comfyUrl: "http://127.0.0.1:8188",
   comfyDir: "F:\\DSH WORKSPACE\\lumen-flow\\comfy",
-  pythonExe: "F:\\DSH WORKSPACE\\.venv\\Scripts\\python.exe",
+  pythonExe: "",
   unet: "anima-base-v1.0.safetensors",
   clip: "qwen_3_06b_base.safetensors",
   vae: "qwen_image_vae.safetensors",
