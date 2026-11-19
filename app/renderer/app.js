@@ -100,6 +100,110 @@
     return String(value || "").replace(/\s+/g, " ").replace(/,\s*,/g, ",").trim().replace(/^,|,$/g, "");
   }
 
+  const IDEA_TAGS = [
+    { pattern: /银发|白发|silver hair|white hair/i, tags: ["silver hair"] },
+    { pattern: /黑发|black hair/i, tags: ["black hair"] },
+    { pattern: /金发|blonde|blond hair/i, tags: ["blonde hair"] },
+    { pattern: /粉发|pink hair/i, tags: ["pink hair"] },
+    { pattern: /蓝发|blue hair/i, tags: ["blue hair"] },
+    { pattern: /红发|red hair/i, tags: ["red hair"] },
+    { pattern: /棕发|brown hair/i, tags: ["brown hair"] },
+    { pattern: /双马尾|twintails/i, tags: ["twintails"] },
+    { pattern: /长发|long hair/i, tags: ["long hair"] },
+    { pattern: /短发|short hair/i, tags: ["short hair"] },
+    { pattern: /马尾|ponytail/i, tags: ["ponytail"] },
+    { pattern: /红瞳|红眼|red eyes/i, tags: ["red eyes"] },
+    { pattern: /蓝瞳|蓝眼|blue eyes/i, tags: ["blue eyes"] },
+    { pattern: /金瞳|金眼|yellow eyes|golden eyes/i, tags: ["yellow eyes"] },
+    { pattern: /绿瞳|绿眼|green eyes/i, tags: ["green eyes"] },
+    { pattern: /异色瞳|heterochromia/i, tags: ["heterochromia"] },
+    { pattern: /水手服|sailor suit|sailor uniform/i, tags: ["sailor suit"] },
+    { pattern: /校服|school uniform/i, tags: ["school uniform"] },
+    { pattern: /连衣裙|dress|裙子/i, tags: ["dress"] },
+    { pattern: /和服|kimono/i, tags: ["kimono"] },
+    { pattern: /黑丝|black pantyhose|black tights/i, tags: ["black pantyhose"] },
+    { pattern: /白丝|white pantyhose|white tights/i, tags: ["white pantyhose"] },
+    { pattern: /眼镜|glasses/i, tags: ["glasses"] },
+    { pattern: /帽子|hat/i, tags: ["hat"] },
+    { pattern: /围巾|scarf/i, tags: ["scarf"] },
+    { pattern: /坐|sitting|sit down/i, tags: ["sitting"] },
+    { pattern: /站|standing|stand up/i, tags: ["standing"] },
+    { pattern: /躺|lying|lie down/i, tags: ["lying"] },
+    { pattern: /看书|reading book|读书/i, tags: ["reading book"] },
+    { pattern: /回头|looking back/i, tags: ["looking back"] },
+    { pattern: /伸手|reaching out/i, tags: ["reaching out"] },
+    { pattern: /跑|running/i, tags: ["running"] },
+    { pattern: /微笑|smile|笑笑/i, tags: ["smile"] },
+    { pattern: /安静|calm|peaceful/i, tags: ["calm"] },
+    { pattern: /困|sleepy|睡意/i, tags: ["sleepy"] },
+    { pattern: /悲伤|sad|难过/i, tags: ["sad"] },
+    { pattern: /樱花|cherry blossom|sakura/i, tags: ["cherry blossoms"] },
+    { pattern: /森林|forest|树林/i, tags: ["forest"] },
+    { pattern: /树下|under tree/i, tags: ["under tree"] },
+    { pattern: /长椅|bench/i, tags: ["bench"] },
+    { pattern: /海边|ocean|beach|海滩/i, tags: ["ocean", "beach"] },
+    { pattern: /教室|classroom/i, tags: ["classroom"] },
+    { pattern: /咖啡厅|cafe|咖啡店/i, tags: ["cafe"] },
+    { pattern: /城市|city|街道/i, tags: ["city"] },
+    { pattern: /夜晚|night/i, tags: ["night"] },
+    { pattern: /雨天|rain|下雨/i, tags: ["rain"] },
+    { pattern: /雪|snow/i, tags: ["snow"] },
+    { pattern: /柔光|soft light|柔和光线/i, tags: ["soft lighting"] },
+    { pattern: /逆光|backlight/i, tags: ["backlight"] },
+    { pattern: /电影光|cinematic lighting/i, tags: ["cinematic lighting"] },
+    { pattern: /阳光|sunlight|日光/i, tags: ["sunlight"] },
+    { pattern: /霓虹|neon/i, tags: ["neon lights"] },
+    { pattern: /斑驳|dappled/i, tags: ["dappled sunlight"] },
+    { pattern: /全身|full body/i, tags: ["full body"] },
+    { pattern: /半身|upper body/i, tags: ["upper body"] },
+    { pattern: /特写|close-up|closeup/i, tags: ["close-up"] },
+    { pattern: /俯视|from above/i, tags: ["from above"] },
+    { pattern: /低角度|from below/i, tags: ["from below"] },
+    { pattern: /芙莉莲|frieren/i, tags: ["frieren"], character: "frieren" },
+    { pattern: /葬送的芙莉莲|sousou no frieren/i, tags: [], work: "sousou no frieren" },
+  ];
+
+  function generateIdeaPrompt() {
+    const idea = String($("#ideaInput")?.value || "").trim();
+    if (!idea) {
+      toast("先用一句话描述画面。");
+      return;
+    }
+    const tags = [];
+    let character = "";
+    let work = "";
+    for (const entry of IDEA_TAGS) {
+      if (!entry.pattern.test(idea)) continue;
+      for (const tag of entry.tags) if (!tags.includes(tag)) tags.push(tag);
+      if (entry.character) character = entry.character;
+      if (entry.work) work = entry.work;
+    }
+    const countMatch = idea.match(/两个女孩|2girls|two girls/i)
+      ? "2girls"
+      : idea.match(/两个男孩|2boys|two boys/i)
+        ? "2boys"
+        : idea.match(/男孩|1boy|boy/i)
+          ? "1boy, solo"
+          : "1girl, solo";
+    const subject = [countMatch, character].filter(Boolean).join(", ");
+    $("#animaSubject").value = subject;
+    $("#animaWork").value = work;
+    const uniqueTags = [...new Set(tags.filter((tag) => !subject.includes(tag)))];
+    if (uniqueTags.length) $("#animaTags").value = uniqueTags.join(", ");
+    if (!$("#animaQuality").value.trim()) {
+      $("#animaQuality").value = "masterpiece, best quality, score_7, safe";
+    }
+    const sceneWords = tags.filter((tag) => /forest|cherry|ocean|classroom|cafe|city|night|rain|snow|bench/.test(tag));
+    const moodMap = { calm: "peaceful", sleepy: "sleepy", sad: "melancholic", smile: "cheerful" };
+    const moodTag = tags.find((tag) => /calm|sleepy|sad|smile/.test(tag)) || "calm";
+    const mood = moodMap[moodTag] || "quiet";
+    const light = tags.find((tag) => /light|sunlight|backlight|neon|dappled/.test(tag)) || "soft light";
+    const scenePhrase = sceneWords.length ? ` in a scene with ${sceneWords.join(" and ")}` : "";
+    $("#animaNatural").value = `The character is ${tags.includes("sitting") ? "sitting" : "standing"}${scenePhrase}, and the mood feels ${mood} with ${light}.`;
+    updateAnimaPreview();
+    toast("已生成标准提示词，可以继续修改。");
+  }
+
   const API_PRESETS = {
     openai: { url: "https://api.openai.com/v1", model: "gpt-image-1" },
     siliconflow: { url: "https://api.siliconflow.cn/v1", model: "Kwai-Kolors/Kolors" },
@@ -444,6 +548,7 @@
       const node = $(selector);
       if (node) node.addEventListener("input", updateAnimaPreview);
     });
+    $("#generatePrompt").addEventListener("click", generateIdeaPrompt);
     $("#copyAnima").addEventListener("click", async () => {
       const text = updateAnimaPreview();
       try {
