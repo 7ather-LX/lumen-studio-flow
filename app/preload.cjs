@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld("flow", {
   getConfig: () => ipcRenderer.invoke("flow:config:get"),
   setConfig: (patch) => ipcRenderer.invoke("flow:config:set", patch),
   health: () => ipcRenderer.invoke("flow:health"),
+  models: () => ipcRenderer.invoke("flow:models"),
+  previewWorkflow: (payload) => ipcRenderer.invoke("flow:workflow:preview", payload),
   start: () => ipcRenderer.invoke("flow:start"),
   generate: (payload) => ipcRenderer.invoke("flow:generate", payload),
   chooseDir: () => ipcRenderer.invoke("flow:choose-dir"),
