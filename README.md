@@ -26,6 +26,7 @@ The original Lumen Studio grew around Diffusers, IP-Adapter references, feet rep
 - Local ComfyUI backend (default, no credits)
 - Optional external image API
 - Structured Anima prompt: quality -> subject -> series -> @artist -> tags -> natural language
+- Built-in offline prompt generator (Chinese/English idea -> Anima tags)
 - 12 artist/style presets
 - Anima Base v1.0 workflow
 - Prompt + negative prompt
@@ -64,6 +65,7 @@ UNET + Qwen3 CLIP + VAE + KSampler + SaveImage. No custom nodes are required.
 
 - [Setup / local deployment](docs/SETUP.md)
 - [Anima prompt format](docs/PROMPT_FORMAT.md)
+- [Built-in prompt generator](docs/PROMPT_GENERATOR.md)
 - [Artist / style library](docs/STYLE_LIBRARY.md)
 - [Local vs external API](docs/PROVIDERS.md)
 - [v0.1.2 release notes](docs/RELEASE_NOTES_0.1.2.md)
