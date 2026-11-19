@@ -27,7 +27,8 @@ The original Lumen Studio grew around Diffusers, IP-Adapter references, feet rep
 - Optional external image API
 - Structured Anima prompt: quality -> subject -> series -> @artist -> tags -> natural language
 - Built-in offline prompt generator (Chinese/English idea -> Anima tags)
-- Character recognition with same-name disambiguation (2383 entries)
+- Character recognition with same-name disambiguation (2400+ entries, Chinese + pinyin)
+- Hires Fix 1.5x and prompt checker
 - 12 artist/style presets
 - Anima Base v1.0 workflow
 - Prompt + negative prompt
