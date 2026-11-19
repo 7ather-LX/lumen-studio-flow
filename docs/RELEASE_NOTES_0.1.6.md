@@ -38,8 +38,6 @@
 
 ## 实测对比
 
-![参考图对比](cheshire-reference-compare.png)
-
 结论：
 
 - 参考图对 2.5D 皮肤、光影、湿润感提升明显
