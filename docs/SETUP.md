@@ -109,6 +109,33 @@ npm run dev
 3. 输入提示词
 4. 生成
 
+## 5.1 外部 API（可选）
+
+没有本地大模型时，可以在设置里切换：
+
+```text
+运行方式：外部 API
+```
+
+支持 OpenAI 兼容的 `/images/generations` 端点：
+
+| 预设 | 地址 | 模型 |
+| --- | --- | --- |
+| OpenAI Images | `https://api.openai.com/v1` | `gpt-image-1` |
+| 硅基流动 | `https://api.siliconflow.cn/v1` | `Kwai-Kolors/Kolors` |
+| 智谱 CogView | `https://open.bigmodel.cn/api/paas/v4` | `cogview-3-flash` |
+| 火山方舟 Seedream | `https://ark.cn-beijing.volces.com/api/v3` | `doubao-seedream-3-0-t2i-250415` |
+| MiniMax | `https://api.minimax.chat/v1` | `image-01` |
+
+API Key 只保存在本机配置文件，不会上传到 Lumen 的服务器（Flow 没有服务器）。
+
+外部 API 的限制：
+
+- 按平台计费，不是 Flow 收积分
+- 不一定是标准 OpenAI 图片协议
+- 平台内容审核由平台负责
+- 不保证 Anima 的 `@画师` 语法被外部模型理解
+
 ## 6. 设置说明
 
 | 字段 | 说明 |
