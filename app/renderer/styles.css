@@ -646,6 +646,18 @@ textarea::placeholder {
   font-size: 8px;
 }
 
+.anima-check {
+  margin: 5px 0 0;
+  min-height: 10px;
+  color: var(--dim);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.anima-check.warn {
+  color: var(--orange);
+}
+
 .negative-input {
   margin-top: 10px;
   font-size: 10px;
@@ -764,6 +776,19 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--lime);
   border: 2px solid #0a0d09;
   box-shadow: 0 0 0 3px rgba(214, 255, 121, 0.08);
+}
+
+.toggle-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.toggle-line input {
+  accent-color: var(--lime);
 }
 
 .seed-row {
