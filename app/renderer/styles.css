@@ -465,6 +465,62 @@ textarea::placeholder {
   background: rgba(214, 255, 121, 0.06);
 }
 
+.reference-drop {
+  position: relative;
+  min-height: 110px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.reference-drop.dragging {
+  border-color: var(--lime);
+  background: rgba(214, 255, 121, 0.06);
+}
+
+.reference-drop:hover {
+  border-color: rgba(214, 255, 121, 0.42);
+}
+
+.reference-drop > div {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 16px;
+  text-align: center;
+}
+
+.reference-drop strong {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.reference-drop span {
+  color: var(--dim);
+  font-size: 8px;
+}
+
+.reference-drop img {
+  width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  display: block;
+}
+
+.reference-clear {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(8, 12, 9, 0.8);
+}
+
+.reference-strength {
+  margin-top: 8px;
+}
+
 .anima-panel {
   border-color: rgba(214, 255, 121, 0.18);
 }
