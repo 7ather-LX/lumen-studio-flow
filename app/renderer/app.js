@@ -8,6 +8,8 @@
     animaMode: true,
     forcedCharacter: null,
     initImage: "",
+    customWorkflow: null,
+    models: { checkpoints: [], unets: [], clips: [], vaes: [], loras: [] },
     config: null,
     health: null,
     images: [],
@@ -552,6 +554,61 @@
     }
   }
 
+  function workflowPayload() {
+    const style = STYLES[state.style];
+    const prompt = state.animaMode
+      ? composeAnimaPrompt(style)
+      : [$("#prompt").value.trim(), styleSuffix(style)].filter(Boolean).join(", ");
+    const aspect = ASPECTS[state.aspect];
+    const seedValue = Number($("#seed").value);
+    return {
+      prompt,
+      negative: $("#negative").value.trim(),
+      width: aspect.width,
+      height: aspect.height,
+      steps: Number($("#steps").value),
+      cfg: Number($("#cfg").value),
+      batch: Number($("#batch").value),
+      seed: Number.isFinite(seedValue) && seedValue >= 0 ? Math.floor(seedValue) : -1,
+      hires: Boolean($("#hires")?.checked),
+      hiresScale: 1.5,
+      hiresSteps: 10,
+    };
+  }
+
+  function renderWorkflowNodes(workflow) {
+    const box = $("#workflowNodes");
+    if (!box) return;
+    box.innerHTML = Object.entries(workflow || {})
+      .map(
+        ([id, node]) => `<div class="workflow-node"><b>${escapeHtml(id)}</b><span>${escapeHtml(
+          node?.class_type || "?",
+        )}</span></div>`,
+      )
+      .join("");
+  }
+
+  async function refreshWorkflowPreview() {
+    try {
+      const result = await bridge.previewWorkflow(workflowPayload());
+      $("#workflowJson").value = JSON.stringify(result.workflow, null, 2);
+      renderWorkflowNodes(result.workflow);
+    } catch (error) {
+      toast(error?.message || String(error));
+    }
+  }
+
+  function openWorkflow() {
+    $("#useCustomWorkflow").checked = Boolean(state.customWorkflow);
+    if (state.customWorkflow) {
+      $("#workflowJson").value = JSON.stringify(state.customWorkflow, null, 2);
+      renderWorkflowNodes(state.customWorkflow);
+    } else {
+      void refreshWorkflowPreview();
+    }
+    $("#workflowModal").classList.remove("hidden");
+  }
+
   async function generate() {
     if (!bridge || state.busy) return;
     const style = STYLES[state.style];
@@ -570,6 +627,7 @@
     const hires = Boolean($("#hires")?.checked);
     const faceDetail = Boolean($("#faceDetail")?.checked);
     const denoise = Number($("#denoise")?.value || 0.45);
+    const referenceMode = $("#referenceMode")?.value || "img2img";
     const seedValue = Number($("#seed").value);
     const seed = Number.isFinite(seedValue) && seedValue >= 0 ? Math.floor(seedValue) : -1;
     const negative = $("#negative").value.trim();
@@ -592,6 +650,8 @@
         faceDetail,
         initImage: state.initImage,
         denoise,
+        referenceMode,
+        customWorkflow: state.customWorkflow,
       });
       if (res?.images?.length) {
         renderResult(res.images[0]);
@@ -610,21 +670,63 @@
     }
   }
 
+  function populateSelect(selector, values, current) {
+    const node = $(selector);
+    if (!node) return;
+    const unique = [...new Set([current, ...(values || [])].filter(Boolean))];
+    node.innerHTML = unique
+      .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+      .join("");
+    if (current) node.value = current;
+  }
+
+  async function loadModelOptions() {
+    const hint = $("#modelListHint");
+    try {
+      const models = await bridge.models();
+      state.models = models;
+      populateSelect("#settingUnet", models.unets, state.config?.unet);
+      populateSelect("#settingClip", models.clips, state.config?.clip);
+      populateSelect("#settingVae", models.vaes, state.config?.vae);
+      populateSelect("#settingCheckpoint", models.checkpoints, state.config?.checkpoint);
+      populateSelect("#settingLora", models.loras, state.config?.lora);
+      if (hint) hint.textContent = `已读取：${models.checkpoints.length} checkpoints · ${models.loras.length} LoRA`;
+    } catch (error) {
+      if (hint) hint.textContent = `模型列表读取失败：${error?.message || error}`;
+    }
+  }
+
+  function applyModelMode() {
+    const mode = $("#settingModelMode")?.value || "anima";
+    $("#animaModelFields")?.classList.toggle("hidden", mode !== "anima");
+    $("#checkpointFields")?.classList.toggle("hidden", mode !== "checkpoint");
+  }
+
   function openSettings() {
     if (!state.config) return;
     $("#settingEngine").value = state.config.engine || "local";
     $("#settingUrl").value = state.config.comfyUrl || "";
     $("#settingDir").value = state.config.comfyDir || "";
     $("#settingPython").value = state.config.pythonExe || "";
+    $("#settingModelMode").value = state.config.modelMode || "anima";
     $("#settingApiUrl").value = state.config.apiUrl || "";
     $("#settingApiModel").value = state.config.apiModel || "";
     $("#settingApiKey").value = "";
+    $("#settingLoraStrength").value = state.config.loraStrength || 1;
+    $("#loraStrengthValue").textContent = Number($("#settingLoraStrength").value).toFixed(1);
     $("#settingUnet").value = state.config.unet || "";
     $("#settingClip").value = state.config.clip || "";
     $("#settingVae").value = state.config.vae || "";
     $("#settingLora").value = state.config.lora || "";
     $("#apiFields").classList.toggle("hidden", (state.config.engine || "local") !== "api");
+    applyModelMode();
+    populateSelect("#settingUnet", state.models.unets, state.config.unet);
+    populateSelect("#settingClip", state.models.clips, state.config.clip);
+    populateSelect("#settingVae", state.models.vaes, state.config.vae);
+    populateSelect("#settingCheckpoint", state.models.checkpoints, state.config.checkpoint);
+    populateSelect("#settingLora", state.models.loras, state.config.lora);
     $("#settingsModal").classList.remove("hidden");
+    void loadModelOptions();
   }
 
   async function saveSettings() {
@@ -634,10 +736,13 @@
       comfyUrl: $("#settingUrl").value.trim() || "http://127.0.0.1:8188",
       comfyDir: $("#settingDir").value.trim(),
       pythonExe: $("#settingPython").value.trim(),
+      modelMode: $("#settingModelMode").value,
+      checkpoint: $("#settingCheckpoint").value,
       unet: $("#settingUnet").value.trim(),
       clip: $("#settingClip").value.trim(),
       vae: $("#settingVae").value.trim(),
-      lora: $("#settingLora").value.trim(),
+      lora: $("#settingLora").value,
+      loraStrength: Number($("#settingLoraStrength").value),
       apiUrl: $("#settingApiUrl").value.trim(),
       apiModel: $("#settingApiModel").value.trim(),
     };
@@ -756,6 +861,11 @@
     $("#settingEngine").addEventListener("change", () => {
       $("#apiFields").classList.toggle("hidden", $("#settingEngine").value !== "api");
     });
+    $("#settingModelMode").addEventListener("change", applyModelMode);
+    $("#refreshModels").addEventListener("click", () => void loadModelOptions());
+    $("#settingLoraStrength").addEventListener("input", () => {
+      $("#loraStrengthValue").textContent = Number($("#settingLoraStrength").value).toFixed(1);
+    });
     $("#apiPreset").addEventListener("change", () => {
       const preset = API_PRESETS[$("#apiPreset").value];
       if (!preset) return;
@@ -772,6 +882,32 @@
       } catch (error) {
         setStatus(false, "离线", error?.message || String(error));
         toast(error?.message || String(error));
+      }
+    });
+    $("#workflowButton").addEventListener("click", openWorkflow);
+    $("#closeWorkflow").addEventListener("click", () => $("#workflowModal").classList.add("hidden"));
+    $("#cancelWorkflow").addEventListener("click", () => $("#workflowModal").classList.add("hidden"));
+    $("#refreshWorkflow").addEventListener("click", () => void refreshWorkflowPreview());
+    $("#resetWorkflow").addEventListener("click", () => {
+      state.customWorkflow = null;
+      $("#useCustomWorkflow").checked = false;
+      void refreshWorkflowPreview();
+    });
+    $("#applyWorkflow").addEventListener("click", () => {
+      if (!$("#useCustomWorkflow").checked) {
+        state.customWorkflow = null;
+        $("#workflowModal").classList.add("hidden");
+        toast("已恢复默认工作流。");
+        return;
+      }
+      try {
+        const parsed = JSON.parse($("#workflowJson").value);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("工作流必须是 JSON 对象");
+        state.customWorkflow = parsed;
+        $("#workflowModal").classList.add("hidden");
+        toast("自定义工作流已启用。");
+      } catch (error) {
+        toast(`工作流 JSON 无效：${error?.message || error}`);
       }
     });
     $("#helpButton").addEventListener("click", () => $("#helpModal").classList.remove("hidden"));
