@@ -2,6 +2,8 @@
 
 **Lumen Studio Flow** is a separate, focused anime image studio built around a local **ComfyUI + Anima** pipeline.
 
+**Local first:** the default mode runs entirely on your machine, with no credits, queue or remote moderation. An optional external image API can be configured for machines that cannot run a local model.
+
 It is not a replacement for the original Lumen Studio. The original project keeps its multi-engine, reference-library and local-learning workflow. Flow is a new project with a different goal:
 
 ```text
@@ -21,7 +23,10 @@ The original Lumen Studio grew around Diffusers, IP-Adapter references, feet rep
 
 ## Features
 
-- Local ComfyUI backend
+- Local ComfyUI backend (default, no credits)
+- Optional external image API
+- Structured Anima prompt: quality -> subject -> series -> @artist -> tags -> natural language
+- 12 artist/style presets
 - Anima Base v1.0 workflow
 - Prompt + negative prompt
 - 1:1 / 3:4 / 2:3 / 16:9 frames
@@ -54,6 +59,14 @@ If you use the portable `ComfyUI_windows_portable` layout, point Flow at its roo
 
 The Flow workflow is a simplified subset of the official Anima template:
 UNET + Qwen3 CLIP + VAE + KSampler + SaveImage. No custom nodes are required.
+
+## Docs
+
+- [Setup / local deployment](docs/SETUP.md)
+- [Anima prompt format](docs/PROMPT_FORMAT.md)
+- [Artist / style library](docs/STYLE_LIBRARY.md)
+- [Local vs external API](docs/PROVIDERS.md)
+- [v0.1.2 release notes](docs/RELEASE_NOTES_0.1.2.md)
 
 ## Model sources
 
