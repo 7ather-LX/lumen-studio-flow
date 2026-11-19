@@ -21,6 +21,9 @@ const DEFAULT_CONFIG = {
   lora: "",
   steps: 30,
   cfg: 4,
+  hires: false,
+  hiresScale: 1.5,
+  hiresSteps: 10,
   apiUrl: "https://api.openai.com/v1",
   apiModel: "gpt-image-1",
   apiKey: "",
@@ -161,6 +164,9 @@ function buildWorkflow(config, payload) {
   const steps = Math.max(1, Math.min(80, Number(payload.steps) || config.steps || 30));
   const cfg = Math.max(1, Math.min(20, Number(payload.cfg) || config.cfg || 4));
   const batch = Math.max(1, Math.min(4, Number(payload.batch) || 1));
+  const hires = Boolean(payload.hires);
+  const hiresScale = Math.max(1.1, Math.min(2, Number(payload.hiresScale) || config.hiresScale || 1.5));
+  const hiresSteps = Math.max(4, Math.min(30, Number(payload.hiresSteps) || config.hiresSteps || 10));
   const seed = Number.isFinite(Number(payload.seed)) && Number(payload.seed) >= 0
     ? Math.floor(Number(payload.seed))
     : Math.floor(Math.random() * 2 ** 31);
@@ -225,7 +231,46 @@ function buildWorkflow(config, payload) {
     };
     workflow[7].inputs.model = ["10", 0];
   }
-  return { workflow, seed, width, height, steps, cfg, batch };
+  if (hires) {
+    workflow[20] = {
+      class_type: "LatentUpscaleBy",
+      inputs: {
+        samples: ["7", 0],
+        upscale_method: "nearest-exact",
+        scale_by: hiresScale,
+      },
+    };
+    workflow[21] = {
+      class_type: "KSampler",
+      inputs: {
+        model: config.lora ? ["10", 0] : ["1", 0],
+        positive: ["4", 0],
+        negative: ["5", 0],
+        latent_image: ["20", 0],
+        seed,
+        steps: hiresSteps,
+        cfg,
+        sampler_name: "euler",
+        scheduler: "simple",
+        denoise: 0.35,
+      },
+    };
+    workflow[22] = {
+      class_type: "VAEDecode",
+      inputs: { samples: ["21", 0], vae: ["3", 0] },
+    };
+    workflow[9].inputs.images = ["22", 0];
+  }
+  return {
+    workflow,
+    seed,
+    width: Math.round(width * (hires ? hiresScale : 1)),
+    height: Math.round(height * (hires ? hiresScale : 1)),
+    steps: steps + (hires ? hiresSteps : 0),
+    cfg,
+    batch,
+    hires,
+  };
 }
 
 async function runComfy(payload) {
