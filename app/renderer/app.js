@@ -170,11 +170,18 @@
   function characterCandidates(idea) {
     const value = String(idea || "").toLowerCase();
     const hits = [];
+    const compactValue = value.replace(/\s+/g, "");
     for (const entry of CHARACTERS) {
       const aliases = [entry.name, entry.tag, entry.zh, ...(entry.aliases || [])]
         .filter(Boolean)
         .map((item) => String(item).toLowerCase());
-      const hit = aliases.find((alias) => alias.length >= 2 && value.includes(alias));
+      let hit = aliases.find((alias) => alias.length >= 2 && value.includes(alias));
+      if (!hit) {
+        hit = (entry.pinyin || []).find((pinyin) => {
+          const compact = String(pinyin).toLowerCase().replace(/\s+/g, "");
+          return compact.length >= 3 && compactValue.includes(compact);
+        });
+      }
       if (hit) hits.push({ entry, hit });
     }
     const unique = [];
@@ -337,9 +344,30 @@
     return [quality, subject, work, artistPart, tags, natural].filter(Boolean).join(", ");
   }
 
+  function validateAnimaPrompt(text) {
+    const issues = [];
+    if (!/masterpiece|best quality|score_\d/i.test(text)) {
+      issues.push("缺少质量词（masterpiece / best quality / score_7）");
+    }
+    if (!text.includes("@")) {
+      issues.push("缺少 @画师");
+    }
+    const tags = text.split(",").map((tag) => tag.trim().toLowerCase()).filter(Boolean);
+    const seen = new Set();
+    const duplicates = new Set();
+    for (const tag of tags) {
+      if (tag.length > 24) continue;
+      if (seen.has(tag)) duplicates.add(tag);
+      seen.add(tag);
+    }
+    if (duplicates.size) issues.push(`重复 tag：${[...duplicates].slice(0, 3).join(", ")}`);
+    return issues;
+  }
+
   function updateAnimaPreview() {
     const preview = $("#animaPreview");
     const warning = $("#animaWarning");
+    const check = $("#animaCheck");
     if (!preview) return;
     const artistRaw = clean($("#animaArtist")?.value);
     const style = STYLES[state.style];
@@ -348,6 +376,11 @@
       : [$("#prompt").value.trim(), styleSuffix(style)].filter(Boolean).join(", ");
     preview.textContent = composed || "填写上方字段后自动生成最终提示词";
     if (warning) warning.classList.toggle("hidden", !(state.animaMode && artistRaw && !artistRaw.startsWith("@")));
+    if (check) {
+      const issues = state.animaMode ? validateAnimaPrompt(composed) : [];
+      check.textContent = issues.length ? `检查：${issues.join("；")}` : "检查：顺序与基础结构正常";
+      check.classList.toggle("warn", issues.length > 0);
+    }
     return composed;
   }
 
@@ -533,6 +566,7 @@
     const steps = Number($("#steps").value);
     const cfg = Number($("#cfg").value);
     const batch = Number($("#batch").value);
+    const hires = Boolean($("#hires")?.checked);
     const seedValue = Number($("#seed").value);
     const seed = Number.isFinite(seedValue) && seedValue >= 0 ? Math.floor(seedValue) : -1;
     const negative = $("#negative").value.trim();
@@ -549,6 +583,9 @@
         cfg,
         batch,
         seed,
+        hires,
+        hiresScale: 1.5,
+        hiresSteps: 10,
       });
       if (res?.images?.length) {
         renderResult(res.images[0]);
@@ -713,6 +750,7 @@
     applyEngineUI();
     $("#steps").value = state.config.steps || 30;
     $("#stepsValue").textContent = $("#steps").value;
+    if ($("#hires")) $("#hires").checked = Boolean(state.config.hires);
     $("#cfg").value = state.config.cfg || 4;
     $("#cfgValue").textContent = Number($("#cfg").value).toFixed(1).replace(".0", "");
     state.progressUnsubscribe = bridge.onProgress(updateProgress);
