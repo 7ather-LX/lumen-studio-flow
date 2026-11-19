@@ -237,6 +237,7 @@
     if (!state.config) return;
     $("#settingUrl").value = state.config.comfyUrl || "";
     $("#settingDir").value = state.config.comfyDir || "";
+    $("#settingPython").value = state.config.pythonExe || "";
     $("#settingUnet").value = state.config.unet || "";
     $("#settingClip").value = state.config.clip || "";
     $("#settingVae").value = state.config.vae || "";
@@ -249,6 +250,7 @@
     const patch = {
       comfyUrl: $("#settingUrl").value.trim() || "http://127.0.0.1:8188",
       comfyDir: $("#settingDir").value.trim(),
+      pythonExe: $("#settingPython").value.trim(),
       unet: $("#settingUnet").value.trim(),
       clip: $("#settingClip").value.trim(),
       vae: $("#settingVae").value.trim(),
