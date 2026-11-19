@@ -29,6 +29,7 @@ The original Lumen Studio grew around Diffusers, IP-Adapter references, feet rep
 - Built-in offline prompt generator (Chinese/English idea -> Anima tags)
 - Character recognition with same-name disambiguation (2400+ entries, Chinese + pinyin)
 - Hires Fix 1.5x and prompt checker
+- Optional reference-image img2img for 2.5D texture
 - 12 artist/style presets
 - Anima Base v1.0 workflow
 - Prompt + negative prompt
@@ -69,6 +70,8 @@ UNET + Qwen3 CLIP + VAE + KSampler + SaveImage. No custom nodes are required.
 - [Anima prompt format](docs/PROMPT_FORMAT.md)
 - [Built-in prompt generator](docs/PROMPT_GENERATOR.md)
 - [Character recognition and disambiguation](docs/CHARACTERS.md)
+- [Reference image comparison](docs/REFERENCE_COMPARE.md)
+- [v0.1.6 release notes](docs/RELEASE_NOTES_0.1.6.md)
 - [Artist / style library](docs/STYLE_LIBRARY.md)
 - [Local vs external API](docs/PROVIDERS.md)
 - [v0.1.2 release notes](docs/RELEASE_NOTES_0.1.2.md)
