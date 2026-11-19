@@ -7,6 +7,7 @@
     style: "anime-cel",
     animaMode: true,
     forcedCharacter: null,
+    initImage: "",
     config: null,
     health: null,
     images: [],
@@ -567,6 +568,8 @@
     const cfg = Number($("#cfg").value);
     const batch = Number($("#batch").value);
     const hires = Boolean($("#hires")?.checked);
+    const faceDetail = Boolean($("#faceDetail")?.checked);
+    const denoise = Number($("#denoise")?.value || 0.45);
     const seedValue = Number($("#seed").value);
     const seed = Number.isFinite(seedValue) && seedValue >= 0 ? Math.floor(seedValue) : -1;
     const negative = $("#negative").value.trim();
@@ -586,6 +589,9 @@
         hires,
         hiresScale: 1.5,
         hiresSteps: 10,
+        faceDetail,
+        initImage: state.initImage,
+        denoise,
       });
       if (res?.images?.length) {
         renderResult(res.images[0]);
@@ -680,6 +686,42 @@
         toast(text);
       }
     });
+    const setReferenceFile = (file) => {
+      if (!file || !file.type.startsWith("image/")) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.initImage = String(reader.result || "");
+        $("#referencePreview").src = state.initImage;
+        $("#referencePreview").classList.remove("hidden");
+        $("#referenceEmpty").classList.add("hidden");
+        $("#referenceClear").classList.remove("hidden");
+        toast("参考图已加载，只在本机使用。");
+      };
+      reader.readAsDataURL(file);
+    };
+    $("#referenceDrop").addEventListener("click", () => $("#referenceInput").click());
+    $("#referenceInput").addEventListener("change", (event) => setReferenceFile(event.target.files?.[0]));
+    $("#referenceDrop").addEventListener("dragover", (event) => {
+      event.preventDefault();
+      $("#referenceDrop").classList.add("dragging");
+    });
+    $("#referenceDrop").addEventListener("dragleave", () => $("#referenceDrop").classList.remove("dragging"));
+    $("#referenceDrop").addEventListener("drop", (event) => {
+      event.preventDefault();
+      $("#referenceDrop").classList.remove("dragging");
+      setReferenceFile(event.dataTransfer?.files?.[0]);
+    });
+    $("#referenceClear").addEventListener("click", (event) => {
+      event.stopPropagation();
+      state.initImage = "";
+      $("#referencePreview").src = "";
+      $("#referencePreview").classList.add("hidden");
+      $("#referenceEmpty").classList.remove("hidden");
+      $("#referenceClear").classList.add("hidden");
+    });
+    $("#denoise").addEventListener("input", () => {
+      $("#denoiseValue").textContent = `${Math.round(Number($("#denoise").value) * 100)}%`;
+    });
     $("#prompt").addEventListener("keydown", (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
         event.preventDefault();
@@ -751,6 +793,7 @@
     $("#steps").value = state.config.steps || 30;
     $("#stepsValue").textContent = $("#steps").value;
     if ($("#hires")) $("#hires").checked = Boolean(state.config.hires);
+    if ($("#faceDetail")) $("#faceDetail").checked = Boolean(state.config.faceDetail);
     $("#cfg").value = state.config.cfg || 4;
     $("#cfgValue").textContent = Number($("#cfg").value).toFixed(1).replace(".0", "");
     state.progressUnsubscribe = bridge.onProgress(updateProgress);
