@@ -1,4 +1,3 @@
-const fsBoot=require('node:fs');fsBoot.writeFileSync('F:\\\\DSH WORKSPACE\\\\lumen-flow\\\\boot.log','boot '+new Date().toISOString());
 "use strict";
 
 const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
@@ -149,7 +148,7 @@ async function startComfy() {
     const status = await health(config);
     if (status.ok) return { ok: true, running: true, status };
   }
-  throw new Error(`ComfyUI 鍚姩瓒呮椂锛屾棩蹇楋細${logPath}`);
+  throw new Error("ComfyUI request failed");
 }
 
 function buildWorkflow(config, payload) {
@@ -163,7 +162,7 @@ function buildWorkflow(config, payload) {
     : Math.floor(Math.random() * 2 ** 31);
   const prompt = String(payload.prompt || "").trim();
   const negative = String(payload.negative || "worst quality, low quality, blurry, jpeg artifacts").trim();
-  if (!prompt) throw new Error("鎻愮ず璇嶄笉鑳戒负绌?);
+  if (!prompt) throw new Error("Prompt is empty");
 
   const workflow = {
     1: {
@@ -229,15 +228,15 @@ async function runComfy(payload) {
   const config = readConfig();
   let status = await health(config);
   if (!status.ok) {
-    send("flow:progress", { stage: "鍚姩鏈湴 ComfyUI...", progress: 0 });
+    send("flow:progress", { stage: "Working...", progress: 0 });
     await startComfy();
     status = await health(config);
   }
-  if (!status.ok) throw new Error(`ComfyUI 涓嶅彲鐢細${status.error}`);
+  if (!status.ok) throw new Error("ComfyUI request failed");
 
   const built = buildWorkflow(config, payload);
   const clientId = `lumen-flow-${Date.now()}`;
-  send("flow:progress", { stage: "鎻愪氦宸ヤ綔娴?..", progress: 0.02, seed: built.seed });
+  send("flow:progress", { stage: "Working...", progress: 0.02, seed: built.seed });
   const submit = await comfyFetch(
     config.comfyUrl,
     "/prompt",
@@ -250,7 +249,7 @@ async function runComfy(payload) {
   ).then((response) => response.json());
   if (submit?.error) throw new Error(JSON.stringify(submit.error));
   const promptId = submit.prompt_id;
-  if (!promptId) throw new Error("ComfyUI 鏈繑鍥?prompt_id");
+  if (!promptId) throw new Error("ComfyUI request failed");
 
   let entry = null;
   const started = Date.now();
@@ -261,17 +260,17 @@ async function runComfy(payload) {
     entry = history?.[promptId];
     if (entry) {
       if (entry.status?.status_str === "error") {
-        throw new Error(`ComfyUI 鎵ц澶辫触锛?{JSON.stringify(entry.status)}`);
+        throw new Error("ComfyUI request failed");
       }
       break;
     }
-    if (Date.now() - started > 15 * 60 * 1000) throw new Error("ComfyUI 鐢熸垚瓒呮椂锛?5 鍒嗛挓锛?);
+    if (Date.now() - started > 15 * 60 * 1000) throw new Error("ComfyUI request failed");
     send("flow:progress", {
-      stage: "Anima 姝ｅ湪閲囨牱...",
+      stage: "Working...",
       progress: Math.min(0.95, 0.06 + (index / 600) * 0.9),
     });
   }
-  if (!entry) throw new Error("ComfyUI 娌℃湁杩斿洖鍘嗗彶缁撴灉");
+  if (!entry) throw new Error("ComfyUI request failed");
 
   const images = [];
   for (const output of Object.values(entry.outputs || {})) {
@@ -293,7 +292,7 @@ async function runComfy(payload) {
       });
     }
   }
-  send("flow:progress", { stage: "瀹屾垚", progress: 1 });
+  send("flow:progress", { stage: "Working...", progress: 1 });
   return { images, seed: built.seed, promptId, width: built.width, height: built.height };
 }
 
@@ -350,7 +349,7 @@ ipcMain.handle("flow:generate", async (_event, payload) => runComfy(payload));
 ipcMain.handle("flow:choose-dir", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ["openDirectory"],
-    title: "閫夋嫨 ComfyUI_windows_portable 鐩綍",
+    title: "Select ComfyUI folder",
   });
   return result.canceled ? null : result.filePaths[0];
 });
