@@ -33,10 +33,18 @@
       hint: "平面赛璐珞：平涂色块 + 清晰外轮廓 + 有限色板；画师参考 @kantoku / @yoneyama_mai",
     },
     painterly: {
-      label: "2.5D 厚涂",
+      label: "2.5D 半写实",
       artists: ["@wlop", "@mika_pikazo"],
-      tags: "semi-realistic anime, painterly rendering, thick brushwork, soft volumetric lighting, detailed skin, 2.5D",
-      hint: "2.5D 厚涂：体积光 + 厚笔触 + 半写实皮肤；画师参考 @wlop / @mika_pikazo",
+      tags: "semi-realistic anime, soft cel shading, clean anime rendering, delicate lineart, soft gradients, glossy skin, detailed skin, 2.5D",
+      hint: "2.5D 半写实：干净动画渲染 + 柔和渐变 + 细腻皮肤，不是厚涂油画；画师参考 @wlop / @mika_pikazo",
+    },
+    "gal-3d": {
+      label: "Galgame 3D",
+      artists: ["@wlop", "@mika_pikazo"],
+      tags: "semi-realistic anime, 2.5D, soft shading, glossy skin, detailed skin, cinematic lighting, depth of field",
+      hint: "Galgame/3DCG 2.5D：使用 make25d 风格 LoRA；需要 Checkpoint 模型",
+      lora: "make25d_type2_v100.safetensors",
+      loraStrength: 0.55,
     },
     "manga-bw": {
       label: "黑白日式漫画",
@@ -259,6 +267,11 @@
     if (candidates.length === 1) {
       character = candidates[0].tag;
       work = candidates[0].work || "";
+      for (const tag of candidates[0].tags || []) {
+        if (!["1girl", "1boy", "solo", "2girls", "2boys"].includes(tag) && !tags.includes(tag)) {
+          tags.push(tag);
+        }
+      }
     }
     if (/2\.5D|2.5d|厚涂|半写实/i.test(idea)) applyStyle("painterly");
     else if (/黑白|日式漫画|manga/i.test(idea)) applyStyle("manga-bw");
@@ -573,6 +586,8 @@
       hires: Boolean($("#hires")?.checked),
       hiresScale: 1.5,
       hiresSteps: 10,
+      lora: STYLES[state.style]?.lora || "",
+      loraStrength: STYLES[state.style]?.loraStrength || 1,
     };
   }
 
@@ -651,6 +666,8 @@
         initImage: state.initImage,
         denoise,
         referenceMode,
+        lora: style?.lora || "",
+        loraStrength: style?.loraStrength || 1,
         customWorkflow: state.customWorkflow,
       });
       if (res?.images?.length) {
