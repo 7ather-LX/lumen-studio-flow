@@ -53,7 +53,7 @@
         <div class="sidebar-footer">
           <button class="ghost-button" id="settingsButton">设置</button>
           <button class="ghost-button" id="helpButton">使用说明</button>
-          <small>v0.1.0 · local only</small>
+          <small>v0.1.2 · local first</small>
         </div>
       </aside>
 
@@ -78,19 +78,82 @@
                     <span class="eyebrow">01 / PROMPT</span>
                     <h2>你想画什么？</h2>
                   </div>
-                  <span class="hint">中英文均可 · Anima 原生英文更稳</span>
+                  <span class="hint">自由提示词 · 结构化开启时以 ANIMA 区为准</span>
                 </div>
                 <textarea id="prompt" rows="7" spellcheck="false" placeholder="例如：1girl, silver hair, red eyes, black sailor suit, cherry blossoms, soft cinematic light, anime cel shading"></textarea>
                 <div class="prompt-actions">
-                  <div class="style-chips" id="styleChips">
-                    <button class="chip active" data-style="anime-cel">赛璐珞动画</button>
-                    <button class="chip" data-style="cinematic">电影光影</button>
-                    <button class="chip" data-style="lineart">线稿</button>
-                    <button class="chip" data-style="illustration">日系插画</button>
+                  <div class="style-block">
+                    <div class="style-chips" id="styleChips">
+                      <button class="chip active" data-style="anime-cel" title="平面赛璐珞 · @kantoku">平面赛璐珞</button>
+                      <button class="chip" data-style="painterly" title="2.5D 厚涂 · @wlop / @mika_pikazo">2.5D 厚涂</button>
+                      <button class="chip" data-style="manga-bw" title="黑白日式漫画 · @fujimoto_tatsuki">黑白日漫</button>
+                      <button class="chip" data-style="ink-wash" title="水墨 · @kawanabe_kyosai">水墨</button>
+                      <button class="chip" data-style="retro" title="90 年代复古赛璐珞">复古赛璐珞</button>
+                      <button class="chip" data-style="pastel" title="柔和粉彩 · @atdan">柔和粉彩</button>
+                      <button class="chip" data-style="lineart" title="精细线稿 · @lack">精细线稿</button>
+                      <button class="chip" data-style="ukiyo-e" title="浮世绘 · @hokusai">浮世绘</button>
+                      <button class="chip" data-style="chibi" title="Q 版 · @fuzichoco">Q 版</button>
+                      <button class="chip" data-style="cinematic" title="电影光影 · @redjuice">电影光影</button>
+                      <button class="chip" data-style="illustration" title="日系插画 · @fuzichoco">日系插画</button>
+                      <button class="chip" data-style="cyberpunk" title="赛博霓虹 · @redjuice">赛博霓虹</button>
+                    </div>
+                    <small class="style-hint" id="styleHint"></small>
                   </div>
                   <button class="text-button" id="negativeToggle">负向词 +</button>
                 </div>
                 <textarea id="negative" class="negative-input hidden" rows="3" spellcheck="false">worst quality, low quality, blurry, jpeg artifacts, text, watermark, bad anatomy, extra fingers</textarea>
+              </div>
+
+              <div class="panel anima-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">ANIMA / STRUCTURED PROMPT</span>
+                    <h2>标准提示词顺序</h2>
+                  </div>
+                  <label class="anima-toggle">
+                    <input type="checkbox" id="animaMode" checked />
+                    <span>启用结构化</span>
+                  </label>
+                </div>
+                <p class="anima-order">
+                  质量/安全 → 人数与角色 → 作品 → <b>@画师</b> → 普通标签 → 自然语言
+                </p>
+                <div id="animaFields" class="anima-fields">
+                  <label class="anima-field wide">
+                    <span>01 质量 / 安全</span>
+                    <input id="animaQuality" type="text" value="masterpiece, best quality, score_7, safe" />
+                  </label>
+                  <div class="anima-row">
+                    <label class="anima-field">
+                      <span>02 人数与角色</span>
+                      <input id="animaSubject" type="text" value="1girl, solo, frieren" />
+                    </label>
+                    <label class="anima-field">
+                      <span>03 作品</span>
+                      <input id="animaWork" type="text" value="sousou no frieren" />
+                    </label>
+                    <label class="anima-field">
+                      <span>04 @画师</span>
+                      <input id="animaArtist" type="text" value="@kantoku" />
+                    </label>
+                  </div>
+                  <label class="anima-field wide">
+                    <span>05 普通标签</span>
+                    <textarea id="animaTags" rows="2">sitting under tree, reading book, forest, dappled sunlight</textarea>
+                  </label>
+                  <label class="anima-field wide">
+                    <span>06 自然语言</span>
+                    <textarea id="animaNatural" rows="2">She looks peaceful and slightly sleepy.</textarea>
+                  </label>
+                </div>
+                <div class="anima-preview-row">
+                  <div class="anima-preview">
+                    <span class="anima-preview-label">最终提示词</span>
+                    <code id="animaPreview"></code>
+                  </div>
+                  <button class="mini-button" id="copyAnima">复制</button>
+                </div>
+                <p class="anima-warning hidden" id="animaWarning">画师标签前需要 @ 符号</p>
               </div>
 
               <div class="panel settings-panel">
@@ -210,6 +273,39 @@
           <button class="icon-button" id="closeSettings">×</button>
         </div>
         <div class="modal-body">
+          <label class="field">
+            <span>运行方式</span>
+            <select id="settingEngine" class="setting-select">
+              <option value="local">本地 ComfyUI（默认，无积分）</option>
+              <option value="api">外部 API（没有本地模型时使用）</option>
+            </select>
+          </label>
+          <div id="apiFields" class="api-fields hidden">
+            <label class="field">
+              <span>API 预设</span>
+              <select id="apiPreset" class="setting-select">
+                <option value="">自定义</option>
+                <option value="openai">OpenAI Images</option>
+                <option value="siliconflow">硅基流动</option>
+                <option value="zhipu">智谱 CogView</option>
+                <option value="volcengine">火山方舟 Seedream</option>
+                <option value="minimax">MiniMax image-01</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>API 地址</span>
+              <input id="settingApiUrl" type="text" placeholder="https://api.openai.com/v1" />
+            </label>
+            <label class="field">
+              <span>模型</span>
+              <input id="settingApiModel" type="text" placeholder="gpt-image-1" />
+            </label>
+            <label class="field">
+              <span>API Key（只保存在本机）</span>
+              <input id="settingApiKey" type="password" placeholder="留空保持现有密钥" />
+            </label>
+            <p class="modal-note">外部 API 由平台计费；Lumen Studio Flow 不收取积分。不同平台的图片协议可能不同，失败时请查看平台文档。</p>
+          </div>
           <label class="field">
             <span>ComfyUI API</span>
             <input id="settingUrl" type="text" placeholder="http://127.0.0.1:8188" />
