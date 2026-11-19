@@ -52,8 +52,9 @@
 
         <div class="sidebar-footer">
           <button class="ghost-button" id="settingsButton">设置</button>
+          <button class="ghost-button" id="workflowButton">工作流</button>
           <button class="ghost-button" id="helpButton">使用说明</button>
-          <small>v0.1.6 · local first</small>
+          <small>v0.1.7 · local first</small>
         </div>
       </aside>
 
@@ -124,6 +125,13 @@
                 <label class="control reference-strength">
                   <span>参考强度 <b id="denoiseValue">45%</b></span>
                   <input type="range" id="denoise" min="0.25" max="0.7" step="0.05" value="0.45" />
+                </label>
+                <label class="control">
+                  <span>参考方式</span>
+                  <select id="referenceMode" class="setting-select">
+                    <option value="img2img">img2img：借构图 / 画风</option>
+                    <option value="ref-adapter">Anima Ref Adapter：锁角色，场景听提示词</option>
+                  </select>
                 </label>
               </div>
 
@@ -364,19 +372,67 @@
               <button class="mini-button" id="browseDir">选择</button>
             </div>
           </label>
-          <div class="field-row">
-            <label class="field"><span>UNET</span><input id="settingUnet" type="text" /></label>
-            <label class="field"><span>CLIP</span><input id="settingClip" type="text" /></label>
+          <label class="field">
+            <span>模型模式</span>
+            <select id="settingModelMode" class="setting-select">
+              <option value="anima">Anima（UNET + CLIP + VAE）</option>
+              <option value="checkpoint">标准 Checkpoint（SD1.5 / SDXL）</option>
+            </select>
+          </label>
+          <div id="animaModelFields">
+            <div class="field-row">
+              <label class="field"><span>UNET</span><input id="settingUnet" type="text" /></label>
+              <label class="field"><span>CLIP</span><input id="settingClip" type="text" /></label>
+            </div>
+            <div class="field-row">
+              <label class="field"><span>VAE</span><input id="settingVae" type="text" /></label>
+            </div>
+          </div>
+          <div id="checkpointFields" class="hidden">
+            <label class="field"><span>Checkpoint</span><select id="settingCheckpoint" class="setting-select"></select></label>
           </div>
           <div class="field-row">
-            <label class="field"><span>VAE</span><input id="settingVae" type="text" /></label>
-            <label class="field"><span>LoRA（可选）</span><input id="settingLora" type="text" /></label>
+            <label class="field"><span>LoRA（可选）</span><select id="settingLora" class="setting-select"></select></label>
+            <label class="field"><span>LoRA 强度 <b id="loraStrengthValue">1.0</b></span><input id="settingLoraStrength" type="range" min="0" max="1.5" step="0.05" value="1" /></label>
           </div>
-          <p class="modal-note">模型文件必须放在 ComfyUI 对应的 models 目录。首次启动会加载约 5–6 GB 权重。</p>
+          <div class="dir-row">
+            <button class="mini-button" id="refreshModels">刷新模型列表</button>
+            <span class="modal-note" id="modelListHint">从 ComfyUI 读取模型列表</span>
+          </div>
+          <p class="modal-note">Anima 使用 UNET/CLIP/VAE；标准模型使用 Checkpoint + LoRA。模型文件必须在 ComfyUI 的 models 目录。</p>
         </div>
         <div class="modal-footer">
           <button class="ghost-button" id="cancelSettings">取消</button>
           <button class="primary-button" id="saveSettings">保存设置</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="workflowModal">
+      <div class="modal workflow-modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">ADVANCED / COMFYUI GRAPH</span>
+            <h2>工作流</h2>
+          </div>
+          <button class="icon-button" id="closeWorkflow">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="workflow-toolbar">
+            <label class="toggle-line">
+              <input type="checkbox" id="useCustomWorkflow" />
+              <span>使用自定义工作流</span>
+            </label>
+            <button class="mini-button" id="refreshWorkflow">刷新默认工作流</button>
+          </div>
+          <div class="workflow-nodes" id="workflowNodes"></div>
+          <textarea id="workflowJson" class="workflow-json mono" rows="16" spellcheck="false"></textarea>
+          <p class="modal-note">默认隐藏；勾选“使用自定义工作流”后，生成会直接提交这段 ComfyUI API JSON。自定义流程不使用下方的高清放大、参考图或 Face Detailer。</p>
+        </div>
+        <div class="modal-footer">
+          <button class="ghost-button" id="resetWorkflow">恢复默认</button>
+          <button class="ghost-button" id="cancelWorkflow">取消</button>
+          <button class="primary-button" id="applyWorkflow">应用</button>
         </div>
       </div>
     </div>
