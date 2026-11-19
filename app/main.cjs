@@ -24,6 +24,8 @@ const DEFAULT_CONFIG = {
   hires: false,
   hiresScale: 1.5,
   hiresSteps: 10,
+  faceDetail: false,
+  faceSteps: 8,
   apiUrl: "https://api.openai.com/v1",
   apiModel: "gpt-image-1",
   apiKey: "",
@@ -158,7 +160,7 @@ async function startComfy() {
   throw new Error("ComfyUI request failed");
 }
 
-function buildWorkflow(config, payload) {
+function buildWorkflow(config, payload, initImageName = "") {
   const width = Math.max(256, Math.min(2048, Number(payload.width) || 1024));
   const height = Math.max(256, Math.min(2048, Number(payload.height) || 1024));
   const steps = Math.max(1, Math.min(80, Number(payload.steps) || config.steps || 30));
@@ -224,6 +226,25 @@ function buildWorkflow(config, payload) {
     },
   };
 
+  if (initImageName) {
+    workflow[30] = { class_type: "LoadImage", inputs: { image: initImageName } };
+    workflow[31] = {
+      class_type: "ImageScale",
+      inputs: {
+        image: ["30", 0],
+        upscale_method: "lanczos",
+        width,
+        height,
+        crop: "center",
+      },
+    };
+    workflow[32] = {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["31", 0], vae: ["3", 0] },
+    };
+    workflow[7].inputs.latent_image = ["32", 0];
+    workflow[7].inputs.denoise = Math.max(0.2, Math.min(0.8, Number(payload.denoise) || 0.45));
+  }
   if (config.lora) {
     workflow[10] = {
       class_type: "LoraLoaderModelOnly",
@@ -283,7 +304,12 @@ async function runComfy(payload) {
   }
   if (!status.ok) throw new Error("ComfyUI request failed");
 
-  const built = buildWorkflow(config, payload);
+  let initImageName = "";
+  if (payload.initImage) {
+    send("flow:progress", { stage: "Uploading reference...", progress: 0.01 });
+    initImageName = await uploadDataUrl(config, payload.initImage);
+  }
+  const built = buildWorkflow(config, payload, initImageName);
   const clientId = `lumen-flow-${Date.now()}`;
   send("flow:progress", { stage: "Working...", progress: 0.02, seed: built.seed });
   const submit = await comfyFetch(
@@ -341,8 +367,152 @@ async function runComfy(payload) {
       });
     }
   }
+  if (payload.faceDetail && images.length) {
+    try {
+      images[0] = await detailFace(
+        config,
+        images[0].path,
+        built.width,
+        built.height,
+        String(payload.prompt || ""),
+      );
+    } catch (error) {
+      send("flow:progress", {
+        stage: `Face detailer skipped: ${error?.message || error}`,
+        progress: 0.98,
+      });
+    }
+  }
   send("flow:progress", { stage: "Working...", progress: 1 });
   return { images, seed: built.seed, promptId, width: built.width, height: built.height };
+}
+
+async function uploadComfyImage(config, filePath) {
+  const buffer = await fsp.readFile(filePath);
+  const form = new FormData();
+  form.append("image", new Blob([buffer], { type: "image/png" }), path.basename(filePath));
+  form.append("overwrite", "true");
+  const response = await comfyFetch(
+    config.comfyUrl,
+    "/upload/image",
+    { method: "POST", body: form },
+    30000,
+  );
+  const data = await response.json();
+  return data.name || data.filename || path.basename(filePath);
+}
+
+async function uploadDataUrl(config, dataUrl) {
+  const match = /^data:image\/[a-z0-9.+-]+;base64,(.+)$/i.exec(String(dataUrl || ""));
+  if (!match) throw new Error("Reference image is not a data URL");
+  const buffer = Buffer.from(match[1], "base64");
+  const inputDir = path.join(dataRoot(), "inputs");
+  fs.mkdirSync(inputDir, { recursive: true });
+  const filePath = path.join(inputDir, `reference-${Date.now()}.png`);
+  await fsp.writeFile(filePath, buffer);
+  return uploadComfyImage(config, filePath);
+}
+
+function buildFaceWorkflow(config, imageName, width, height, prompt) {
+  const faceWidth = Math.max(128, Math.round(width * 0.55));
+  const faceHeight = Math.max(128, Math.round(height * 0.42));
+  const x = Math.max(0, Math.round((width - faceWidth) / 2));
+  const y = Math.max(0, Math.round(height * 0.04));
+  return {
+    1: { class_type: "LoadImage", inputs: { image: imageName } },
+    2: {
+      class_type: "ImageCrop",
+      inputs: { image: ["1", 0], width: faceWidth, height: faceHeight, x, y },
+    },
+    3: {
+      class_type: "ImageScale",
+      inputs: { image: ["2", 0], upscale_method: "lanczos", width: 512, height: 512, crop: "disabled" },
+    },
+    4: { class_type: "UNETLoader", inputs: { unet_name: config.unet, weight_dtype: "default" } },
+    5: {
+      class_type: "CLIPLoader",
+      inputs: { clip_name: config.clip, type: "stable_diffusion", device: "default" },
+    },
+    6: { class_type: "VAELoader", inputs: { vae_name: config.vae } },
+    7: {
+      class_type: "CLIPTextEncode",
+      inputs: { text: `${prompt}, detailed face, symmetrical eyes, sharp eyes`, clip: ["5", 0] },
+    },
+    8: {
+      class_type: "CLIPTextEncode",
+      inputs: { text: "blurry face, asymmetric eyes, deformed face, text, watermark", clip: ["5", 0] },
+    },
+    9: { class_type: "VAEEncode", inputs: { pixels: ["3", 0], vae: ["6", 0] } },
+    10: {
+      class_type: "KSampler",
+      inputs: {
+        model: ["4", 0],
+        positive: ["7", 0],
+        negative: ["8", 0],
+        latent_image: ["9", 0],
+        seed: Math.floor(Math.random() * 2 ** 31),
+        steps: Math.max(4, Math.min(20, Number(config.faceSteps) || 8)),
+        cfg: 4,
+        sampler_name: "euler",
+        scheduler: "simple",
+        denoise: 0.35,
+      },
+    },
+    11: { class_type: "VAEDecode", inputs: { samples: ["10", 0], vae: ["6", 0] } },
+    14: {
+      class_type: "SolidMask",
+      inputs: { value: 1, width: 512, height: 512 },
+    },
+    15: {
+      class_type: "FeatherMask",
+      inputs: { mask: ["14", 0], left: 32, top: 32, right: 32, bottom: 32 },
+    },
+    12: {
+      class_type: "ImageCompositeMasked",
+      inputs: { destination: ["1", 0], source: ["11", 0], x, y, resize_source: false, mask: ["15", 0] },
+    },
+    13: { class_type: "SaveImage", inputs: { images: ["12", 0], filename_prefix: "LumenFace" } },
+    _crop: { width: faceWidth, height: faceHeight, x, y },
+  };
+}
+
+async function detailFace(config, imagePath, width, height, prompt) {
+  const imageName = await uploadComfyImage(config, imagePath);
+  const built = buildFaceWorkflow(config, imageName, width, height, prompt);
+  delete built._crop;
+  send("flow:progress", { stage: "Face detailer...", progress: 0.7 });
+  const response = await comfyFetch(
+    config.comfyUrl,
+    "/prompt",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: built, client_id: `lumen-face-${Date.now()}` }),
+    },
+    20000,
+  ).then((item) => item.json());
+  if (response?.error) throw new Error(JSON.stringify(response.error));
+  const promptId = response.prompt_id;
+  let entry = null;
+  for (let index = 0; index < 300; index += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const history = await comfyFetch(config.comfyUrl, `/history/${promptId}`, {}, 8000).then((item) => item.json());
+    entry = history?.[promptId];
+    if (entry) break;
+    if (index > 240) throw new Error("Face detailer timeout");
+  }
+  const output = Object.values(entry?.outputs || {}).flatMap((item) => item.images || [])[0];
+  if (!output) throw new Error("Face detailer returned no image");
+  const query = new URLSearchParams({
+    filename: output.filename,
+    subfolder: output.subfolder || "",
+    type: output.type || "output",
+  });
+  const finalResponse = await comfyFetch(config.comfyUrl, `/view?${query.toString()}`, {}, 30000);
+  const buffer = Buffer.from(await finalResponse.arrayBuffer());
+  const filePath = path.join(outputDir(), `flow-${Date.now()}-face.png`);
+  await fsp.writeFile(filePath, buffer);
+  return { name: path.basename(filePath), path: filePath, url: `data:image/png;base64,${buffer.toString("base64")}` };
 }
 
 function apiSize(width, height) {
