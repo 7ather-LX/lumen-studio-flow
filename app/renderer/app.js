@@ -9,6 +9,7 @@
     forcedCharacter: null,
     initImage: "",
     customWorkflow: null,
+    styleLoras: { "gal-3d": "make25d_type2_v100.safetensors" },
     models: { checkpoints: [], unets: [], clips: [], vaes: [], loras: [] },
     config: null,
     health: null,
@@ -586,7 +587,7 @@
       hires: Boolean($("#hires")?.checked),
       hiresScale: 1.5,
       hiresSteps: 10,
-      lora: STYLES[state.style]?.lora || "",
+      lora: state.styleLoras?.[state.style] || STYLES[state.style]?.lora || "",
       loraStrength: STYLES[state.style]?.loraStrength || 1,
     };
   }
@@ -666,7 +667,7 @@
         initImage: state.initImage,
         denoise,
         referenceMode,
-        lora: style?.lora || "",
+        lora: state.styleLoras?.[state.style] || style?.lora || "",
         loraStrength: style?.loraStrength || 1,
         customWorkflow: state.customWorkflow,
       });
@@ -932,6 +933,18 @@
     $("#revealButton").addEventListener("click", () => {
       if (state.currentImage) void bridge.reveal(state.currentImage.path);
     });
+    $("#refineButton").addEventListener("click", () => {
+      if (!state.currentImage?.url) return;
+      state.initImage = state.currentImage.url;
+      $("#referencePreview").src = state.initImage;
+      $("#referencePreview").classList.remove("hidden");
+      $("#referenceEmpty").classList.add("hidden");
+      $("#referenceClear").classList.remove("hidden");
+      $("#referenceMode").value = "img2img";
+      $("#denoise").value = "0.38";
+      $("#denoiseValue").textContent = "38%";
+      toast("已把当前图放入参考图。选 Checkpoint + Galgame 3D，强度 38%，再生成。");
+    });
     $("#reuseSeed").addEventListener("click", () => {
       if (state.currentImage?.seed) $("#seed").value = String(state.currentImage.seed);
       toast("已复用当前种子。");
@@ -955,7 +968,21 @@
     setInterval(() => void checkHealth(), 15000);
   }
 
+  async function loadStyleLoras() {
+    try {
+      const response = await fetch(new URL("style-loras.json", window.location.href), { cache: "no-store" });
+      if (!response.ok) return;
+      const mapping = await response.json();
+      if (mapping && typeof mapping === "object") {
+        state.styleLoras = { ...state.styleLoras, ...mapping };
+      }
+    } catch {
+      // keep built-in fallback
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
+    void loadStyleLoras();
     applyAspect("1:1");
     applyStyle("anime-cel");
     updateAnimaPreview();
