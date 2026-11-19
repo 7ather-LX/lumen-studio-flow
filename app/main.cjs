@@ -15,10 +15,14 @@ const DEFAULT_CONFIG = {
   comfyUrl: "http://127.0.0.1:8188",
   comfyDir: "F:\\DSH WORKSPACE\\lumen-flow\\comfy",
   pythonExe: "",
+  modelMode: "anima",
+  checkpoint: "",
   unet: "anima-base-v1.0.safetensors",
   clip: "qwen_3_06b_base.safetensors",
   vae: "qwen_image_vae.safetensors",
   lora: "",
+  loraStrength: 1,
+  refAdapterName: "anima_ref_adapter_v2_r64.safetensors",
   steps: 30,
   cfg: 4,
   hires: false,
@@ -113,6 +117,38 @@ async function health(config) {
   }
 }
 
+async function listModels() {
+  const config = readConfig();
+  const info = await comfyFetch(config.comfyUrl, "/object_info", {}, 20000).then((response) => response.json());
+  const options = (node, input) => {
+    const required = info?.[node]?.input?.required?.[input];
+    const first = Array.isArray(required) ? required[0] : null;
+    return Array.isArray(first) ? first.filter((value) => typeof value === "string") : [];
+  };
+  return {
+    checkpoints: options("CheckpointLoaderSimple", "ckpt_name"),
+    unets: options("UNETLoader", "unet_name"),
+    clips: options("CLIPLoader", "clip_name"),
+    vaes: options("VAELoader", "vae_name"),
+    loras: options("LoraLoaderModelOnly", "lora_name"),
+  };
+}
+
+function previewWorkflow(payload) {
+  const config = readConfig();
+  const built = buildWorkflow(config, payload);
+  return {
+    workflow: built.workflow,
+    meta: {
+      modelMode: config.modelMode,
+      checkpoint: config.checkpoint,
+      seed: built.seed,
+      width: built.width,
+      height: built.height,
+    },
+  };
+}
+
 async function startComfy() {
   const config = readConfig();
   const root = normalizeComfyDir(config.comfyDir);
@@ -176,57 +212,88 @@ function buildWorkflow(config, payload, initImageName = "") {
   const negative = String(payload.negative || "worst quality, low quality, blurry, jpeg artifacts").trim();
   if (!prompt) throw new Error("Prompt is empty");
 
-  const workflow = {
-    1: {
+  const useCheckpoint = config.modelMode === "checkpoint" && config.checkpoint;
+  const workflow = {};
+  let modelRef;
+  let clipRef;
+  let vaeRef;
+  if (useCheckpoint) {
+    workflow[1] = { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: config.checkpoint } };
+    modelRef = ["1", 0];
+    clipRef = ["1", 1];
+    vaeRef = ["1", 2];
+  } else {
+    workflow[1] = {
       class_type: "UNETLoader",
       inputs: { unet_name: config.unet, weight_dtype: "default" },
-    },
-    2: {
+    };
+    workflow[2] = {
       class_type: "CLIPLoader",
       inputs: { clip_name: config.clip, type: "stable_diffusion", device: "default" },
-    },
-    3: {
+    };
+    workflow[3] = {
       class_type: "VAELoader",
       inputs: { vae_name: config.vae },
-    },
-    4: {
-      class_type: "CLIPTextEncode",
-      inputs: { text: prompt, clip: ["2", 0] },
-    },
-    5: {
-      class_type: "CLIPTextEncode",
-      inputs: { text: negative, clip: ["2", 0] },
-    },
-    6: {
-      class_type: "EmptyLatentImage",
-      inputs: { width, height, batch_size: batch },
-    },
-    7: {
-      class_type: "KSampler",
-      inputs: {
-        model: ["1", 0],
-        positive: ["4", 0],
-        negative: ["5", 0],
-        latent_image: ["6", 0],
-        seed,
-        steps,
-        cfg,
-        sampler_name: "euler",
-        scheduler: "simple",
-        denoise: 1,
-      },
-    },
-    8: {
-      class_type: "VAEDecode",
-      inputs: { samples: ["7", 0], vae: ["3", 0] },
-    },
-    9: {
-      class_type: "SaveImage",
-      inputs: { images: ["8", 0], filename_prefix: "LumenFlow" },
+    };
+    modelRef = ["1", 0];
+    clipRef = ["2", 0];
+    vaeRef = ["3", 0];
+  }
+  workflow[4] = {
+    class_type: "CLIPTextEncode",
+    inputs: { text: prompt, clip: clipRef },
+  };
+  workflow[5] = {
+    class_type: "CLIPTextEncode",
+    inputs: { text: negative, clip: clipRef },
+  };
+  workflow[6] = {
+    class_type: "EmptyLatentImage",
+    inputs: { width, height, batch_size: batch },
+  };
+  workflow[7] = {
+    class_type: "KSampler",
+    inputs: {
+      model: modelRef,
+      positive: ["4", 0],
+      negative: ["5", 0],
+      latent_image: ["6", 0],
+      seed,
+      steps,
+      cfg,
+      sampler_name: "euler",
+      scheduler: "simple",
+      denoise: 1,
     },
   };
+  workflow[8] = {
+    class_type: "VAEDecode",
+    inputs: { samples: ["7", 0], vae: vaeRef },
+  };
+  workflow[9] = {
+    class_type: "SaveImage",
+    inputs: { images: ["8", 0], filename_prefix: "LumenFlow" },
+  };
 
-  if (initImageName) {
+  if (initImageName && payload.referenceMode === "ref-adapter" && !useCheckpoint) {
+    workflow[30] = { class_type: "LoadImage", inputs: { image: initImageName } };
+    workflow[33] = {
+      class_type: "AnimaRefAdapter",
+      inputs: {
+        model: modelRef,
+        vae: vaeRef,
+        image: ["30", 0],
+        lora_name: config.refAdapterName || "anima_ref_adapter_v2_r64.safetensors",
+        ref_guidance: 4.5,
+        correction: "apg",
+        strength: 1,
+        ref_end: 0.85,
+        ref_megapixels: 1,
+      },
+    };
+    workflow[7].inputs.model = ["33", 0];
+    modelRef = ["33", 0];
+  } else if (initImageName) {
     workflow[30] = { class_type: "LoadImage", inputs: { image: initImageName } };
     workflow[31] = {
       class_type: "ImageScale",
@@ -240,17 +307,36 @@ function buildWorkflow(config, payload, initImageName = "") {
     };
     workflow[32] = {
       class_type: "VAEEncode",
-      inputs: { pixels: ["31", 0], vae: ["3", 0] },
+      inputs: { pixels: ["31", 0], vae: vaeRef },
     };
     workflow[7].inputs.latent_image = ["32", 0];
     workflow[7].inputs.denoise = Math.max(0.2, Math.min(0.8, Number(payload.denoise) || 0.45));
   }
   if (config.lora) {
-    workflow[10] = {
-      class_type: "LoraLoaderModelOnly",
-      inputs: { model: ["1", 0], lora_name: config.lora, strength_model: 1 },
-    };
-    workflow[7].inputs.model = ["10", 0];
+    const strength = Math.max(0, Math.min(2, Number(config.loraStrength) || 1));
+    if (useCheckpoint) {
+      workflow[10] = {
+        class_type: "LoraLoader",
+        inputs: {
+          model: modelRef,
+          clip: clipRef,
+          lora_name: config.lora,
+          strength_model: strength,
+          strength_clip: strength,
+        },
+      };
+      modelRef = ["10", 0];
+      clipRef = ["10", 1];
+      workflow[4].inputs.clip = clipRef;
+      workflow[5].inputs.clip = clipRef;
+    } else {
+      workflow[10] = {
+        class_type: "LoraLoaderModelOnly",
+        inputs: { model: modelRef, lora_name: config.lora, strength_model: strength },
+      };
+      modelRef = ["10", 0];
+    }
+    workflow[7].inputs.model = modelRef;
   }
   if (hires) {
     workflow[20] = {
@@ -264,7 +350,7 @@ function buildWorkflow(config, payload, initImageName = "") {
     workflow[21] = {
       class_type: "KSampler",
       inputs: {
-        model: config.lora ? ["10", 0] : ["1", 0],
+        model: modelRef,
         positive: ["4", 0],
         negative: ["5", 0],
         latent_image: ["20", 0],
@@ -278,7 +364,7 @@ function buildWorkflow(config, payload, initImageName = "") {
     };
     workflow[22] = {
       class_type: "VAEDecode",
-      inputs: { samples: ["21", 0], vae: ["3", 0] },
+      inputs: { samples: ["21", 0], vae: vaeRef },
     };
     workflow[9].inputs.images = ["22", 0];
   }
@@ -309,7 +395,14 @@ async function runComfy(payload) {
     send("flow:progress", { stage: "Uploading reference...", progress: 0.01 });
     initImageName = await uploadDataUrl(config, payload.initImage);
   }
-  const built = buildWorkflow(config, payload, initImageName);
+  const built = payload.customWorkflow && typeof payload.customWorkflow === "object"
+    ? {
+        workflow: payload.customWorkflow,
+        seed: Number(payload.seed) || 0,
+        width: Number(payload.width) || 1024,
+        height: Number(payload.height) || 1024,
+      }
+    : buildWorkflow(config, payload, initImageName);
   const clientId = `lumen-flow-${Date.now()}`;
   send("flow:progress", { stage: "Working...", progress: 0.02, seed: built.seed });
   const submit = await comfyFetch(
@@ -636,6 +729,8 @@ app.on("before-quit", () => {
 ipcMain.handle("flow:config:get", () => readConfig());
 ipcMain.handle("flow:config:set", (_event, patch) => writeConfig(patch));
 ipcMain.handle("flow:health", () => health(readConfig()));
+ipcMain.handle("flow:models", () => listModels());
+ipcMain.handle("flow:workflow:preview", (_event, payload) => previewWorkflow(payload));
 ipcMain.handle("flow:start", async () => startComfy());
 ipcMain.handle("flow:generate", async (_event, payload) => {
   const config = readConfig();
