@@ -312,15 +312,16 @@ function buildWorkflow(config, payload, initImageName = "") {
     workflow[7].inputs.latent_image = ["32", 0];
     workflow[7].inputs.denoise = Math.max(0.2, Math.min(0.8, Number(payload.denoise) || 0.45));
   }
-  if (config.lora) {
-    const strength = Math.max(0, Math.min(2, Number(config.loraStrength) || 1));
+  const loraName = useCheckpoint ? (payload.lora || config.lora) : config.lora;
+  if (loraName) {
+    const strength = Math.max(0, Math.min(2, Number(payload.loraStrength ?? config.loraStrength) || 1));
     if (useCheckpoint) {
       workflow[10] = {
         class_type: "LoraLoader",
         inputs: {
           model: modelRef,
           clip: clipRef,
-          lora_name: config.lora,
+          lora_name: loraName,
           strength_model: strength,
           strength_clip: strength,
         },
@@ -332,7 +333,7 @@ function buildWorkflow(config, payload, initImageName = "") {
     } else {
       workflow[10] = {
         class_type: "LoraLoaderModelOnly",
-        inputs: { model: modelRef, lora_name: config.lora, strength_model: strength },
+        inputs: { model: modelRef, lora_name: loraName, strength_model: strength },
       };
       modelRef = ["10", 0];
     }
