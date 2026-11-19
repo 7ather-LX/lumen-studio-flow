@@ -53,7 +53,7 @@
         <div class="sidebar-footer">
           <button class="ghost-button" id="settingsButton">设置</button>
           <button class="ghost-button" id="helpButton">使用说明</button>
-          <small>v0.1.2 · local first</small>
+          <small>v0.1.3 · local first</small>
         </div>
       </aside>
 
@@ -118,6 +118,17 @@
                 <p class="anima-order">
                   质量/安全 → 人数与角色 → 作品 → <b>@画师</b> → 普通标签 → 自然语言
                 </p>
+                <div class="idea-generator">
+                  <div class="idea-generator-head">
+                    <strong>不会写提示词？用一句话描述</strong>
+                    <span>内置标签生成器，不需要登录</span>
+                  </div>
+                  <textarea id="ideaInput" rows="2" placeholder="例：银发红瞳的少女，黑色水手服，坐在樱花树下的长椅上，春天，柔和光线"></textarea>
+                  <div class="idea-generator-actions">
+                    <button class="mini-button primary-mini" id="generatePrompt">生成标准提示词</button>
+                    <small>中英文关键词都能识别，生成后可继续改</small>
+                  </div>
+                </div>
                 <div id="animaFields" class="anima-fields">
                   <label class="anima-field wide">
                     <span>01 质量 / 安全</span>
