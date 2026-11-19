@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lumen Studio Flow</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark"><span></span></div>
+          <div>
+            <strong>Lumen</strong>
+            <small>STUDIO FLOW</small>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item active" data-view="create">
+            <span class="nav-index">01</span>
+            <span>创作</span>
+          </button>
+          <button class="nav-item" data-view="gallery">
+            <span class="nav-index">02</span>
+            <span>作品</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-section">
+          <span class="section-label">ENGINE</span>
+          <div class="engine-card">
+            <div class="engine-head">
+              <span class="status-dot" id="engineDot"></span>
+              <strong>ComfyUI</strong>
+              <span id="engineLabel">检测中</span>
+            </div>
+            <p id="engineDetail">等待本地服务</p>
+            <button class="text-button" id="engineStart">启动本地引擎</button>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <span class="section-label">MODEL</span>
+          <div class="model-card">
+            <strong>Anima Base v1.0</strong>
+            <span>52-block DiT · Qwen3 0.6B</span>
+            <span class="model-tag">COMBO STACK</span>
+          </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <button class="ghost-button" id="settingsButton">设置</button>
+          <button class="ghost-button" id="helpButton">使用说明</button>
+          <small>v0.1.0 · local only</small>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">LUMEN STUDIO / FLOW</span>
+            <h1 id="viewTitle">Create</h1>
+          </div>
+          <div class="topbar-meta">
+            <span class="meta-chip"><span class="meta-key">GPU</span><span id="gpuLabel">--</span></span>
+            <span class="meta-chip"><span class="meta-key">LATENT</span><span>1024</span></span>
+          </div>
+        </header>
+
+        <section class="view active" id="view-create">
+          <div class="create-grid">
+            <div class="compose-column">
+              <div class="panel prompt-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">01 / PROMPT</span>
+                    <h2>你想画什么？</h2>
+                  </div>
+                  <span class="hint">中英文均可 · Anima 原生英文更稳</span>
+                </div>
+                <textarea id="prompt" rows="7" spellcheck="false" placeholder="例如：1girl, silver hair, red eyes, black sailor suit, cherry blossoms, soft cinematic light, anime cel shading"></textarea>
+                <div class="prompt-actions">
+                  <div class="style-chips" id="styleChips">
+                    <button class="chip active" data-style="anime-cel">赛璐珞动画</button>
+                    <button class="chip" data-style="cinematic">电影光影</button>
+                    <button class="chip" data-style="lineart">线稿</button>
+                    <button class="chip" data-style="illustration">日系插画</button>
+                  </div>
+                  <button class="text-button" id="negativeToggle">负向词 +</button>
+                </div>
+                <textarea id="negative" class="negative-input hidden" rows="3" spellcheck="false">worst quality, low quality, blurry, jpeg artifacts, text, watermark, bad anatomy, extra fingers</textarea>
+              </div>
+
+              <div class="panel settings-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">02 / FRAME</span>
+                    <h2>画面</h2>
+                  </div>
+                  <span class="hint" id="sizeHint">1024 × 1024</span>
+                </div>
+                <div class="aspect-grid" id="aspectGrid">
+                  <button class="aspect active" data-aspect="1:1"><span class="aspect-shape square"></span><strong>1:1</strong><small>头像 / 方图</small></button>
+                  <button class="aspect" data-aspect="3:4"><span class="aspect-shape portrait"></span><strong>3:4</strong><small>半身</small></button>
+                  <button class="aspect" data-aspect="2:3"><span class="aspect-shape tall"></span><strong>2:3</strong><small>立绘</small></button>
+                  <button class="aspect" data-aspect="16:9"><span class="aspect-shape wide"></span><strong>16:9</strong><small>场景</small></button>
+                </div>
+                <div class="control-grid">
+                  <label class="control">
+                    <span>步数 <b id="stepsValue">30</b></span>
+                    <input type="range" id="steps" min="8" max="60" value="30" />
+                  </label>
+                  <label class="control">
+                    <span>CFG <b id="cfgValue">4</b></span>
+                    <input type="range" id="cfg" min="1" max="10" step="0.5" value="4" />
+                  </label>
+                  <label class="control">
+                    <span>数量 <b id="batchValue">1</b></span>
+                    <input type="range" id="batch" min="1" max="4" value="1" />
+                  </label>
+                  <label class="control seed-control">
+                    <span>种子</span>
+                    <div class="seed-row">
+                      <input id="seed" type="number" value="-1" min="-1" />
+                      <button class="mini-button" id="randomSeed" title="随机种子">↻</button>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <button class="generate-button" id="generateButton">
+                <span>生成图片</span>
+                <span class="generate-meta">ANIMA / LOCAL</span>
+              </button>
+              <div class="progress-wrap hidden" id="progressWrap">
+                <div class="progress-bar"><span id="progressBar"></span></div>
+                <div class="progress-label"><span id="progressStage">准备中</span><span id="progressPercent">0%</span></div>
+              </div>
+            </div>
+
+            <aside class="result-column">
+              <div class="panel result-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">03 / RESULT</span>
+                    <h2>输出</h2>
+                  </div>
+                  <span class="hint" id="resultMeta">等待生成</span>
+                </div>
+                <div class="result-stage" id="resultStage">
+                  <div class="empty-state">
+                    <div class="empty-orbit"></div>
+                    <strong>还没有画面</strong>
+                    <span>写下提示词，Anima 会在本机完成采样。</span>
+                  </div>
+                </div>
+                <div class="result-actions hidden" id="resultActions">
+                  <button class="text-button" id="revealButton">打开文件位置</button>
+                  <button class="text-button" id="reuseSeed">复用种子</button>
+                </div>
+              </div>
+
+              <div class="panel flow-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">PIPELINE</span>
+                    <h2>简化工作流</h2>
+                  </div>
+                  <span class="hint">5 个节点</span>
+                </div>
+                <div class="pipeline">
+                  <div class="pipeline-node"><b>01</b><span>UNET</span><small>Anima</small></div>
+                  <div class="pipeline-line"></div>
+                  <div class="pipeline-node"><b>02</b><span>CLIP</span><small>Qwen3</small></div>
+                  <div class="pipeline-line"></div>
+                  <div class="pipeline-node"><b>03</b><span>KSampler</span><small>euler</small></div>
+                  <div class="pipeline-line"></div>
+                  <div class="pipeline-node"><b>04</b><span>VAE</span><small>decode</small></div>
+                </div>
+                <p class="pipeline-note">ComfyUI 负责执行；Lumen Flow 只保留「提示词 → 画面」这一层操作。</p>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" id="view-gallery">
+          <div class="gallery-head">
+            <div>
+              <span class="eyebrow">02 / ARCHIVE</span>
+              <h2>本机作品</h2>
+            </div>
+            <button class="text-button" id="refreshGallery">刷新</button>
+          </div>
+          <div class="gallery-grid" id="galleryGrid">
+            <div class="gallery-empty">还没有作品。</div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop hidden" id="settingsModal">
+      <div class="modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">CONFIG</span>
+            <h2>本地引擎设置</h2>
+          </div>
+          <button class="icon-button" id="closeSettings">×</button>
+        </div>
+        <div class="modal-body">
+          <label class="field">
+            <span>ComfyUI API</span>
+            <input id="settingUrl" type="text" placeholder="http://127.0.0.1:8188" />
+          </label>
+          <label class="field">
+            <span>ComfyUI 目录</span>
+            <div class="dir-row">
+              <input id="settingDir" type="text" placeholder="F:\LumenFlow\comfy\ComfyUI_windows_portable" />
+              <button class="mini-button" id="browseDir">选择</button>
+            </div>
+          </label>
+          <div class="field-row">
+            <label class="field"><span>UNET</span><input id="settingUnet" type="text" /></label>
+            <label class="field"><span>CLIP</span><input id="settingClip" type="text" /></label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span>VAE</span><input id="settingVae" type="text" /></label>
+            <label class="field"><span>LoRA（可选）</span><input id="settingLora" type="text" /></label>
+          </div>
+          <p class="modal-note">模型文件必须放在 ComfyUI 对应的 models 目录。首次启动会加载约 5–6 GB 权重。</p>
+        </div>
+        <div class="modal-footer">
+          <button class="ghost-button" id="cancelSettings">取消</button>
+          <button class="primary-button" id="saveSettings">保存设置</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="helpModal">
+      <div class="modal help-modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">GUIDE</span>
+            <h2>Lumen Studio Flow</h2>
+          </div>
+          <button class="icon-button" id="closeHelp">×</button>
+        </div>
+        <div class="modal-body help-body">
+          <h3>第一次使用</h3>
+          <ol>
+            <li>确认本机已安装 ComfyUI，并放在设置里的目录。</li>
+            <li>把 <code>anima-base-v1.0.safetensors</code> 放进 <code>models/diffusion_models</code>。</li>
+            <li>把 <code>qwen_3_06b_base.safetensors</code> 放进 <code>models/text_encoders</code>。</li>
+            <li>把 <code>qwen_image_vae.safetensors</code> 放进 <code>models/vae</code>。</li>
+            <li>点左侧「启动本地引擎」，看到 ComfyUI 在线。</li>
+          </ol>
+          <h3>操作</h3>
+          <p>写提示词 → 选画幅 → 调步数/CFG → 生成。默认 30 步、CFG 4，Anima 用 euler + simple 采样。</p>
+          <h3>常见问题</h3>
+          <p><b>找不到 ComfyUI：</b>设置目录要选到包含 <code>ComfyUI</code> 和 <code>python_embeded</code> 的那一层。</p>
+          <p><b>模型不存在：</b>文件名必须和设置里的 UNET/CLIP/VAE 一致。</p>
+          <p><b>显存不足：</b>先降到 768 长边、batch 1；或给 ComfyUI 加 <code>--lowvram</code>。</p>
+          <p class="help-foot">完整教程与模型链接：GitHub <code>7ather-LX/lumen-studio-flow</code>。</p>
+        </div>
+      </div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
