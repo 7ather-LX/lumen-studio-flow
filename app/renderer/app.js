@@ -6,6 +6,7 @@
     aspect: "1:1",
     style: "anime-cel",
     animaMode: true,
+    forcedCharacter: null,
     config: null,
     health: null,
     images: [],
@@ -141,6 +142,7 @@
     { pattern: /森林|forest|树林/i, tags: ["forest"] },
     { pattern: /树下|under tree/i, tags: ["under tree"] },
     { pattern: /长椅|bench/i, tags: ["bench"] },
+    { pattern: /床|bed/i, tags: ["bed"] },
     { pattern: /海边|ocean|beach|海滩/i, tags: ["ocean", "beach"] },
     { pattern: /教室|classroom/i, tags: ["classroom"] },
     { pattern: /咖啡厅|cafe|咖啡店/i, tags: ["cafe"] },
@@ -163,6 +165,71 @@
     { pattern: /葬送的芙莉莲|sousou no frieren/i, tags: [], work: "sousou no frieren" },
   ];
 
+  const CHARACTERS = Array.isArray(window.ANIMA_CHARACTERS) ? window.ANIMA_CHARACTERS : [];
+
+  function characterCandidates(idea) {
+    const value = String(idea || "").toLowerCase();
+    const hits = [];
+    for (const entry of CHARACTERS) {
+      const aliases = [entry.name, entry.tag, entry.zh, ...(entry.aliases || [])]
+        .filter(Boolean)
+        .map((item) => String(item).toLowerCase());
+      const hit = aliases.find((alias) => alias.length >= 2 && value.includes(alias));
+      if (hit) hits.push({ entry, hit });
+    }
+    const unique = [];
+    const seen = new Set();
+    for (const item of hits) {
+      if (seen.has(item.entry.tag)) continue;
+      seen.add(item.entry.tag);
+      unique.push(item.entry);
+    }
+    const narrowed = unique.filter((entry) => {
+      const work = String(entry.work || "").toLowerCase();
+      const workZh = String(entry.work_zh || "").toLowerCase();
+      return (work && value.includes(work)) || (workZh && value.includes(workZh));
+    });
+    return narrowed.length ? narrowed : unique;
+  }
+
+  function renderCharacterChoices(entries) {
+    const box = $("#characterChoices");
+    if (!box) return;
+    box.classList.remove("hidden");
+    box.innerHTML = "<small>找到多个同名角色，请选择作品：</small>" + entries
+      .map(
+        (entry) =>
+          `<button data-tag="${escapeHtml(entry.tag)}">${escapeHtml(entry.zh || entry.name)} · ${escapeHtml(
+            entry.work_zh || entry.work,
+          )}</button>`,
+      )
+      .join("");
+    box.querySelectorAll("button").forEach((node) => {
+      node.addEventListener("click", () => {
+        const entry = CHARACTERS.find((item) => item.tag === node.dataset.tag);
+        if (entry) {
+          state.forcedCharacter = entry;
+          box.classList.add("hidden");
+          generateIdeaPrompt();
+        }
+      });
+    });
+  }
+
+  function countForIdea(idea) {
+    if (/两个女孩|2girls|two girls/i.test(idea)) return "2girls";
+    if (/两个男孩|2boys|two boys/i.test(idea)) return "2boys";
+    if (/男孩|1boy|boy/i.test(idea)) return "1boy, solo";
+    return "1girl, solo";
+  }
+
+  function applyCharacter(entry, idea) {
+    $("#animaSubject").value = `${countForIdea(idea)}, ${entry.tag}`;
+    $("#animaWork").value = entry.work || "";
+    updateAnimaPreview();
+    toast(`已识别角色：${entry.zh || entry.name} · ${entry.work_zh || entry.work}`);
+  }
+
   function generateIdeaPrompt() {
     const idea = String($("#ideaInput")?.value || "").trim();
     if (!idea) {
@@ -172,6 +239,21 @@
     const tags = [];
     let character = "";
     let work = "";
+    const candidates = state.forcedCharacter ? [state.forcedCharacter] : characterCandidates(idea);
+    state.forcedCharacter = null;
+    if (candidates.length > 1) {
+      renderCharacterChoices(candidates);
+      toast("这个角色名对应多部作品，请在下方选择。");
+      return;
+    }
+    if (candidates.length === 1) {
+      character = candidates[0].tag;
+      work = candidates[0].work || "";
+    }
+    if (/2\.5D|2.5d|厚涂|半写实/i.test(idea)) applyStyle("painterly");
+    else if (/黑白|日式漫画|manga/i.test(idea)) applyStyle("manga-bw");
+    else if (/水墨|ink wash/i.test(idea)) applyStyle("ink-wash");
+    else if (/赛璐珞|cel/i.test(idea)) applyStyle("anime-cel");
     for (const entry of IDEA_TAGS) {
       if (!entry.pattern.test(idea)) continue;
       for (const tag of entry.tags) if (!tags.includes(tag)) tags.push(tag);
@@ -198,8 +280,11 @@
     const moodTag = tags.find((tag) => /calm|sleepy|sad|smile/.test(tag)) || "calm";
     const mood = moodMap[moodTag] || "quiet";
     const light = tags.find((tag) => /light|sunlight|backlight|neon|dappled/.test(tag)) || "soft light";
-    const scenePhrase = sceneWords.length ? ` in a scene with ${sceneWords.join(" and ")}` : "";
-    $("#animaNatural").value = `The character is ${tags.includes("sitting") ? "sitting" : "standing"}${scenePhrase}, and the mood feels ${mood} with ${light}.`;
+    const pose = tags.includes("lying") ? "lying" : tags.includes("sitting") ? "sitting" : "standing";
+    const place = tags.includes("bed") && pose === "lying" ? " on a bed" : "";
+    const sceneRest = sceneWords.filter((tag) => !(place && tag === "bed"));
+    const scenePhrase = sceneRest.length ? ` in a scene with ${sceneRest.join(" and ")}` : "";
+    $("#animaNatural").value = `The character is ${pose}${place}${scenePhrase}, and the mood feels ${mood} with ${light}.`;
     updateAnimaPreview();
     toast("已生成标准提示词，可以继续修改。");
   }
