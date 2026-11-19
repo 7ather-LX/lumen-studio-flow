@@ -53,7 +53,7 @@
         <div class="sidebar-footer">
           <button class="ghost-button" id="settingsButton">设置</button>
           <button class="ghost-button" id="helpButton">使用说明</button>
-          <small>v0.1.5 · local first</small>
+          <small>v0.1.6 · local first</small>
         </div>
       </aside>
 
@@ -102,6 +102,29 @@
                   <button class="text-button" id="negativeToggle">负向词 +</button>
                 </div>
                 <textarea id="negative" class="negative-input hidden" rows="3" spellcheck="false">worst quality, low quality, blurry, jpeg artifacts, text, watermark, bad anatomy, extra fingers</textarea>
+              </div>
+
+              <div class="panel reference-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">REFERENCE / IMG2IMG</span>
+                    <h2>参考图（可选）</h2>
+                  </div>
+                  <span class="hint">拖入 2.5D 参考图，保持构图与光影</span>
+                </div>
+                <div class="reference-drop" id="referenceDrop">
+                  <input id="referenceInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+                  <div id="referenceEmpty">
+                    <strong>拖入参考图</strong>
+                    <span>或点击选择 · 只在本机处理</span>
+                  </div>
+                  <img id="referencePreview" class="hidden" alt="reference" />
+                  <button class="mini-button reference-clear hidden" id="referenceClear">移除</button>
+                </div>
+                <label class="control reference-strength">
+                  <span>参考强度 <b id="denoiseValue">45%</b></span>
+                  <input type="range" id="denoise" min="0.25" max="0.7" step="0.05" value="0.45" />
+                </label>
               </div>
 
               <div class="panel anima-panel">
