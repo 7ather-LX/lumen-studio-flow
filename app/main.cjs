@@ -11,6 +11,7 @@ let comfyProcess = null;
 let comfyLog = null;
 
 const DEFAULT_CONFIG = {
+  engine: "local",
   comfyUrl: "http://127.0.0.1:8188",
   comfyDir: "F:\\DSH WORKSPACE\\lumen-flow\\comfy",
   pythonExe: "",
@@ -20,6 +21,9 @@ const DEFAULT_CONFIG = {
   lora: "",
   steps: 30,
   cfg: 4,
+  apiUrl: "https://api.openai.com/v1",
+  apiModel: "gpt-image-1",
+  apiKey: "",
 };
 
 function dataRoot() {
@@ -296,6 +300,80 @@ async function runComfy(payload) {
   return { images, seed: built.seed, promptId, width: built.width, height: built.height };
 }
 
+function apiSize(width, height) {
+  const ratio = width / height;
+  if (ratio > 1.2) return "1792x1024";
+  if (ratio < 0.85) return "1024x1792";
+  return "1024x1024";
+}
+
+async function runApi(payload) {
+  const config = readConfig();
+  if (!config.apiUrl || !config.apiKey) {
+    throw new Error("API mode needs an endpoint and API key in Settings.");
+  }
+  const width = Math.max(256, Math.min(2048, Number(payload.width) || 1024));
+  const height = Math.max(256, Math.min(2048, Number(payload.height) || 1024));
+  const batch = Math.max(1, Math.min(4, Number(payload.batch) || 1));
+  const prompt = String(payload.prompt || "").trim();
+  if (!prompt) throw new Error("Prompt is empty");
+  const endpoint = /\/images\/generations$/i.test(config.apiUrl)
+    ? config.apiUrl
+    : `${config.apiUrl.replace(/\/$/, "")}/images/generations`;
+  send("flow:progress", { stage: "Requesting external image API...", progress: 0.1 });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 180000);
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.apiModel,
+        prompt,
+        n: batch,
+        size: apiSize(width, height),
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`API ${response.status}: ${text.slice(0, 600)}`);
+    }
+    const data = await response.json();
+    const items = Array.isArray(data.data) ? data.data : [];
+    if (!items.length) throw new Error("API returned no images");
+    const images = [];
+    for (const item of items) {
+      let buffer;
+      if (item.b64_json) {
+        buffer = Buffer.from(item.b64_json, "base64");
+      } else if (item.url) {
+        const imageResponse = await fetch(item.url, { signal: controller.signal });
+        if (!imageResponse.ok) throw new Error(`API image download ${imageResponse.status}`);
+        buffer = Buffer.from(await imageResponse.arrayBuffer());
+      } else {
+        continue;
+      }
+      const name = `api-${Date.now()}-${images.length + 1}.png`;
+      const filePath = path.join(outputDir(), name);
+      await fsp.writeFile(filePath, buffer);
+      images.push({
+        name,
+        path: filePath,
+        url: `data:image/png;base64,${buffer.toString("base64")}`,
+      });
+    }
+    if (!images.length) throw new Error("API returned no usable image data");
+    send("flow:progress", { stage: "Done", progress: 1 });
+    return { images, seed: 0, width, height, api: true };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1380,
@@ -344,7 +422,10 @@ ipcMain.handle("flow:config:get", () => readConfig());
 ipcMain.handle("flow:config:set", (_event, patch) => writeConfig(patch));
 ipcMain.handle("flow:health", () => health(readConfig()));
 ipcMain.handle("flow:start", async () => startComfy());
-ipcMain.handle("flow:generate", async (_event, payload) => runComfy(payload));
+ipcMain.handle("flow:generate", async (_event, payload) => {
+  const config = readConfig();
+  return config.engine === "api" ? runApi(payload) : runComfy(payload);
+});
 
 ipcMain.handle("flow:choose-dir", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
