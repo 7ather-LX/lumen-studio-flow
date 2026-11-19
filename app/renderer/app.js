@@ -5,6 +5,7 @@
     view: "create",
     aspect: "1:1",
     style: "anime-cel",
+    animaMode: true,
     config: null,
     health: null,
     images: [],
@@ -21,11 +22,145 @@
   };
 
   const STYLES = {
-    "anime-cel": "anime cel shading, clean lineart, flat colors, limited palette, 2D animation key visual",
-    cinematic: "cinematic lighting, dramatic shadows, volumetric light, film still, detailed background",
-    lineart: "fine lineart, monochrome, detailed ink illustration, high contrast",
-    illustration: "Japanese illustration, soft painterly rendering, detailed eyes, elegant composition",
+    "anime-cel": {
+      label: "平面赛璐珞",
+      artists: ["@kantoku", "@yoneyama_mai"],
+      tags: "anime cel shading, flat colors, bold clean lineart, limited palette, 2D animation key visual",
+      hint: "平面赛璐珞：平涂色块 + 清晰外轮廓 + 有限色板；画师参考 @kantoku / @yoneyama_mai",
+    },
+    painterly: {
+      label: "2.5D 厚涂",
+      artists: ["@wlop", "@mika_pikazo"],
+      tags: "semi-realistic anime, painterly rendering, thick brushwork, soft volumetric lighting, detailed skin, 2.5D",
+      hint: "2.5D 厚涂：体积光 + 厚笔触 + 半写实皮肤；画师参考 @wlop / @mika_pikazo",
+    },
+    "manga-bw": {
+      label: "黑白日式漫画",
+      artists: ["@fujimoto_tatsuki", "@asano_inio"],
+      tags: "black and white manga, screentone, high contrast ink, panel composition, monochrome, screentones",
+      hint: "黑白日漫：网点纸 + 高对比墨线 + 分镜感；画师参考 @fujimoto_tatsuki / @asano_inio",
+    },
+    "ink-wash": {
+      label: "水墨风",
+      artists: ["@kawanabe_kyosai"],
+      tags: "ink wash painting, sumi-e, flowing brush strokes, negative space, muted paper texture, japanese ink",
+      hint: "水墨：墨色晕染 + 留白 + 纸纹；画师参考 @kawanabe_kyosai",
+    },
+    retro: {
+      label: "90 年代复古赛璐珞",
+      artists: ["@yamada_akihiro"],
+      tags: "1990s anime, retro cel, film grain, muted colors, vintage animation, hand-painted background",
+      hint: "复古赛璐珞：90 年代动画色偏 + 颗粒 + 手绘背景；画师参考 @yamada_akihiro",
+    },
+    pastel: {
+      label: "柔和粉彩",
+      artists: ["@atdan"],
+      tags: "soft pastel colors, airy lighting, delicate lineart, dreamy atmosphere, light watercolor texture",
+      hint: "柔和粉彩：低饱和 + 空气感 + 轻水彩；画师参考 @atdan",
+    },
+    lineart: {
+      label: "精细线稿",
+      artists: ["@lack"],
+      tags: "fine lineart, monochrome, detailed ink illustration, hatching, concept art, clean contours",
+      hint: "精细线稿：细密排线 + 干净轮廓 + 概念设定感；画师参考 @lack",
+    },
+    "ukiyo-e": {
+      label: "浮世绘",
+      artists: ["@hokusai"],
+      tags: "ukiyo-e, woodblock print, flat perspective, wave patterns, traditional japanese colors, bold outlines",
+      hint: "浮世绘：木版画平视构图 + 传统配色 + 装饰性波纹；画师参考 @hokusai",
+    },
+    chibi: {
+      label: "Q 版",
+      artists: ["@fuzichoco"],
+      tags: "chibi, super deformed, cute, simple shapes, thick outlines, pastel palette",
+      hint: "Q 版：大头小身 + 简化造型 + 粗轮廓；画师参考 @fuzichoco",
+    },
+    cinematic: {
+      label: "电影光影",
+      artists: ["@redjuice"],
+      tags: "cinematic lighting, dramatic shadows, volumetric light, film still, detailed background, anamorphic",
+      hint: "电影光影：体积光 + 强明暗 + 电影镜头感；画师参考 @redjuice",
+    },
+    illustration: {
+      label: "日系插画",
+      artists: ["@fuzichoco"],
+      tags: "Japanese illustration, soft painterly rendering, detailed eyes, elegant composition, rich colors",
+      hint: "日系插画：柔和上色 + 精细眼睛 + 华丽构图；画师参考 @fuzichoco",
+    },
+    cyberpunk: {
+      label: "赛博霓虹",
+      artists: ["@redjuice"],
+      tags: "cyberpunk, neon lights, high contrast, futuristic city, chromatic aberration, night scene",
+      hint: "赛博霓虹：霓虹灯 + 高对比 + 未来都市；画师参考 @redjuice",
+    },
   };
+
+  function clean(value) {
+    return String(value || "").replace(/\s+/g, " ").replace(/,\s*,/g, ",").trim().replace(/^,|,$/g, "");
+  }
+
+  const API_PRESETS = {
+    openai: { url: "https://api.openai.com/v1", model: "gpt-image-1" },
+    siliconflow: { url: "https://api.siliconflow.cn/v1", model: "Kwai-Kolors/Kolors" },
+    zhipu: { url: "https://open.bigmodel.cn/api/paas/v4", model: "cogview-3-flash" },
+    volcengine: { url: "https://ark.cn-beijing.volces.com/api/v3", model: "doubao-seedream-3-0-t2i-250415" },
+    minimax: { url: "https://api.minimax.chat/v1", model: "image-01" },
+  };
+
+  function applyEngineUI() {
+    const engine = state.config?.engine || "local";
+    const apiFields = $("#apiFields");
+    if (apiFields) apiFields.classList.toggle("hidden", engine !== "api");
+    const start = $("#engineStart");
+    if (start) start.classList.toggle("hidden", engine === "api");
+    if (engine === "api") {
+      setStatus(true, "外部 API", state.config?.apiUrl || "未配置");
+    }
+  }
+
+  function styleSuffix(style) {
+    if (!style) return "";
+    return [...(style.artists || []), style.tags].filter(Boolean).join(", ");
+  }
+
+  function composeAnimaPrompt(style = null) {
+    const quality = clean($("#animaQuality")?.value);
+    const subject = clean($("#animaSubject")?.value);
+    const work = clean($("#animaWork")?.value);
+    const artistRaw = clean($("#animaArtist")?.value);
+    const tagsRaw = clean($("#animaTags")?.value);
+    const natural = String($("#animaNatural")?.value || "").trim();
+    const artist = artistRaw ? (artistRaw.startsWith("@") ? artistRaw : `@${artistRaw}`) : "";
+    const styleTags = style?.tags || "";
+    const styleArtists = style?.artists || [];
+    const seenArtists = new Set();
+    const artistPart = [...styleArtists, artist]
+      .filter(Boolean)
+      .filter((value) => {
+        const key = value.toLowerCase();
+        if (seenArtists.has(key)) return false;
+        seenArtists.add(key);
+        return true;
+      })
+      .join(", ");
+    const tags = [tagsRaw, styleTags].filter(Boolean).join(", ");
+    return [quality, subject, work, artistPart, tags, natural].filter(Boolean).join(", ");
+  }
+
+  function updateAnimaPreview() {
+    const preview = $("#animaPreview");
+    const warning = $("#animaWarning");
+    if (!preview) return;
+    const artistRaw = clean($("#animaArtist")?.value);
+    const style = STYLES[state.style];
+    const composed = state.animaMode
+      ? composeAnimaPrompt(style)
+      : [$("#prompt").value.trim(), styleSuffix(style)].filter(Boolean).join(", ");
+    preview.textContent = composed || "填写上方字段后自动生成最终提示词";
+    if (warning) warning.classList.toggle("hidden", !(state.animaMode && artistRaw && !artistRaw.startsWith("@")));
+    return composed;
+  }
 
   function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, (char) => ({
@@ -100,6 +235,11 @@
       setStatus(false, "不可用", "Electron bridge 未加载");
       return;
     }
+    if (state.config?.engine === "api") {
+      applyEngineUI();
+      $("#gpuLabel").textContent = "API";
+      return;
+    }
     setStatus(false, "检测中", "正在连接 ComfyUI");
     try {
       const health = await bridge.health();
@@ -143,6 +283,9 @@
   function applyStyle(style) {
     state.style = style;
     document.querySelectorAll(".chip").forEach((node) => node.classList.toggle("active", node.dataset.style === style));
+    const hint = $("#styleHint");
+    if (hint) hint.textContent = STYLES[style]?.hint || "";
+    updateAnimaPreview();
   }
 
   function renderResult(image) {
@@ -188,10 +331,13 @@
 
   async function generate() {
     if (!bridge || state.busy) return;
-    const prompt = $("#prompt").value.trim();
+    const style = STYLES[state.style];
+    const prompt = state.animaMode
+      ? composeAnimaPrompt(style)
+      : [$("#prompt").value.trim(), styleSuffix(style)].filter(Boolean).join(", ");
     if (!prompt) {
       $("#prompt").focus();
-      toast("先写提示词。");
+      toast("先写提示词，或在 ANIMA 标准提示词里填写角色。");
       return;
     }
     const aspect = ASPECTS[state.aspect];
@@ -201,13 +347,12 @@
     const seedValue = Number($("#seed").value);
     const seed = Number.isFinite(seedValue) && seedValue >= 0 ? Math.floor(seedValue) : -1;
     const negative = $("#negative").value.trim();
-    const style = STYLES[state.style] || "";
     setBusy(true);
     updateProgress({ stage: "连接 ComfyUI...", progress: 0 });
     $("#resultMeta").textContent = "生成中";
     try {
       const res = await bridge.generate({
-        prompt: style ? `${prompt}, ${style}` : prompt,
+        prompt,
         negative,
         width: aspect.width,
         height: aspect.height,
@@ -235,19 +380,25 @@
 
   function openSettings() {
     if (!state.config) return;
+    $("#settingEngine").value = state.config.engine || "local";
     $("#settingUrl").value = state.config.comfyUrl || "";
     $("#settingDir").value = state.config.comfyDir || "";
     $("#settingPython").value = state.config.pythonExe || "";
+    $("#settingApiUrl").value = state.config.apiUrl || "";
+    $("#settingApiModel").value = state.config.apiModel || "";
+    $("#settingApiKey").value = "";
     $("#settingUnet").value = state.config.unet || "";
     $("#settingClip").value = state.config.clip || "";
     $("#settingVae").value = state.config.vae || "";
     $("#settingLora").value = state.config.lora || "";
+    $("#apiFields").classList.toggle("hidden", (state.config.engine || "local") !== "api");
     $("#settingsModal").classList.remove("hidden");
   }
 
   async function saveSettings() {
     if (!bridge) return;
     const patch = {
+      engine: $("#settingEngine").value,
       comfyUrl: $("#settingUrl").value.trim() || "http://127.0.0.1:8188",
       comfyDir: $("#settingDir").value.trim(),
       pythonExe: $("#settingPython").value.trim(),
@@ -255,11 +406,16 @@
       clip: $("#settingClip").value.trim(),
       vae: $("#settingVae").value.trim(),
       lora: $("#settingLora").value.trim(),
+      apiUrl: $("#settingApiUrl").value.trim(),
+      apiModel: $("#settingApiModel").value.trim(),
     };
+    const apiKey = $("#settingApiKey").value.trim();
+    if (apiKey) patch.apiKey = apiKey;
     try {
       state.config = await bridge.setConfig(patch);
       $("#settingsModal").classList.add("hidden");
       toast("设置已保存。");
+      applyEngineUI();
       await checkHealth();
     } catch (error) {
       toast(error?.message || String(error));
@@ -274,7 +430,28 @@
       node.addEventListener("click", () => applyAspect(node.dataset.aspect));
     });
     document.querySelectorAll(".chip").forEach((node) => {
-      node.addEventListener("click", () => applyStyle(node.dataset.style));
+      node.addEventListener("click", () => {
+        applyStyle(node.dataset.style);
+        updateAnimaPreview();
+      });
+    });
+    $("#animaMode").addEventListener("change", (event) => {
+      state.animaMode = event.target.checked;
+      $("#animaFields").classList.toggle("disabled", !state.animaMode);
+      updateAnimaPreview();
+    });
+    ["#animaQuality", "#animaSubject", "#animaWork", "#animaArtist", "#animaTags", "#animaNatural"].forEach((selector) => {
+      const node = $(selector);
+      if (node) node.addEventListener("input", updateAnimaPreview);
+    });
+    $("#copyAnima").addEventListener("click", async () => {
+      const text = updateAnimaPreview();
+      try {
+        await navigator.clipboard.writeText(text);
+        toast("最终提示词已复制。");
+      } catch {
+        toast(text);
+      }
     });
     $("#prompt").addEventListener("keydown", (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
@@ -307,6 +484,15 @@
       const selected = await bridge?.chooseDir();
       if (selected) $("#settingDir").value = selected;
     });
+    $("#settingEngine").addEventListener("change", () => {
+      $("#apiFields").classList.toggle("hidden", $("#settingEngine").value !== "api");
+    });
+    $("#apiPreset").addEventListener("change", () => {
+      const preset = API_PRESETS[$("#apiPreset").value];
+      if (!preset) return;
+      $("#settingApiUrl").value = preset.url;
+      $("#settingApiModel").value = preset.model;
+    });
     $("#engineStart").addEventListener("click", async () => {
       if (!bridge) return;
       setStatus(false, "启动中", "正在拉起 ComfyUI");
@@ -334,6 +520,7 @@
       return;
     }
     state.config = await bridge.getConfig();
+    applyEngineUI();
     $("#steps").value = state.config.steps || 30;
     $("#stepsValue").textContent = $("#steps").value;
     $("#cfg").value = state.config.cfg || 4;
@@ -347,6 +534,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     applyAspect("1:1");
     applyStyle("anime-cel");
+    updateAnimaPreview();
     void bind();
   });
 })();
