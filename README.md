@@ -8,6 +8,8 @@ It is not a replacement for the original Lumen Studio. The original project keep
 one prompt -> one frame -> one local ComfyUI workflow
 ```
 
+![Flow UI](docs/flow-app.png)
+
 ## Why a new project
 
 The original Lumen Studio grew around Diffusers, IP-Adapter references, feet repair and cloud providers. Flow deliberately removes that complexity from the main path:
