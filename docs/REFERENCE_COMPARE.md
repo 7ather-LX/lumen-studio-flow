@@ -12,8 +12,6 @@
 2. 纯提示词：泳池女仆柴郡，512×768，20 步
 3. 参考图：用户提供的 2.5D 图例，img2img，denoise 0.62
 
-![对比](cheshire-reference-compare.png)
-
 ## 观察
 
 ### 旧版：床上女仆
