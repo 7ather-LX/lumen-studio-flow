@@ -53,7 +53,7 @@
         <div class="sidebar-footer">
           <button class="ghost-button" id="settingsButton">设置</button>
           <button class="ghost-button" id="helpButton">使用说明</button>
-          <small>v0.1.4 · local first</small>
+          <small>v0.1.5 · local first</small>
         </div>
       </aside>
 
@@ -166,6 +166,7 @@
                   <button class="mini-button" id="copyAnima">复制</button>
                 </div>
                 <p class="anima-warning hidden" id="animaWarning">画师标签前需要 @ 符号</p>
+                <p class="anima-check" id="animaCheck"></p>
               </div>
 
               <div class="panel settings-panel">
@@ -194,6 +195,13 @@
                   <label class="control">
                     <span>数量 <b id="batchValue">1</b></span>
                     <input type="range" id="batch" min="1" max="4" value="1" />
+                  </label>
+                  <label class="control hires-control">
+                    <span>高清放大</span>
+                    <label class="toggle-line">
+                      <input type="checkbox" id="hires" />
+                      <span>Hires 1.5x</span>
+                    </label>
                   </label>
                   <label class="control seed-control">
                     <span>种子</span>
