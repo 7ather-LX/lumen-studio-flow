@@ -43,6 +43,16 @@ ComfyUI/models/vae/qwen_image_vae.safetensors
 
 If you use the portable `ComfyUI_windows_portable` layout, point Flow at its root. If you use a source checkout, point Flow at the folder containing `main.py`.
 
+## Reference material
+
+- Bilibili series: https://www.bilibili.com/video/BV1CcuH6sESW
+- ComfyUI Anima guide: https://docs.comfy.org/tutorials/image/anima/anima
+- Anima workflow template: https://github.com/Comfy-Org/workflow_templates
+- Anima model card: https://huggingface.co/circlestone-labs/Anima
+
+The Flow workflow is a simplified subset of the official Anima template:
+UNET + Qwen3 CLIP + VAE + KSampler + SaveImage. No custom nodes are required.
+
 ## Model sources
 
 - Anima: https://huggingface.co/circlestone-labs/Anima
