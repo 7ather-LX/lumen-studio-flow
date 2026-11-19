@@ -426,10 +426,24 @@ textarea::placeholder {
   margin-top: 10px;
 }
 
+.style-block {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
 .style-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
+  max-height: 48px;
+  overflow: auto;
+}
+
+.style-hint {
+  color: var(--dim);
+  font-size: 7px;
+  line-height: 1.4;
 }
 
 .chip {
@@ -449,6 +463,110 @@ textarea::placeholder {
   border-color: rgba(214, 255, 121, 0.42);
   color: var(--lime);
   background: rgba(214, 255, 121, 0.06);
+}
+
+.anima-panel {
+  border-color: rgba(214, 255, 121, 0.18);
+}
+
+.anima-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.anima-toggle input {
+  accent-color: var(--lime);
+}
+
+.anima-order {
+  margin: -3px 0 12px;
+  color: var(--dim);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.anima-order b {
+  color: var(--lime);
+  font-weight: 500;
+}
+
+.anima-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.anima-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 0.8fr;
+  gap: 8px;
+}
+
+.anima-field {
+  display: grid;
+  gap: 5px;
+}
+
+.anima-field > span {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
+.anima-field input,
+.anima-field textarea {
+  padding: 8px 9px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.anima-fields.disabled {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.anima-preview-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.anima-preview {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px 9px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.anima-preview-label {
+  display: block;
+  color: var(--lime-dim);
+  font-family: var(--mono);
+  font-size: 7px;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.anima-preview code {
+  display: block;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 9px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.anima-warning {
+  margin: 8px 0 0;
+  color: var(--orange);
+  font-size: 8px;
 }
 
 .negative-input {
@@ -913,6 +1031,26 @@ input[type="range"]::-webkit-slider-thumb {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+.setting-select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0b0f0c;
+  color: var(--text);
+  padding: 9px 10px;
+  font-size: 10px;
+  outline: none;
+}
+
+.api-fields {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(214, 255, 121, 0.14);
+  border-radius: 8px;
+  background: rgba(214, 255, 121, 0.025);
 }
 
 .dir-row {
