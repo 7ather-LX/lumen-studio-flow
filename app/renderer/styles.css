@@ -494,6 +494,56 @@ textarea::placeholder {
   font-weight: 500;
 }
 
+.idea-generator {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px dashed rgba(214, 255, 121, 0.24);
+  border-radius: 8px;
+  background: rgba(214, 255, 121, 0.025);
+}
+
+.idea-generator-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.idea-generator-head strong {
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.idea-generator-head span {
+  color: var(--dim);
+  font-size: 7px;
+}
+
+.idea-generator textarea {
+  padding: 8px 9px;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.idea-generator-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.idea-generator-actions small {
+  color: var(--dim);
+  font-size: 7px;
+}
+
+.primary-mini {
+  border-color: rgba(214, 255, 121, 0.4);
+  color: var(--lime);
+  background: rgba(214, 255, 121, 0.07);
+}
+
 .anima-fields {
   display: grid;
   gap: 8px;
