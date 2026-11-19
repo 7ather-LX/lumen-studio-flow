@@ -36,7 +36,11 @@ UNETLoader -> CLIPLoader -> CLIPTextEncode
 - euler / simple
 - 用时约 14 分 47 秒
 
-生成测试图：
+应用内实测（512 × 512 / 10 steps）：
+
+![Flow app result](app-result.png)
+
+高分辨率测试：
 
 ![Anima 测试](anima-hero.png)
 
