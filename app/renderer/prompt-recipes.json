@@ -1,0 +1,87 @@
+[
+  {
+    "id": "img_44d3b298185c4f9f871b360a718ec3b7",
+    "name": "masterpiece, best quality, score_9, score_8, score_7, highre",
+    "prompt": "masterpiece, best quality, score_9, score_8, score_7, highres, absurdres, ultra detailed, hokko tarumae (star light ship) (umamusume), horse ears, horse girl, horse tail, pouty lips, bedroom, purple lighting, purple cloak, leggings, black sandals, striped socks, blue necktie, hat feather, medium wide shot, worm's-eye view, diagonal composition, 105mm lens, deep depth of field, leaning to the side",
+    "negative": "(worst quality, low quality:1.4), bad anatomy, bad hands, extra fingers, fused fingers, missing fingers, deformed face, asymmetrical eyes, watermark, text, signature",
+    "style": "anime-cel",
+    "width": 512,
+    "height": 768,
+    "seed": 184726,
+    "image": "img_44d3b298185c4f9f871b360a718ec3b7.png"
+  },
+  {
+    "id": "img_bf1dee25fb5b4374a9d03d83881c46d2",
+    "name": "brown hair, white streak, teal horse ears, purple eyes, whit",
+    "prompt": "brown hair, white streak, teal horse ears, purple eyes, white blue red idol outfit, twin braids, star hair ornament, white gloves, masterpiece, best quality, score_9, score_8, score_7, highres, absurdres, ultra detailed, hokko tarumae (star light ship) (umamusume), horse ears, horse girl, horse tail, pouty lips, bedroom, purple lighting, purple cloak, leggings, black sandals, striped socks, blue necktie, hat feather, medium wide shot, worm's-eye view, diagonal composition, 105mm lens, deep depth of field, leaning to the side",
+    "negative": "(worst quality, low quality:1.4), bad anatomy, bad hands, extra fingers, fused fingers, missing fingers, deformed face, asymmetrical eyes, watermark, text, signature",
+    "style": "anime-cel",
+    "width": 512,
+    "height": 768,
+    "seed": 184726,
+    "image": "img_bf1dee25fb5b4374a9d03d83881c46d2.png"
+  },
+  {
+    "id": "img_3f81412f60ca476a84ba5fa75c79a52d",
+    "name": "brown hair, long hair, ponytail, horse ears, blue eyes, whit",
+    "prompt": "brown hair, long hair, ponytail, horse ears, blue eyes, white blue red racing outfit, tiara, black pantyhose, sheer tights, soles, feet focus, tokai teio (umamusume), 1girl, solo, brown hair, long ponytail, horse ears, blue eyes, tiara, blue jacket, white shirt, red bowtie, blue pleated skirt, sitting on floor, leaning back, legs crossed, feet forward, black pantyhose, sheer tights, soles, feet focus, toes visible through tights, barefoot, one hand on cheek, looking at viewer, anime cel shading, clean lineart, grey background",
+    "negative": "atago (azur lane), grey sailor jacket, black necktie, black hair, red eyes, shoes, boots, heels, high heels, extra toes, fused toes, deformed feet, bad anatomy, text, watermark, jpeg artifacts, blurry",
+    "style": "none",
+    "width": 512,
+    "height": 768,
+    "seed": 20261129,
+    "image": "img_3f81412f60ca476a84ba5fa75c79a52d.png"
+  },
+  {
+    "id": "img_4dd07ebc5fd94d19aba77094b1dc9bc2",
+    "name": "anime reinterpretation of The Birth of Venus, 1girl, venus,",
+    "prompt": "anime reinterpretation of The Birth of Venus, 1girl, venus, long flowing hair, elegant white flowing dress, standing on a giant seashell, seaside, soft pastel sky, zephyrs blowing, orange grove, flowers falling, hand-drawn anime cel shading, clean lineart, flat colors, sfw, no nudity, masterpiece, best quality, detailed fabric, detailed hair",
+    "negative": "nude, nudity, nipples, explicit, adult content, sexual, lingerie, swimsuit, text, watermark, signature, lowres, bad anatomy, deformed hands, extra fingers, 3d render, photorealistic, blurry, messy lines",
+    "style": "anime-cel",
+    "width": 768,
+    "height": 576,
+    "seed": 20261130,
+    "image": "img_4dd07ebc5fd94d19aba77094b1dc9bc2.png"
+  },
+  {
+    "id": "img_cd5a4e76b30349f3ba134d4e76d1d7f9",
+    "name": "anime reinterpretation of The Birth of Venus, 1girl, venus,",
+    "prompt": "anime reinterpretation of The Birth of Venus, 1girl, venus, long flowing hair, elegant white flowing dress, standing on a giant white scallop shell, shell under her feet, prominent seashell, seaside, soft pastel sky, zephyrs blowing, orange grove, flowers falling, hand-drawn anime cel shading, clean lineart, flat colors, sfw, no nudity, masterpiece, best quality, detailed fabric, detailed hair, barefoot",
+    "negative": "nude, nudity, nipples, explicit, adult content, sexual, lingerie, swimsuit, text, watermark, signature, lowres, bad anatomy, deformed hands, extra fingers, shoes, boots, water surface only, no shell, 3d render, photorealistic, blurry, messy lines",
+    "style": "anime-cel",
+    "width": 768,
+    "height": 576,
+    "seed": 20261201,
+    "image": "img_cd5a4e76b30349f3ba134d4e76d1d7f9.png"
+  },
+  {
+    "id": "user_bocchi_street",
+    "name": "孤独摇滚四人街景",
+    "style": "cinematic",
+    "prompt": "masterpiece, best quality, ultra detailed anime illustration, cinematic composition, warm golden hour sunlight, soft tree shadow patterns, realistic lighting, emotional slice of life atmosphere, four girls walking together on a quiet Japanese street, subtle movement, natural candid interaction, guitar cases on their backs, anime movie aesthetic, @xilmo, IMPORTANT CHARACTER ORDER FROM LEFT TO RIGHT: Ijichi Nijika, Yamada Ryo, Kita Ikuyo, Gotoh Hitori. Ijichi Nijika on the far left, cheerful blonde girl with side ponytail and ahoge, leaning playfully toward Yamada Ryo, smiling brightly, both hands gripping backpack straps, energetic pose; Yamada Ryo second from left, tall blue-haired girl with short bob, calm expression, one hand in pocket, other holding bag strap, turning toward Nijika; Kita Ikuyo third from left, lively red-haired girl with long twin tails, turning upper body backward toward Gotoh Hitori, warm smile, hair flowing, one hand holding bag strap, other holding Hitori hand; Gotoh Hitori on far right, shy pink-haired girl with long hair, timid surprised expression, leaning back while being pulled forward by Kita, oversized pink jacket, one foot lifted mid-step, strong left-to-right arrangement accuracy, friendship chemistry, natural walking poses, dynamic hair, realistic urban background, soft depth of field, detailed shadows, cinematic storytelling frame",
+    "negative": "(worst quality, low quality:1.4), bad anatomy, bad hands, extra fingers, text, watermark",
+    "width": 1024,
+    "height": 576,
+    "seed": -1
+  },
+  {
+    "id": "user_robin_firefly_sofa",
+    "name": "Robin × Firefly 沙发合唱",
+    "style": "illustration",
+    "prompt": "masterpiece, best quality, score_7, safe, anime, Front-facing medium shot, centered composition, two female characters in foreground. On the left Robin (Honkai: Star Rail), long blue-purple hair fading to light purple tips, wing-like head accessories, white off-shoulder ruffled top, blue jeans, star-shaped necklace, holding a black microphone, singing with joyful expression and slightly flushed cheeks. On the right Firefly, light brown long hair, white headband, green bow hair accessory, white long-sleeve shirt, dark plaid pleated skirt, holding microphone with both hands, surprised focused expression. Both seated on a red tufted sofa chair in front of a dark round table, leaning slightly toward each other, shoulders nearly touching. Table has two colorful cocktails, a black laptop, black handbag. Background right Silver Wolf, purple-haired girl with sunglasses and blue jacket over black innerwear, taking photos with phone. Japanese anime illustration style, bright soft colors, clean lines, comic speech bubbles, musical note decorations.",
+    "negative": "(worst quality, low quality:1.4), bad anatomy, bad hands, extra fingers, missing fingers, text, watermark, signature",
+    "width": 1024,
+    "height": 768,
+    "seed": -1
+  },
+  {
+    "id": "user_bluearchive_justice",
+    "name": "Blue Archive 正义实现委员",
+    "style": "anime-cel",
+    "prompt": "masterpiece, best quality, score_9, score_8, highres, safe, 1girl, solo, justice task force member \\(blue archive\\), blue archive, (@mika pikazo:2), (cowboy shot:2), (eye level:2), long black hair, straight hair, blunt bangs, hair over eyes, red eyes, red halo, small halo, black beret, small red hairpin, blush, closed mouth, black sailor collar, red neckerchief, black serafuku, long sleeves, black gloves, clothes lift, lifting shirt by self, midriff, navel, black pleated skirt, red trim, white background, simple background, flat color, high key. Tall vertical eye-level composition, thin red halo floating above beret, skirt hem anchoring bottom edge. Both gloved hands hook into sailor top hem and pull upward, black cloth bunching over knuckles, crease across chest, red-trimmed collar tipped off one shoulder, bare midriff under flat frontal light. Black and red scheme, black uniform largest dark mass, white backdrop largest bright mass, vermilion neckerchief, halo, hairpin and eyes as only saturated accents.",
+    "negative": "(worst quality, low quality:1.4), bad anatomy, bad hands, extra fingers, missing fingers, deformed face, text, watermark",
+    "width": 768,
+    "height": 1152,
+    "seed": -1
+  }
+]

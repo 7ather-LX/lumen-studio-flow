@@ -1,0 +1,7 @@
+file 'F:/DSH WORKSPACE/lumen-flow/promo/clip-1.mp4'
+file 'F:/DSH WORKSPACE/lumen-flow/promo/clip-2.mp4'
+file 'F:/DSH WORKSPACE/lumen-flow/promo/clip-3.mp4'
+file 'F:/DSH WORKSPACE/lumen-flow/promo/clip-4.mp4'
+file 'F:/DSH WORKSPACE/lumen-flow/promo/clip-5.mp4'
+file 'F:/DSH WORKSPACE/lumen-flow/promo/clip-6.mp4'
+file 'F:/DSH WORKSPACE/lumen-flow/promo/clip-7.mp4'

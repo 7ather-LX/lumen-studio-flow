@@ -1,0 +1,10 @@
+{
+  "gal-3d": "make25d_type2_v100.safetensors",
+  "ririko-cel": "ririko_anima_v2.safetensors",
+  "mushroom-moe": "mushroom_anima_v2.safetensors",
+  "25d-lora": "25d_anima_v4.safetensors",
+  "bilibili-cel": "bilibili_flat_cel_anima_v1.safetensors",
+  "bilibili-25d": "bilibili_2_5d_semi_anima_v1.safetensors",
+  "bilibili-moe": "bilibili_moe_2d_anima_v1.safetensors",
+  "target-25d": "25d_anima_v5.safetensors"
+}

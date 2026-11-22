@@ -1,0 +1,42 @@
+appId: studio.lumen.flow
+productName: Lumen Studio Flow
+copyright: Copyright 2026 Lumen Studio Flow contributors
+asar: true
+directories:
+  output: ../release
+  buildResources: .
+files:
+  - main.cjs
+  - preload.cjs
+  - package.json
+  - renderer/**/*
+win:
+  icon: icon.ico
+  target:
+    - target: portable
+      arch:
+        - x64
+    - target: nsis
+      arch:
+        - x64
+  artifactName: Lumen-Studio-Flow-${version}.${ext}
+  verifyUpdateCodeSignature: false
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Lumen Studio Flow
+  artifactName: Lumen-Studio-Flow-Setup-${version}.${ext}
+  deleteAppDataOnUninstall: false
+
+electronDist: F:\\DSH WORKSPACE\\node_modules\\electron\\dist
+
+extraResources:
+  - from: bootstrap_runtime.ps1
+    to: bootstrap_runtime.ps1
+  - from: runtime-plugins
+    to: runtime-plugins

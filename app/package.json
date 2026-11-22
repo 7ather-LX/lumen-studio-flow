@@ -1,0 +1,21 @@
+{
+  "name": "lumen-studio-flow",
+  "productName": "Lumen Studio Flow",
+  "version": "0.2.36",
+  "description": "A focused anime image studio powered by a local ComfyUI + Anima workflow.",
+  "main": "main.cjs",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "39.8.10"
+  },
+  "license": "MIT",
+  "author": "Lumen Studio Flow contributors",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/7ather-LX/lumen-studio-flow.git"
+  }
+}

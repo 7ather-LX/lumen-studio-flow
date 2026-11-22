@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lumen Studio Flow</title>
+    <link rel="icon" type="image/png" href="./icon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark"><span></span></div>
+          <div>
+            <strong>Lumen</strong>
+            <small>STUDIO FLOW</small>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item active" data-view="create">
+            <span class="nav-index">01</span>
+            <span>创作</span>
+          </button>
+          <button class="nav-item" data-view="gallery">
+            <span class="nav-index">02</span>
+            <span>作品</span>
+          </button>
+
+          <button class="nav-item" id="catalogButton"><span class="nav-index">03</span><span>姿势 / 服装</span></button>
+          <button class="nav-item" id="referenceLibraryButton"><span class="nav-index">04</span><span>参考库</span></button>
+          <button class="nav-item" id="promptLibraryButton"><span class="nav-index">05</span><span>提示词</span></button>
+          <button class="nav-item" id="settingsButton"><span class="nav-index">06</span><span>设置</span></button>
+          <button class="nav-item" id="trainingButton"><span class="nav-index">07</span><span>训练素材</span></button>
+          <button class="nav-item" id="workflowButton"><span class="nav-index">08</span><span>工作流</span></button>
+          <button class="nav-item" id="helpButton"><span class="nav-index">09</span><span>使用说明</span></button>
+        </nav>
+
+        <div class="sidebar-section">
+          <span class="section-label">ENGINE</span>
+          <div class="engine-card">
+            <div class="engine-head">
+              <span class="status-dot" id="engineDot"></span>
+              <strong>ComfyUI</strong>
+              <span id="engineLabel">检测中</span>
+            </div>
+            <p id="engineDetail">等待本地服务</p>
+            <button class="text-button" id="engineStart">启动本地引擎</button>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <span class="section-label">MODEL</span>
+          <div class="model-card">
+            <strong>Anima Base v1.0</strong>
+            <span>52-block DiT · Qwen3 0.6B</span>
+            <span class="model-tag">COMBO STACK</span>
+          </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <small>v0.2.36 · local first</small>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">LUMEN STUDIO / FLOW</span>
+            <h1 id="viewTitle">Create</h1>
+          </div>
+          <div class="topbar-meta">
+            <span class="meta-chip"><span class="meta-key">GPU</span><span id="gpuLabel">--</span></span>
+            <span class="meta-chip"><span class="meta-key">LATENT</span><span>1024</span></span>
+          </div>
+        </header>
+
+        <section class="view active" id="view-create">
+          <div class="create-grid">
+            <div class="compose-column">
+              <div class="panel prompt-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">01 / PROMPT</span>
+                    <h2>你想画什么？</h2>
+                  </div>
+                  <span class="hint">自由提示词 · 结构化开启时以 ANIMA 区为准</span>
+                </div>
+                <textarea id="prompt" rows="7" spellcheck="false" placeholder="例如：1girl, silver hair, red eyes, black sailor suit, cherry blossoms, soft cinematic light, anime cel shading"></textarea>
+                <div class="prompt-actions">
+                  <div class="style-block">
+                    <div class="style-chips" id="styleChips">
+                      <button class="chip" data-style="follow-prompt" title="不额外注入风格，完全按提示词生成">跟随提示词</button>
+                      <button class="chip" data-style="anima-base" title="Anima 基础模型原生动漫插画质感">Anima 基础</button>
+                      <button class="chip active" data-style="anime-cel" title="风格预设">平面赛璐珞</button>
+                      <button class="chip" data-style="2.5d-thick" title="2.5D 厚涂 · 使用参考图做 img2img">2.5D 厚涂</button>
+                      <button class="chip" data-style="painterly" title="风格预设">2.5D 半写实</button>
+                      <button class="chip" data-style="gal-3d" title="Galgame 3D · 2.5D 转换 LoRA">Galgame 3D</button>
+                      <button class="chip" data-style="ririko-cel" title="清透赛璐珞 · Anima LoRA">清透赛璐珞</button>
+                      <button class="chip" data-style="mushroom-moe" title="柔和萌系 · Anima LoRA">柔和萌系</button>
+                      <button class="chip" data-style="25d-lora" title="2.5D 半写实 · Anima LoRA">2.5D LoRA</button>
+                      <button class="chip" data-style="target-25d" title="目标 2.5D · v5 柔光皮肤">目标2.5D</button>
+                      <button class="chip" data-style="bilibili-cel" title="B站精选 · 赛璐珞">B站精选赛璐珞</button>
+                      <button class="chip" data-style="bilibili-25d" title="B站精选 · 2.5D">B站精选2.5D</button>
+                      <button class="chip" data-style="bilibili-moe" title="B站精选 · 萌系">B站精选萌系</button>
+                      <button class="chip" data-style="manga-bw" title="风格预设">黑白日漫</button>
+                      <button class="chip" data-style="ink-wash" title="风格预设">水墨</button>
+                      <button class="chip" data-style="retro" title="90 年代复古赛璐珞">复古赛璐珞</button>
+                      <button class="chip" data-style="pastel" title="风格预设">柔和粉彩</button>
+                      <button class="chip" data-style="lineart" title="风格预设">精细线稿</button>
+                      <button class="chip" data-style="ukiyo-e" title="风格预设">浮世绘</button>
+                      <button class="chip" data-style="chibi" title="风格预设">Q 版</button>
+                      <button class="chip" data-style="cinematic" title="风格预设">电影光影</button>
+                      <button class="chip" data-style="illustration" title="风格预设">日系插画</button>
+                      <button class="chip" data-style="cyberpunk" title="风格预设">赛博霓虹</button>
+                    </div>
+                    <small class="style-hint" id="styleHint"></small>
+                  </div>
+                  <button class="text-button" id="negativeToggle">负向词 +</button>
+                </div>
+                <textarea id="negative" class="negative-input hidden" rows="3" spellcheck="false">worst quality, low quality, blurry, jpeg artifacts, text, watermark, bad anatomy, extra fingers</textarea>
+              </div>
+
+              <div class="panel reference-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">REFERENCE / IMG2IMG</span>
+                    <h2>参考图（可选）</h2>
+                  </div>
+                  <span class="hint">拖入参考图，或从结果图点“以当前图重绘”</span>
+                </div>
+                <div class="reference-drop" id="referenceDrop">
+                  <input id="referenceInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+                  <div id="referenceEmpty">
+                    <strong>拖入参考图</strong>
+                    <span>或点击选择 · 只在本机处理</span>
+                  </div>
+                  <img id="referencePreview" class="hidden" alt="reference" />
+                  <button class="mini-button reference-clear hidden" id="referenceClear">移除</button>
+                </div>
+                <button class="text-button reference-cancel" id="cancelReference">取消构图参考</button>
+                <div class="refine-presets" id="refinePresets">
+                  <button class="chip" data-refine="light" title="只修细节，尽量不动构图">轻修</button>
+                  <button class="chip" data-refine="style" title="保留参考图的 2.5D 质感，只换角色">保风格</button>
+                  <button class="chip" data-refine="compose" title="保持构图，重画细节与材质">保构图</button>
+                  <button class="chip" data-refine="borrow" title="借构图重画，允许较大变化">借构图</button>
+                  <button class="chip" data-refine="adapter" title="用 Ref Adapter 锁角色，场景交给提示词">角色参考</button>
+                </div>
+                <p class="hint" id="referenceMeta">未选择参考图 · 当前按所选画幅生成</p>
+                <label class="toggle-line auto-style-toggle"><input type="checkbox" id="autoStyle" checked /><span>自动识别提示词中的画风</span></label>
+                <label class="control reference-strength">
+                  <span>重绘幅度 <b id="denoiseValue">50%</b></span>
+                  <input type="range" id="denoise" min="0.15" max="0.9" step="0.05" value="0.5" />
+                </label>
+                <label class="control repair-note-control">
+                  <span>重绘要求 / 问题</span>
+                  <textarea id="repairNote" rows="3" placeholder="例如：脚趾少一根，改成五根；手指不要融合；脸再圆一点"></textarea>
+                </label>
+                <p class="hint">15–30% 只修细节；35–50% 保构图换质感；55–90% 借构图重画。</p>
+                <label class="control">
+                  <span>参考方式</span>
+                  <select id="referenceMode" class="setting-select">
+                    <option value="img2img">img2img：借构图 / 画风</option>
+                    <option value="ref-adapter">Anima Ref Adapter：锁角色，场景听提示词</option>
+                  </select>
+                </label>
+                <label class="control hidden" id="adapterControls">
+                  <span>角色引导强度 <b id="adapterStrengthValue">4.5</b></span>
+                  <input type="range" id="adapterStrength" min="1" max="10" step="0.5" value="4.5" />
+                </label>
+                <label class="control">
+                  <span>风格 LoRA 强度 <b id="styleStrengthValue">0.45</b></span>
+                  <input type="range" id="styleStrength" min="0" max="1" step="0.05" value="0.45" />
+                </label>
+              </div>
+
+              <div class="panel anima-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">ANIMA / STRUCTURED PROMPT</span>
+                    <h2>标准提示词顺序</h2>
+                  </div>
+                  <label class="anima-toggle">
+                    <input type="checkbox" id="animaMode" checked />
+                    <span>启用结构化</span>
+                  </label>
+                </div>
+                <p class="anima-order">
+                  质量/安全 → 人数与角色 → 作品 → <b>@画师</b> → 普通标签 → 自然语言
+                </p>
+                <div class="idea-generator">
+                  <div class="idea-generator-head">
+                    <strong>不会写提示词？用一句话描述</strong>
+                    <span>内置标签生成器，不需要登录</span>
+                  </div>
+                  <textarea id="ideaInput" rows="2" placeholder="例：银发红瞳的少女，黑色水手服，坐在樱花树下的长椅上，春天，柔和光线"></textarea>
+                  <div class="idea-generator-actions">
+                    <button class="mini-button primary-mini" id="generatePrompt">生成标准提示词</button>
+                    <button class="mini-button" id="aiPromptButton">AI 一起写</button>
+                    <small>中英文关键词都能识别，生成后可继续改</small>
+                  </div>
+                  <div class="character-choices hidden" id="characterChoices"></div>
+                </div>
+                <div id="animaFields" class="anima-fields">
+                  <label class="anima-field wide">
+                    <span>01 质量 / 安全</span>
+                    <input id="animaQuality" type="text" value="masterpiece, best quality, score_7, safe" />
+                  </label>
+                  <div class="anima-row">
+                    <label class="anima-field">
+                      <span>02 人数与角色</span>
+                      <input id="animaSubject" type="text" value="" placeholder="1girl, solo, character" />
+                    </label>
+                    <label class="anima-field">
+                      <span>03 作品</span>
+                      <input id="animaWork" type="text" value="" placeholder="work / series" />
+                    </label>
+                    <label class="anima-field">
+                      <span>04 @画师</span>
+                      <input id="animaArtist" type="text" placeholder="@artist" />
+                    </label>
+                  </div>
+                  <label class="anima-field wide">
+                    <span>05 普通标签</span>
+                    <textarea id="animaTags" rows="2" placeholder="additional tags"></textarea>
+                  </label>
+                  <label class="anima-field wide">
+                    <span>06 自然语言</span>
+                    <textarea id="animaNatural" rows="2" placeholder="optional natural language"></textarea>
+                  </label>
+                </div>
+                <div class="anima-preview-row">
+                  <div class="anima-preview">
+                    <span class="anima-preview-label">最终提示词</span>
+                    <code id="animaPreview"></code>
+                  </div>
+                  <button class="mini-button" id="copyAnima">复制</button>
+                </div>
+                <p class="anima-warning hidden" id="animaWarning">画师标签前需要 @ 符号</p>
+                <p class="anima-check" id="animaCheck"></p>
+              </div>
+
+                            <div class="panel reference-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">CHARACTER / REF ADAPTER</span>
+                    <h2>角色参考（可选）</h2>
+                  </div>
+                  <span class="hint">锁住角色身份；构图仍走上方参考图</span>
+                </div>
+                <div class="reference-drop" id="characterDrop">
+                  <input id="characterInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+                  <div id="characterEmpty">
+                    <strong>拖入角色参考图</strong>
+                    <span>例如柴郡立绘 / 干净角色图</span>
+                  </div>
+                  <img id="characterPreview" class="hidden" alt="character reference" />
+                  <button class="mini-button reference-clear hidden" id="characterClear">移除</button>
+                </div>
+                <button class="text-button reference-cancel" id="cancelCharacter">取消角色参考</button>
+                <label class="control">
+                  <span>角色锁定强度 <b id="characterStrengthValue">5.0</b></span>
+                  <input type="range" id="characterStrength" min="1" max="10" step="0.5" value="5" />
+                </label>
+              </div>
+              <div class="panel reference-panel texture-panel">
+                <div class="panel-head">
+                  <div><span class="eyebrow">TEXTURE / PART REFERENCE</span><h2>质感 / 部位参考（可选）</h2></div>
+                  <span class="hint">只参考材质、脚部或局部，不作为构图主体</span>
+                </div>
+                <div class="reference-drop" id="textureDrop">
+                  <input id="textureInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+                  <div id="textureEmpty"><strong>拖入质感 / 部位参考</strong><span>丝袜、脚部、布料、手部细节</span></div>
+                  <img id="texturePreview" class="hidden" alt="texture reference" />
+                  <button class="mini-button reference-clear hidden" id="textureClear">移除</button>
+                </div>
+                <button class="text-button reference-cancel" id="cancelTexture">取消质感参考</button>
+                <label class="control">
+                  <span>参考说明（自定义）</span>
+                  <input id="textureNote" type="text" placeholder="例如：黑色丝袜质感，脚趾结构清晰" />
+                </label>
+                <label class="control">
+                  <span>质感参考强度 <b id="textureStrengthValue">0.65</b></span>
+                  <input type="range" id="textureStrength" min="0.1" max="1.5" step="0.05" value="0.65" />
+                </label>
+              </div>
+<div class="panel settings-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">02 / FRAME</span>
+                    <h2>画面</h2>
+                  </div>
+                  <span class="hint" id="sizeHint">1024 × 1024</span>
+                </div>
+                <div class="aspect-grid" id="aspectGrid">
+                  <button class="aspect active" data-aspect="1:1"><span class="aspect-shape square"></span><strong>1:1</strong><small>头像 / 方图</small></button>
+                  <button class="aspect" data-aspect="3:4"><span class="aspect-shape portrait"></span><strong>3:4</strong><small>半身</small></button>
+                  <button class="aspect" data-aspect="2:3"><span class="aspect-shape tall"></span><strong>2:3</strong><small>立绘</small></button>
+                  <button class="aspect" data-aspect="16:9"><span class="aspect-shape wide"></span><strong>16:9</strong><small>场景</small></button>
+                </div>
+                <label class="control">
+                  <span>性能档</span>
+                  <select id="performanceProfile" class="setting-select">
+                    <option value="auto">自动识别</option>
+                    <option value="fast">快速档 · 旧 Anima</option>
+                    <option value="quality">质量档 · Anima 2.9B</option>
+                    <option value="low">低显存 · 512×768</option>
+                  </select>
+                </label>
+                <p class="hint" id="performanceHint">自动识别 · 2.9B 质量档</p>
+                <div class="control-grid">
+                  <label class="control">
+                    <span>步数 <b id="stepsValue">30</b></span>
+                    <input type="range" id="steps" min="8" max="60" value="30" />
+                  </label>
+                  <label class="control">
+                    <span>CFG <b id="cfgValue">3.5</b></span>
+                    <input type="range" id="cfg" min="1" max="10" step="0.5" value="3.5" />
+                  </label>
+                  <label class="control">
+                    <span>数量 <b id="batchValue">3</b></span>
+                    <input type="range" id="batch" min="1" max="10" value="3" />
+                  </label>
+                  <label class="control hires-control">
+                    <span>高清放大</span>
+                    <label class="toggle-line">
+                      <input type="checkbox" id="hires" checked />
+                      <span>Hires 1.25x</span>
+                    </label>
+                  </label>
+                  <label class="control seed-control">
+                    <span>种子</span>
+                    <div class="seed-row">
+                      <input id="seed" type="number" value="-1" min="-1" />
+                      <button class="mini-button" id="randomSeed" title="随机种子">↻</button>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <button class="generate-button" id="generateButton">
+                <span>生成图片</span>
+                <span class="generate-meta">ANIMA / LOCAL</span>
+              </button>
+              <div class="progress-wrap hidden" id="progressWrap">
+                <div class="progress-bar"><span id="progressBar"></span></div>
+                <div class="progress-label"><span id="progressStage">准备中</span><span id="progressPercent">0%</span></div>
+              </div>
+            </div>
+
+            <aside class="result-column">
+              <div class="panel result-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">03 / RESULT</span>
+                    <h2>输出</h2>
+                  </div>
+                  <span class="hint" id="resultMeta">等待生成</span>
+                </div>
+                <div class="result-stage" id="resultStage">
+                  <div class="empty-state">
+                    <div class="empty-orbit"></div>
+                    <strong>还没有画面</strong>
+                    <span>写下提示词，Anima 会在本机完成采样。</span>
+                  </div>
+                </div>
+                <div class="result-thumbs" id="resultThumbs"></div>
+                <div class="result-actions hidden" id="resultActions">
+                  <button class="text-button" id="revealButton">打开文件位置</button>
+                  <button class="text-button" id="reuseSeed">复用种子</button>
+                  <button class="text-button" id="refineButton">以当前图重绘</button>
+                  <button class="text-button" id="borrowButton">借鉴这张</button>
+                </div>
+              </div>
+
+              <div class="panel flow-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">PIPELINE</span>
+                    <h2>简化工作流</h2>
+                  </div>
+                  <span class="hint">5 个节点</span>
+                </div>
+                <div class="pipeline">
+                  <div class="pipeline-node"><b>01</b><span>UNET</span><small>Anima</small></div>
+                  <div class="pipeline-line"></div>
+                  <div class="pipeline-node"><b>02</b><span>CLIP</span><small>Qwen3</small></div>
+                  <div class="pipeline-line"></div>
+                  <div class="pipeline-node"><b>03</b><span>KSampler</span><small>euler</small></div>
+                  <div class="pipeline-line"></div>
+                  <div class="pipeline-node"><b>04</b><span>VAE</span><small>decode</small></div>
+                </div>
+                <p class="pipeline-note">ComfyUI 负责执行；Lumen Flow 只保留「提示词 → 画面」这一层操作。</p>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" id="view-gallery">
+          <div class="gallery-head">
+            <div>
+              <span class="eyebrow">02 / ARCHIVE</span>
+              <h2>本机作品</h2>
+            </div>
+            <button class="text-button" id="refreshGallery">刷新</button>
+          </div>
+          <div class="gallery-batch" id="galleryBatchBar">
+            <button class="text-button" id="gallerySelectAll">全选</button>
+            <button class="text-button" id="galleryFavorite">收藏选中</button>
+            <button class="text-button" id="galleryBatchRefine">批量再加工</button>
+            <button class="text-button danger" id="galleryBatchDelete">删除选中</button>
+            <span class="hint" id="gallerySelectedCount">0 已选</span>
+          </div>
+          <div class="gallery-grid" id="galleryGrid">
+            <div class="gallery-empty">还没有作品。</div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop hidden" id="settingsModal">
+      <div class="modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">CONFIG</span>
+            <h2>本地引擎设置</h2>
+          </div>
+          <button class="icon-button" id="closeSettings">×</button>
+        </div>
+        <div class="modal-body">
+          <label class="field">
+            <span>运行方式</span>
+            <select id="settingEngine" class="setting-select">
+              <option value="local">本地 ComfyUI（默认，无积分）</option>
+              <option value="api">外部 API（没有本地模型时使用）</option>
+            </select>
+          </label>
+          <div id="apiFields" class="api-fields hidden">
+            <label class="field">
+              <span>API 预设</span>
+              <select id="apiPreset" class="setting-select">
+                <option value="">自定义</option>
+                <option value="openai">OpenAI Images</option>
+                <option value="siliconflow">硅基流动</option>
+                <option value="zhipu">智谱 CogView</option>
+                <option value="volcengine">火山方舟 Seedream</option>
+                <option value="minimax">MiniMax image-01</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>API 地址</span>
+              <input id="settingApiUrl" type="text" placeholder="https://api.openai.com/v1" />
+            </label>
+            <label class="field">
+              <span>模型</span>
+              <input id="settingApiModel" type="text" placeholder="gpt-image-1" />
+            </label>
+            <label class="field">
+              <span>API Key（只保存在本机）</span>
+              <input id="settingApiKey" type="password" placeholder="留空保持现有密钥" />
+            </label>
+            <p class="modal-note">外部 API 由平台计费；Lumen Studio Flow 不收取积分。不同平台的图片协议可能不同，失败时请查看平台文档。</p>
+          </div>
+          <div class="ai-settings-block">
+            <label class="field">
+              <span>AI 关键词模式</span>
+              <select id="settingLlmMode" class="setting-select">
+                <option value="local">本地 AI（CPU，不占显存）</option>
+                <option value="external">外部 OpenAI 兼容 API</option>
+                <option value="off">关闭 AI 关键词</option>
+              </select>
+            </label>
+            <div id="llmLocalFields">
+              <label class="field"><span>本地推理设备</span>
+                <select id="settingLlmDevice" class="setting-select">
+                  <option value="gpu">GPU 加速（聊天时暂停 ComfyUI，生成前释放）</option>
+                  <option value="cpu">CPU（完全不占显存，速度较慢）</option>
+                </select>
+              </label>
+              <label class="field"><span>本地模型 GGUF</span><input id="settingLlmModel" type="text" placeholder="选择 .gguf 文件" /></label>
+              <label class="field"><span>llama-server 路径</span><input id="settingLlmBin" type="text" placeholder="选择 llama-server.exe" /></label>
+              <div class="dir-row">
+                <button class="mini-button" id="installLocalAi">下载 / 安装本地 AI</button>
+                <span class="modal-note">首次约 520MB；下载后自动填入路径</span>
+              </div>
+            </div>
+            <div id="llmExternalFields" class="hidden">
+              <label class="field"><span>API 地址</span><input id="settingLlmApiUrl" type="text" placeholder="https://api.openai.com/v1" /></label>
+              <label class="field"><span>模型</span><input id="settingLlmApiModel" type="text" placeholder="gpt-4o-mini" /></label>
+              <label class="field"><span>API Key（只保存在本机）</span><input id="settingLlmApiKey" type="password" placeholder="留空保持现有密钥" /></label>
+            </div>
+          </div>
+          <div class="runtime-setup-block">
+            <div class="dir-row">
+              <button class="mini-button" id="installRuntimeButton">一键部署完整环境</button>
+              <span class="modal-note" id="runtimeSetupStatus">检查 ComfyUI / Python / 模型</span>
+            </div>
+            <p class="modal-note">首次约 8GB，包含 ComfyUI 便携版、Python、Anima Base、Qwen3、VAE 和节点。</p>
+          </div>
+          <label class="field">
+            <span>ComfyUI API</span>
+            <input id="settingUrl" type="text" placeholder="http://127.0.0.1:8188" />
+          </label>
+          <label class="field">
+            <span>Python（源码部署时可选）</span>
+            <input id="settingPython" type="text" placeholder="留空使用 ComfyUI/python_embeded/python.exe" />
+          </label>
+          <label class="field">
+            <span>ComfyUI 目录</span>
+            <div class="dir-row">
+              <input id="settingDir" type="text" placeholder="F:\LumenFlow\comfy\ComfyUI_windows_portable" />
+              <button class="mini-button" id="browseDir">选择</button>
+            </div>
+          </label>
+          <label class="field"><span>输出目录</span>
+            <div class="dir-row"><input id="settingOutputDir" type="text" placeholder="留空使用默认 outputs" /><button class="mini-button" id="browseOutputDir">选择</button></div>
+          </label>
+          <label class="field"><span>界面字号缩放 <b id="fontScaleValue">100%</b></span><input id="settingFontScale" type="range" min="0.8" max="1.4" step="0.05" value="1" /></label>
+          <label class="field">
+            <span>模型模式</span>
+            <select id="settingModelMode" class="setting-select">
+              <option value="anima">Anima（UNET + CLIP + VAE）</option>
+              <option value="checkpoint">标准 Checkpoint（SD1.5 / SDXL）</option>
+            </select>
+          </label>
+          <label class="field"><span>低显存启动（ComfyUI --lowvram）</span><label class="toggle-line"><input type="checkbox" id="settingLowVram" /><span>启用 2GB 显存模式</span></label></label>
+          <div id="animaModelFields">
+            <div class="field-row">
+              <label class="field"><span>UNET</span><input id="settingUnet" type="text" /></label>
+              <label class="field"><span>CLIP</span><input id="settingClip" type="text" /></label>
+            </div>
+            <div class="field-row">
+              <label class="field"><span>VAE</span><input id="settingVae" type="text" /></label>
+            </div>
+          </div>
+          <div id="checkpointFields" class="hidden">
+            <label class="field"><span>Checkpoint</span><select id="settingCheckpoint" class="setting-select"></select></label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span>LoRA（可选）</span><select id="settingLora" class="setting-select"></select></label>
+            <label class="field"><span>LoRA 强度 <b id="loraStrengthValue">1.0</b></span><input id="settingLoraStrength" type="range" min="0" max="1.5" step="0.05" value="1" /></label>
+          </div>
+          <div class="dir-row">
+            <button class="mini-button" id="refreshModels">刷新模型列表</button>
+            <span class="modal-note" id="modelListHint">从 ComfyUI 读取模型列表</span>
+          </div>
+          <p class="modal-note">Anima 使用 UNET/CLIP/VAE；标准模型使用 Checkpoint + LoRA。模型文件必须在 ComfyUI 的 models 目录。</p>
+        </div>
+        <div class="modal-footer">
+          <button class="ghost-button" id="cancelSettings">取消</button>
+          <button class="primary-button" id="saveSettings">保存设置</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="workflowModal">
+      <div class="modal workflow-modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">ADVANCED / COMFYUI GRAPH</span>
+            <h2>工作流</h2>
+          </div>
+          <button class="icon-button" id="closeWorkflow">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="workflow-toolbar">
+            <label class="toggle-line">
+              <input type="checkbox" id="useCustomWorkflow" />
+              <span>使用自定义工作流</span>
+            </label>
+            <button class="mini-button" id="refreshWorkflow">刷新默认工作流</button>
+          </div>
+          <div class="workflow-nodes" id="workflowNodes"></div>
+          <textarea id="workflowJson" class="workflow-json mono" rows="16" spellcheck="false"></textarea>
+          <p class="modal-note">默认隐藏；勾选“使用自定义工作流”后，生成会直接提交这段 ComfyUI API JSON。自定义流程不使用下方的高清放大、参考图或 Face Detailer。</p>
+        </div>
+        <div class="modal-footer">
+          <button class="ghost-button" id="resetWorkflow">恢复默认</button>
+          <button class="ghost-button" id="cancelWorkflow">取消</button>
+          <button class="primary-button" id="applyWorkflow">应用</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="trainingModal">
+      <div class="modal training-modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">DATASET / LOCAL ONLY</span>
+            <h2>训练素材</h2>
+          </div>
+          <button class="icon-button" id="closeTraining">×</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-note">拖入已经裁切好的安全素材。只写入本机 F 盘训练目录，不上传；露骨内容不要放入。</p>
+          <div class="reference-drop" id="trainingDrop">
+            <input id="trainingFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
+            <div id="trainingEmpty">
+              <strong>拖入一批素材</strong>
+              <span>支持多选 · 只保存在本机</span>
+            </div>
+          </div>
+          <label class="field">
+            <span>风格标签</span>
+            <select id="trainingLabel" class="setting-select">
+              <option value="flat_cel">清透 赛璐珞</option>
+              <option value="moe_2d">柔和 萌系</option>
+              <option value="2_5d_semi">2.5D 半写实</option>
+              <option value="anatomy_study">人体/手部/脚部</option>
+              <option value="foot_study">足部 · 正确5趾</option>
+              <option value="fabric_study">丝袜/布料纹理</option>
+              <option value="hand_study">手部 · 五指结构</option>
+                          <option value="character_ref">角色参考</option>
+              <option value="style_ref">画风参考</option>
+              <option value="custom">自定义类型</option>
+</select>
+          </label>
+          <label class="field"><span>或自定义类型（小写英文/数字/_/-）</span><input id="trainingCustomLabel" type="text" placeholder="例如 my_style_v1" /></label>
+          <div class="field-row">
+            <label class="field"><span>显示名称</span><input id="trainingDisplayName" type="text" placeholder="例如 我的画风" /></label>
+            <label class="field"><span>触发词</span><input id="trainingTrigger" type="text" placeholder="例如 my_style_v1_style" /></label>
+          </div>
+          <label class="field"><span>说明 / 词汇定义</span><input id="trainingDescription" type="text" placeholder="告诉软件这个词代表什么" /></label>
+          <div class="training-grid" id="trainingGrid"></div>
+          <p class="modal-note" id="trainingPathHint">保存位置：F:\DSH WORKSPACE\lumen-flow\training\inbox</p>
+        </div>
+        <div class="modal-footer">
+          <button class="ghost-button" id="clearTraining">清空</button>
+          <button class="ghost-button" id="cancelTraining">取消</button>
+          <button class="primary-button" id="ingestTraining">入库</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="helpModal">
+      <div class="modal help-modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">GUIDE</span>
+            <h2>Lumen Studio Flow</h2>
+          </div>
+          <button class="icon-button" id="closeHelp">×</button>
+        </div>
+        <div class="modal-body help-body">
+          <h3>1. 安装与启动</h3>
+          <ol>
+            <li>安装包默认创建桌面快捷方式，安装目录可以自己选择，建议放在 F 盘。</li>
+            <li>首次启动后在“设置”里确认 ComfyUI 目录、Python 路径和 F 盘输出目录。</li>
+            <li>本地模型放在：<code>models/diffusion_models</code>、<code>models/text_encoders</code>、<code>models/vae</code>、<code>models/loras</code>。</li>
+            <li>点左下角“启动本地引擎”，等到 ComfyUI 在线再生成。</li>
+          </ol>
+          <h3>2. 性能档</h3>
+          <p><b>自动识别</b>会读取可用显存；低于 3.5GB 自动切低显存。<b>快速档</b>用旧 Anima，<b>质量档</b>用 2.9B，<b>低显存</b>为 512×768、16 steps、batch 1。接入本地大模型后优先选低显存或在设置里勾选 <code>--lowvram</code>。</p>
+          <h3>3. 图生图 / 参考</h3>
+          <p>上方参考图负责构图和画风；下方角色参考负责锁角色。建议重绘幅度 40%–55%，角色引导 5–8。想让参考图画风直接进入结果时，把风格 LoRA 强度调到 0；需要某个画风时再单独提高。</p>
+          <p>“以当前图重绘”会继承 prompt、negative 和 seed；“借鉴这张”会切换为角色参考。参考图加载后画幅自动跟随，点画幅按钮可以覆盖。</p>
+          <h3>4. 训练素材</h3>
+          <p>在“训练素材”里拖入图片，选择常见类型或输入自定义类型。自定义类型只能用小写字母、数字、下划线或连字符；显示名称、触发词和说明会写入 <code>training/labels.json</code>，后续训练脚本可读取这个词汇定义。</p>
+          <h3>5. 作品管理</h3>
+          <p>“作品”页支持勾选、全选、收藏和批量再加工。批量再加工会把第一张选中作品载入创作页，再改参数重新生成；收藏保存在本机 localStorage。</p>
+          <h3>6. API 与本地生成</h3>
+          <p>本地生成没有次数限制。只有把引擎切到外部 API 时才会使用外部额度；外部额度不会锁住本地 ComfyUI。API 地址、模型和 Key 在设置里填写。</p>
+          <h3>7. 关闭与显存</h3>
+          <p>关闭软件时会结束由软件启动的 ComfyUI 进程树，释放显存和内存；外部启动的 ComfyUI 不会被误杀。若显存仍未释放，可在任务管理器确认 python.exe 是否退出。</p>
+          <h3>8. 常见问题</h3>
+          <p><b>找不到 ComfyUI：</b>目录要选到包含 <code>ComfyUI</code> 和 <code>python_embeded</code> 的那一层。</p>
+          <p><b>角色不像：</b>换复杂度更高的官方/立绘参考，角色引导提高到 6–8，并检查 negative 是否包含 hat / sunglasses / 错误发色。</p>
+          <p><b>黑帽/墨镜：</b>在 negative 加 <code>hat, cap, beret, top hat, sunglasses, goggles</code>，默认三张里筛一张。</p>
+          <p><b>床上蓝发污染：</b>不要用蓝发床图做构图参考，改用黑发床图。</p>
+          <p class="help-foot">完整说明与模型：GitHub <code>7ather-LX/lumen-studio-flow</code>。作者：Banan1ce_up；本软件完全免费，为爱发电。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="referenceModal">
+      <div class="modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">REFERENCE LIBRARY</span>
+            <h2>参考库</h2>
+          </div>
+          <button class="icon-button" id="closeReference">×</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-note">按角色 / 手部 / 脚部 / 画风分类保存参考图。文件只在本机 F 盘。</p>
+          <div class="field-row">
+            <label class="field"><span>分类</span>
+              <select id="referenceCategory" class="setting-select">
+                <option value="character">角色</option>
+                <option value="hand">手部</option>
+                <option value="foot">脚部</option>
+                <option value="style">画风</option>
+                <option value="composition">构图</option>
+              </select>
+            </label>
+            <label class="field"><span>添加</span><button class="mini-button" id="referenceAddButton">选择图片</button></label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span>自定义分类</span><input id="referenceCustomCategory" type="text" placeholder="例如：兽人 / 机械 / 表情" /></label>
+            <label class="field"><span>分类说明</span><input id="referenceCustomDesc" type="text" placeholder="软件与 AI 会读取这段说明" /></label>
+            <button class="mini-button" id="addReferenceCategory">添加分类</button>
+          </div>
+          <div id="referenceCustomInfo" class="dir-row hidden">
+            <span class="modal-note" id="referenceCustomType"></span>
+            <button class="text-button" id="resetReferenceCategory">改用内置分类</button>
+          </div>
+          <div id="referenceCustomList" class="reference-custom-list"></div>
+          <input id="referenceLibraryInput" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
+          <div class="dir-row"><span class="modal-note" id="referenceDisplayInfo"></span><button class="mini-button" id="referenceShowAll">显示全部</button></div>
+          <div class="reference-grid" id="referenceGrid"></div>
+          <div class="dir-row">
+            <button class="mini-button" id="openReferenceFolder">打开参考库文件夹</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="promptModal">
+      <div class="modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">PROMPT LIBRARY</span>
+            <h2>优质提示词</h2>
+          </div>
+          <button class="icon-button" id="closePrompt">×</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-note">来自旧版 Studio 的安全提示词；点击“套用”写入当前提示词。</p>
+                    <div class="prompt-editor">
+            <input id="promptRecipeName" type="text" placeholder="提示词名称，例如：夜景街头" />
+            <textarea id="promptRecipeText" rows="3" placeholder="正向提示词"></textarea>
+            <textarea id="promptRecipeNegative" rows="2" placeholder="负面提示词（可选）"></textarea>
+            <div class="dir-row">
+              <input id="promptSearch" type="text" placeholder="搜索提示词..." />
+              <button class="mini-button" id="savePromptRecipe">保存提示词</button>
+            </div>
+          </div>
+          <div id="promptList" class="prompt-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="imageDetailModal">
+      <div class="modal image-detail-card">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">IMAGE / LOCAL ARCHIVE</span>
+            <h2>作品详情</h2>
+          </div>
+          <button class="icon-button" id="imageDetailExpand" title="放大详情窗口">⛶</button>
+          <button class="icon-button" id="closeImageDetail">×</button>
+        </div>
+        <div class="modal-body image-detail-body">
+          <div class="image-detail-preview" id="imageDetailPreviewWrap">
+            <img id="imageDetailPreview" alt="detail" />
+            <div class="detail-image-tools">
+              <button class="mini-button" id="imageDetailFav">☆ 收藏</button>
+              <button class="mini-button" id="imageDetailDownload">↓ 下载</button>
+            </div>
+            <div class="detail-zoom-controls">
+              <button class="mini-button" id="imageDetailZoomOut">−</button>
+              <span id="imageDetailZoomValue">100%</span>
+              <button class="mini-button" id="imageDetailZoomIn">＋</button>
+              <button class="mini-button" id="imageDetailFit">适应</button>
+            </div>
+          </div>
+          <div class="image-detail-side">
+            <div class="detail-topline"><span id="imageDetailMode">本地生成</span><span id="imageDetailTime"></span></div>
+            <div class="detail-section">
+              <div class="detail-section-head"><h3>提示词</h3><button class="mini-button" id="imageDetailCopyPrompt">复制</button></div>
+              <div class="detail-prompt" id="imageDetailPrompt"></div>
+            </div>
+            <div class="detail-section">
+              <div class="detail-section-head"><h3>负面提示词</h3></div>
+              <div class="detail-negative" id="imageDetailNegative"></div>
+            </div>
+            <div class="detail-meta-grid">
+              <div><span>尺寸</span><b id="imageDetailSize">—</b></div>
+              <div><span>步数</span><b id="imageDetailSteps">—</b></div>
+              <div><span>CFG</span><b id="imageDetailCfg">—</b></div>
+              <div><span>种子</span><b id="imageDetailSeed">—</b></div>
+              <div><span>文件</span><b id="imageDetailName">—</b></div>
+              <div><span>模型</span><b id="imageDetailModel">—</b></div>
+            </div>
+            <div class="detail-rating"><span>你的评价</span><span id="imageDetailStars">☆☆☆☆☆</span></div>
+            <textarea id="imageDetailNotes" rows="3" placeholder="记录这张图的灵感、问题或下一步尝试..."></textarea>
+            <div class="detail-note-actions"><button class="mini-button" id="imageDetailSaveNotes">保存笔记</button></div>
+            <div class="detail-actions">
+              <button class="text-button" id="imageDetailReuse">复用参数</button>
+              <button class="text-button" id="imageDetailRefine">以当前图重绘</button>
+              <button class="text-button" id="imageDetailCharacter">作为角色参考</button>
+              <button class="text-button" id="imageDetailReveal">打开文件位置</button>
+              <button class="text-button danger" id="imageDetailDelete">删除作品</button>
+            </div>
+            <p class="hint">点击作品只查看大图；需要继续加工时，手动选择“复用参数”或“以当前图重绘”。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="style-preview-popover hidden" id="stylePreviewPopover">
+      <img id="stylePreviewImage" alt="style preview" />
+      <div class="style-preview-caption"><b id="stylePreviewName"></b><span id="stylePreviewKind">画风演示</span></div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="aiPromptModal">
+      <div class="modal ai-chat-modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">LOCAL AI / PROMPT COMPILER</span>
+            <h2>和 AI 一起写关键词</h2>
+            <small id="aiChatStatus" class="ai-chat-status">本地 CPU 模式 · 不占显存</small>
+          </div>
+          <button class="icon-button" id="closeAiPrompt">×</button>
+        </div>
+        <div class="ai-chat-messages" id="aiChatMessages">
+          <div class="ai-message assistant">告诉我你想画什么。没有明确要求的角色、作品、画风、画师会留空，不猜不随机。</div>
+        </div>
+        <div class="ai-chat-compose">
+          <textarea id="aiChatInput" rows="3" placeholder="例如：画一个待在卧室里的动漫女孩，紫色灯光，半身像"></textarea>
+          <button class="mini-button primary-mini" id="aiChatSend">发送</button>
+        </div>
+        <div class="ai-chat-footer">
+          <button class="text-button" id="aiChatClear">清空对话</button>
+          <button class="text-button" id="aiChatStop">释放本地 AI</button>
+          <button class="mini-button primary-mini" id="aiChatFill">填入创作区</button>
+        </div>
+        <p class="hint">本地 9B 模型以 CPU 运行，不抢 ComfyUI 显存；打开生成时会自动释放。</p>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="runtimeSetupModal">
+      <div class="modal runtime-modal">
+        <div class="modal-head">
+          <div><span class="eyebrow">FIRST RUN</span><h2>部署完整运行环境</h2></div>
+          <button class="icon-button" id="closeRuntimeSetup">×</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-note">还没有检测到可用的 ComfyUI / Python。Lumen Flow 只会安装一个应用包，运行环境在首次启动时用一次点击下载。</p>
+          <label class="field"><span>安装目录</span><input id="runtimeRoot" type="text" value="F:\LumenFlow" /></label>
+          <div class="dir-row"><button class="mini-button primary-mini" id="startRuntimeInstall">开始部署</button><span class="modal-note">约 8GB，需要网络</span></div>
+          <p class="modal-note">完成后会写入 ComfyUI、Python 和模型路径；不会覆盖原有 ComfyUI。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="catalogModal">
+      <div class="modal catalog-modal">
+        <div class="modal-head">
+          <div><span class="eyebrow">REFERENCE CATALOG</span><h2>姿势 / 服装参考</h2></div>
+          <button class="icon-button" id="closeCatalog">×</button>
+        </div>
+        <div class="catalog-toolbar">
+          <input id="catalogSearch" type="text" placeholder="搜索：坐姿、夏季、泳装、短发..." />
+          <select id="catalogKind" class="setting-select">
+            <option value="">全部</option>
+            <option value="pose">姿势</option>
+            <option value="costume">服装</option>
+            <option value="portrait">人像</option>
+          </select>
+        </div>
+        <div class="catalog-grid" id="catalogGrid"></div>
+        <p class="modal-note">元数据来自 anhao/ai-pose-gallery-zh。图片不随安装包分发；本地缩略图仅在自行导入后显示。</p>
+      </div>
+    </div>
+
+    <script src="./characters.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

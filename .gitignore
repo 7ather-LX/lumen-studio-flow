@@ -1,0 +1,69 @@
+# ============================================================
+# Lumen Studio Flow — 仓库忽略规则
+# 原则：只提交产品源码与文档。
+# 模型、运行时、用户参考图、构建产物、一次性脚本一律不进仓库。
+# ============================================================
+
+# --- 依赖 ---
+node_modules/
+
+# --- 交接包要求必须忽略 ---
+models/
+comfy/
+release/
+references/library/
+training/references/
+training/output/
+*.safetensors
+*.zip
+*.exe
+_archive/
+
+# --- 本地运行时 / 构建产物 ---
+app.asar
+*.asar
+*.blockmap
+portable/
+portable-tested/
+source-stage/
+testapp/
+bin/
+loras-share-*/
+character-data-*/
+bilibili-library-*/
+outputs/
+
+# --- 用户私有参考图（禁止上传 GitHub / 打进安装包）---
+pussy/
+references/**
+style-source-*
+reference-*
+old-bed-*
+
+# --- 训练数据（体积大且含用户素材，只保留文档、脚本与基线配置）---
+training/*
+!training/*.md
+!training/scripts/
+!training/style_baselines.json
+
+# --- Python 缓存 ---
+__pycache__/
+*.pyc
+
+# --- 日志 / 本地状态 ---
+*.log
+*.err
+old-lumen.db
+prefs_new.json
+
+# --- 一次性开发脚本（见 WORKSPACE_MAP.md §5）---
+bump_*.py
+gen_*.py
+make_*.py
+fix_*.py
+patch_*.py
+add_*.py
+test_*.py
+check_*.py
+update_*.py
+upload_*.py

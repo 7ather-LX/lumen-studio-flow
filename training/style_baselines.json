@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "notes": "Style taxonomy for Flow. Dataset labels are lowercase snake_case.",
+  "styles": {
+    "galgame_3d": {
+      "label": "Galgame 3D / 3DCG 立绘",
+      "priority": 1,
+      "audience": "broad",
+      "traits": [
+        "soft shading",
+        "glossy skin",
+        "detailed hair highlights",
+        "3D/CG figure look",
+        "clean semi-realistic rendering",
+        "soft rim light",
+        "no oil impasto"
+      ],
+      "positive": "galgame 3d, 2.5D, semi-realistic anime, soft shading, glossy skin, detailed hair, soft lighting, clean rendering",
+      "negative": "oil painting, impasto, thick brush strokes, flat cel shading, photorealistic skin pores, lowres",
+      "flow_style": "gal-3d",
+      "target_lora": "galgame3d_v1.safetensors"
+    },
+    "2_5d_semi": {
+      "label": "2.5D 半写实厚涂",
+      "priority": 2,
+      "audience": "niche",
+      "traits": [
+        "painterly shading",
+        "soft volumes",
+        "detailed skin",
+        "cinematic light",
+        "anime face with realistic rendering"
+      ],
+      "positive": "2.5D, semi-realistic anime, painterly shading, soft volume, detailed skin, cinematic light",
+      "negative": "flat cel shading, crude lineart, lowres",
+      "flow_style": "painterly",
+      "target_lora": "semi25d_v1.safetensors"
+    },
+    "flat_cel": {
+      "label": "平面赛璐珞",
+      "priority": 3,
+      "audience": "broad / target",
+      "traits": [
+        "flat colors",
+        "clean lineart",
+        "crisp shadow edges"
+      ],
+      "positive": "anime cel shading, flat colors, clean lineart, crisp highlights",
+      "negative": "3D render, realistic skin, oil painting",
+      "flow_style": "ririko-cel",
+      "target_lora": "ririko_flatcel_v1.safetensors"
+    },
+    "oil_photoreal": {
+      "label": "油画 / 写实（负面基线）",
+      "priority": 99,
+      "audience": "not target",
+      "traits": [
+        "impasto",
+        "photoreal skin",
+        "heavy brushwork"
+      ],
+      "positive": "oil painting, photorealistic, impasto",
+      "negative": "",
+      "flow_style": "",
+      "target_lora": ""
+    }
+  }
+}
