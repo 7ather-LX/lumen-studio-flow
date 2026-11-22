@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-22（22:10 发布 0.2.43）  
-当前版本：`0.2.43`  
+更新时间：2026-11-22（23:00 发布 0.2.45）  
+当前版本：`0.2.45`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.43
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.45
 
 ---
 
@@ -28,7 +28,7 @@ F:\DSH WORKSPACE
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md
 以及 F:\DSH WORKSPACE\lumen-flow\WORK_RULES.md（工作规范，必须遵守）。
-当前版本 0.2.43，先确认项目状态，再继续。
+当前版本 0.2.45，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -47,9 +47,9 @@ WORK_RULES.md
 
 ### 0.4 新对话先确认
 
-1. 源码版本是否为 `0.2.43`
-2. 本机安装是否为 `0.2.43`
-3. GitHub latest 是否为 `v0.2.43`
+1. 源码版本是否为 `0.2.45`
+2. 本机安装是否为 `0.2.45`
+3. GitHub latest 是否为 `v0.2.45`
 4. `references/library/library.json` 是否仍有 191 张参考图
 5. 自定义分类“小穴”是否仍有 29 张
 6. `app/renderer/characters.js` 是否仍包含 `yukikaze (azur lane)`
@@ -197,16 +197,16 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.43
-本机安装：0.2.43
-GitHub latest：v0.2.43
+源码：0.2.45
+本机安装：0.2.45
+GitHub latest：v0.2.45
 ```
 
-Release 附件（v0.2.43 共 11 个）：
+Release 附件（v0.2.45 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.43.exe
-Lumen-Studio-Flow-0.2.43.exe
+Lumen-Studio-Flow-Setup-0.2.45.exe
+Lumen-Studio-Flow-0.2.45.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
@@ -215,13 +215,13 @@ OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
 import_pose_gallery.py
 README.md
-RELEASE_NOTES_0.2.43.md
+RELEASE_NOTES_0.2.45.md
 ```
 
 说明：
 
 - `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
-- 旧版本已删除，只保留 v0.2.43
+- 旧版本已删除，只保留 v0.2.45
 - `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 / 0.2.37 未单独产出数据包**（角色数据无变化）
 
 ---
@@ -602,6 +602,48 @@ CFG 3.5  偏灰发闷
 
 ---
 
+### 4.15 0.2.44 / 0.2.45：柔光的高光——从镜面到「宽而软」
+
+用户两次纠偏，最终结论很明确：
+
+```text
+1) v1（CFG 4.5）基调是对的，塑料感来自高光过曝，不是「不够柔」
+2) CFG 4.0 / 3.5 是 3D 建模感，属于「2.5D 厚涂」的区间，不能算柔光
+3) 目标是：把镜面反射改成参考图那种漫反射，但**不能过头到没有高光**
+```
+
+迭代过程：
+
+```text
+H1  只加高光负面词                仍偏塑料，白高光条纹明显
+H2  subtle specular / skin sheen  仍带柔光斑，镜面残留
+H3  纯漫反射 / matte skin          过头：胸口腹部大腿完全没有高光，皮肤发死
+H4  diffuse reflection
+    + soft broad highlights
+    + soft-edged specular
+    + gentle skin sheen + semi-matte   ← 采用：有高光但宽而软，最接近参考
+```
+
+最终风格词：
+
+```text
+正向：diffuse reflection, soft broad highlights, soft-edged specular,
+      gentle skin sheen, semi-matte skin, smooth diffuse shading, even skin lighting
+负向：mirror reflection, sharp specular spot, hard highlight edge,
+      wet plastic, glossy plastic, latex, blown highlights, glow bloom
+```
+
+定位（写进风格提示）：
+
+```text
+2.5D 厚涂   3D 建模质感（已认可，优先级后延）
+2.5D 柔光   宽而软高光的插画质感，CFG 4.5、重绘 0.80–0.85，当前主攻
+```
+
+联系表：`contact-soft-h4.png`（参考 / H2 / H3 过头 / H4 采用）
+
+---
+
 ## 5. 画风定义
 
 ```text
@@ -670,7 +712,7 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.42 安装包与 blockmap
+- 旧版 0.1.x / 0.2.0–0.2.44 安装包与 blockmap
 - 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
@@ -681,7 +723,7 @@ _archive\old-release-notes-2026-11-22
 ```text
 character-data-v0.2.35.zip（最新；0.2.36 起未单独产出）
 loras-share-v0.2.6.zip
-release\ 当前版本（0.2.43 Setup / portable / blockmap + latest.yml + win-unpacked）
+release\ 当前版本（0.2.45 Setup / portable / blockmap + latest.yml + win-unpacked）
 current style verification images
 ```
 
@@ -813,9 +855,9 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.43`
+1. 当前版本？→ `0.2.45`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.43`
+3. 最新 Release？→ `v0.2.45`
 4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
 5. 2.5D 厚涂怎么复刻旧对话结果？→ 2.5D 厚涂 + 参考图 + 自定义档 32 步 / CFG4.5 / 0.88 / seed 1601600，关自动画风
 6. 脚趾怎么修？→ 局部精修（勾“自动修正足部/手部细节”），可选部位（脚/手/脚+手）与区域（下半/中部/上半/左/右）
