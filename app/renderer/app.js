@@ -99,9 +99,9 @@
     "2.5d-thick-soft": {
       label: "2.5D 柔光",
       artists: [],
-      tags: "2.5D, semi-realistic anime, 3D anime figure render, pseudo-3D shading, soft diffuse lighting, gentle rim light, soft ambient light, atmospheric haze, muted colors, low contrast, pastel tone, filmic color grading, soft skin shading, subsurface scattering, mild specular highlights, natural skin texture, shallow depth of field, cinematic bokeh, smooth surfaces, high detail",
-      hint: "2.5D 柔光：低对比 + 柔漫射光 + 含蓄高光，接近 pool 参考图；建议 CFG 4.0（3.5 偏灰、4.5 偏塑料），重绘 0.80–0.85",
-      negative: "oversaturated, neon glow, plastic skin, latex, harsh highlights, high contrast, glossy plastic, harsh shadows, cel shading, flat shading, lineart only, oil painting, brush strokes",
+      tags: "2.5D, semi-realistic anime, 3D anime figure render, pseudo-3D shading, soft global illumination, ambient occlusion, subsurface scattering, diffuse reflection, soft broad highlights, soft-edged specular, gentle skin sheen, semi-matte skin, smooth diffuse shading, even skin lighting, warm rim light, cool rim light, soft ambient light, cinematic bokeh, depth of field, smooth surfaces, physically based rendering look, high detail",
+      hint: "2.5D 柔光：宽而软的高光（不是镜面点光，也不是完全没高光）。建议 CFG 4.5、重绘 0.80–0.85",
+      negative: "mirror reflection, sharp specular spot, hard highlight edge, wet plastic, glossy plastic, latex, blown highlights, overexposed highlights, glow bloom, plastic sheen, cel shading, lineart only",
       lora: "",
       loraStrength: 0,
     },

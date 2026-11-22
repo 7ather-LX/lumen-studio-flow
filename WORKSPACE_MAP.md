@@ -1,7 +1,7 @@
 # Lumen Studio Flow 工作区文件地图
 
 更新时间：2026-11-22（16:55 复核版本）  
-当前版本：`0.2.43`（源码 / 本机安装 / GitHub latest 三者一致）
+当前版本：`0.2.45`（源码 / 本机安装 / GitHub latest 三者一致）
 
 这不是交接包。交接包等画风问题处理完后再写。  
 本文件用于说明哪些文件是什么、哪些绝对不能动、哪些已经归档/清理。
@@ -184,11 +184,11 @@ lumen-flow\_archive\visual-assets-2026-11-22.zip
 保留：
 
 ```text
-release\ 只留当前版本（0.2.43 Setup / portable / blockmap + latest.yml + win-unpacked）
+release\ 只留当前版本（0.2.45 Setup / portable / blockmap + latest.yml + win-unpacked）
 character-data-v0.2.35（最新产出；0.2.36 / 0.2.37 未单独产出数据包）
 character-data-v0.2.35.zip（已校验：zip = 目录 = app\renderer 四文件哈希一致）
 loras-share-v0.2.6
-handoff-0.2.43-final（0.2.35 → … → 0.2.42 → 当前）
+handoff-0.2.45-final（0.2.35 → … → 0.2.44 → 当前）
 ```
 
 ### 当前根目录保留的图片
@@ -272,15 +272,15 @@ amiya-base-compare.png
 ## 7. 当前版本相关
 
 ```text
-源码：0.2.43
-本机安装：0.2.43（用 `win-unpacked` 覆盖部署，安装器在本机不生效，见 §9）
-GitHub latest：v0.2.43（已发布，11 个附件）
+源码：0.2.45
+本机安装：0.2.45（用 `win-unpacked` 覆盖部署，安装器在本机不生效，见 §9）
+GitHub latest：v0.2.45（已发布，11 个附件）
 ```
 
 最新 Release：
 
 ```text
-https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.43
+https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.45
 ```
 
 ### 版本历史（2026-11-22）
@@ -294,17 +294,19 @@ https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.43
 0.2.40  (未发布) 修复重绘张数/自动加参考/精修模型
 0.2.41  2.5D 厚涂改成伪 3D 质感 + 柔光独立
 0.2.42  构图档位（特写/半身/全身的推荐画幅+重绘幅度）
-0.2.43  2.5D 柔光降饱和对齐参考 + 界面次要面板默认折叠（当前）
+0.2.43  界面次要面板默认折叠
+0.2.44  2.5D 柔光高光收敛（H2，已被 0.2.45 取代）
+0.2.45  柔光改为「宽而软高光」（H4，漫反射但保留高光）（当前）
 ```
 
 当前状态：
 
 ```text
-源码 package.json         0.2.43
-release\ 构建产物         0.2.43（Setup / portable / blockmap / win-unpacked）
-release\latest.yml        0.2.43（sha512 与安装包实测一致）
-本机安装 exe              0.2.43
-GitHub latest             v0.2.43
+源码 package.json         0.2.45
+release\ 构建产物         0.2.45（Setup / portable / blockmap / win-unpacked）
+release\latest.yml        0.2.45（sha512 与安装包实测一致）
+本机安装 exe              0.2.45
+GitHub latest             v0.2.45
 ```
 
 规则（用户 2026-11-22 指定）：**以后有新改动就直接出新版本并发 GitHub，不再逐次询问。**
@@ -364,8 +366,8 @@ Start-Process "C:\Users\25576\AppData\Local\Programs\Lumen Studio Flow\Lumen Stu
 
 ### 9.2 NSIS 安装器在本机不生效，用 `win-unpacked` 部署
 
-`release\Lumen-Studio-Flow-Setup-0.2.43.exe` 直接运行（`/S` 静默或 GUI、有无沙箱、全新目录）
-都是**退出码 0 但不写任何文件**，也不产生卸载注册项（0.2.36 时同样如此）。因此本机 0.2.43 是用
+`release\Lumen-Studio-Flow-Setup-0.2.45.exe` 直接运行（`/S` 静默或 GUI、有无沙箱、全新目录）
+都是**退出码 0 但不写任何文件**，也不产生卸载注册项（0.2.36 时同样如此）。因此本机 0.2.45 是用
 
 ```text
 release\win-unpacked\  →  C:\Users\25576\AppData\Local\Programs\Lumen Studio Flow\
