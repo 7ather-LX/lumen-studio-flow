@@ -54,6 +54,7 @@
     "anima-base": { unet: "anima-base-v1.0.safetensors" },
     painterly: { unet: "anima-base-v1.0.safetensors", lora: "25d_anima_v4.safetensors", loraStrength: 0.55 },
     "2.5d-thick": { unet: "anima-base-v1.0.safetensors" },
+    "2.5d-thick-soft": { unet: "anima-base-v1.0.safetensors" },
     "gal-3d": { modelMode: "checkpoint", checkpoint: "MeinaMix-V10.safetensors" },
     "ririko-cel": { unet: "anima-base-v1.0.safetensors" },
     "mushroom-moe": { unet: "anima-base-v1.0.safetensors" },
@@ -89,11 +90,20 @@
     "2.5d-thick": {
       label: "2.5D 厚涂",
       artists: [],
-      tags: "2.5D, semi-realistic anime, thick painting, painterly brushwork, soft airbrushed shading, subsurface scattering, glossy soft skin, translucent skin, warm rim light, cool rim light, soft ambient light, cinematic bokeh, depth of field, delicate soft lineart, clean soft rendering, rich skin tones, polished illustration, high detail",
-      hint: "2.5D 厚涂：参考图 img2img 保留厚涂柔光；建议重绘幅度 0.85–0.90（低于 0.8 会残留原图发色）",
+      tags: "2.5D, semi-realistic anime, 3D anime figure render, pseudo-3D shading, soft global illumination, ambient occlusion, subsurface scattering, glossy specular skin, volumetric light, rim light, studio lighting, depth of field, cinematic bokeh, smooth surfaces, physically based rendering look, ultra detailed",
+      hint: "2.5D 厚涂：伪 3D 立体感（体积光/环境光遮蔽/次表面/镜面高光），不是油画笔触；参考图 img2img，重绘 0.85–0.90",
+      negative: "oil painting, brush strokes, canvas texture, impasto, flat shading, cel shading, lineart only, flat lighting, comic panel",
       lora: "",
       loraStrength: 0,
-      referenceAsset: "./style-previews/2.5d-thick.png",
+    },
+    "2.5d-thick-soft": {
+      label: "2.5D 柔光",
+      artists: [],
+      tags: "2.5D, semi-realistic anime, 3D anime figure render, pseudo-3D shading, soft global illumination, ambient occlusion, subsurface scattering, glossy specular skin, translucent skin, warm rim light, cool rim light, soft ambient light, volumetric light, cinematic bokeh, depth of field, smooth surfaces, physically based rendering look, high detail",
+      hint: "2.5D 柔光：同样伪 3D，但光线更柔、散景更重，接近 reference-2.5d.png 那种夜景色调",
+      negative: "oil painting, brush strokes, canvas texture, impasto, flat shading, cel shading, hard outlines, lineart only, flat lighting",
+      lora: "",
+      loraStrength: 0,
     },
     painterly: {
       label: "2.5D 半写实",
@@ -765,6 +775,7 @@
   const STYLE_DETECTORS = [
     { pattern: /anima\s*\u57fa\u7840|\u57fa\u7840\u6a21\u578b|anima base/i, style: "anima-base" },
     { pattern: /@[a-z0-9_]+|\u753b\u5e08/i, style: "follow-prompt" },
+    { pattern: /\u67d4\u5149\u539a\u6d82|soft thick/i, style: "2.5d-thick-soft" },
     { pattern: /\u539a\u6d82|2\.5d\s*\u539a\u6d82|thick painting/i, style: "2.5d-thick" },
     { pattern: /2\.5d|\u534a\u5199\u5b9e|semi-realistic/i, style: "painterly" },
     { pattern: /\u8d5b\u749e\u73de|cel[ -]?shading|flat colors/i, style: "anime-cel" },
@@ -1039,38 +1050,6 @@
     $("#workflowModal").classList.remove("hidden");
   }
 
-  async function ensureStyleReference() {
-    if (state.style !== "2.5d-thick" || state.initImage || state.styleReferenceLoading) return;
-    const asset = STYLES["2.5d-thick"]?.referenceAsset;
-    if (!asset) return;
-    state.styleReferenceLoading = true;
-    try {
-      const response = await fetch(asset);
-      if (!response.ok) return;
-      const blob = await response.blob();
-      const data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ""));
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      if (!data || state.initImage) return;
-      state.initImage = data;
-      state.referenceAutoSize = false;
-      $("#referencePreview").src = data;
-      $("#referencePreview").classList.remove("hidden");
-      $("#referenceEmpty").classList.add("hidden");
-      $("#referenceClear").classList.remove("hidden");
-      $("#referenceMode").value = "img2img";
-      $("#denoise").value = "0.62";
-      $("#denoiseValue").textContent = "62%";
-      $("#referenceMeta").textContent = "2.5D 厚涂内置参考：已自动载入，可替换为你自己的参考图";
-      toast("2.5D 厚涂已载入内置参考，可替换为自己的参考图。");
-    } finally {
-      state.styleReferenceLoading = false;
-    }
-  }
-
   function ensureRandomCharacter() {
     if (!state.animaMode || state.characterImage || state.forcedCharacter) return false;
     if (String($("#animaSubject")?.value || "").trim()) return false;
@@ -1089,7 +1068,6 @@
 
   async function generate() {
     if (!bridge || state.busy) return;
-    await ensureStyleReference();
     ensureRandomCharacter();
     const style = STYLES[state.style];
     const prompt = state.animaMode

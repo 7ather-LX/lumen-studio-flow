@@ -977,24 +977,37 @@ async function runComfy(payload) {
   const needsCorrection = payload.autoCorrect && !payload.skipFootRepair && images.length &&
     (repairNote || /feet|foot|toes|barefoot|footwear|足|脚|丝袜|裸足/i.test(String(payload.prompt || "")));
   if (needsCorrection) {
-    try {
-      send("flow:progress", { stage: "Detail correction...", progress: 0.97 });
-      const repaired = await repairFeet({
-        path: images[0].path,
-        prompt: payload.prompt,
-        negativePrompt: payload.negative,
-        repairNote,
-        width: built.width,
-        height: built.height,
-        steps: built.steps,
-        cfg: built.cfg,
-        seed: built.seed,
-        batch: Math.min(4, Math.max(1, Number(payload.batch) || 3)),
-        unet: payload.unet,
-      });
-      if (repaired?.images?.length) images.splice(0, images.length, ...repaired.images);
-    } catch (error) {
-      send("flow:progress", { stage: `Detail correction skipped: ${error?.message || error}`, progress: 0.98 });
+    // 逐张精修，保持张数不变（旧实现只修第一张并用单图替换整批，导致提示「完成 1 张」）
+    for (let index = 0; index < images.length; index += 1) {
+      try {
+        send("flow:progress", {
+          stage: `Detail correction ${index + 1}/${images.length}...`,
+          progress: 0.95 + (0.04 * (index + 1)) / images.length,
+        });
+        const repaired = await repairFeet({
+          path: images[index].path,
+          prompt: payload.prompt,
+          negativePrompt: payload.negative,
+          repairNote,
+          width: built.width,
+          height: built.height,
+          steps: built.steps,
+          cfg: built.cfg,
+          seed: built.seed,
+          batch: 1,
+          unet: payload.unet,
+          detailPart: payload.detailPart,
+          detailRegion: payload.detailRegion,
+          detailZoom: payload.detailZoom,
+          detailPasses: payload.detailPasses,
+        });
+        if (repaired?.images?.length) images[index] = repaired.images[0];
+      } catch (error) {
+        send("flow:progress", {
+          stage: `Detail skipped (${index + 1}/${images.length}): ${error?.message || error}`,
+          progress: 0.98,
+        });
+      }
     }
   }
   send("flow:progress", { stage: "Working...", progress: 1 });
@@ -1150,7 +1163,9 @@ async function detailPartLocal(config, options) {
 async function repairFeet(payload) {
   const imagePath = String(payload?.path || "");
   if (!imagePath || !fs.existsSync(imagePath)) throw new Error("Image not found");
-  const config = readConfig();
+  // 精修沿用主图模型：主图若是 Anima Base，精修也用 Base，避免局部风格与整图不一致
+  const baseConfig = readConfig();
+  const config = payload.unet ? { ...baseConfig, unet: String(payload.unet) } : baseConfig;
   const repairNote = String(payload.repairNote || "").trim();
   const focus = repairNote || String(payload.prompt || "");
   const hasFeet = /feet|foot|toes|barefoot|足|脚|丝袜|裸足/i.test(focus);

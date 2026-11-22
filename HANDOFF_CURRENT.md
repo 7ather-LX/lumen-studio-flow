@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-22（19:40 发布 0.2.39）  
-当前版本：`0.2.39`  
+更新时间：2026-11-22（21:00 发布 0.2.41）  
+当前版本：`0.2.41`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.39
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.41
 
 ---
 
@@ -28,7 +28,7 @@ F:\DSH WORKSPACE
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md
 以及 F:\DSH WORKSPACE\lumen-flow\WORK_RULES.md（工作规范，必须遵守）。
-当前版本 0.2.39，先确认项目状态，再继续。
+当前版本 0.2.41，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -47,9 +47,9 @@ WORK_RULES.md
 
 ### 0.4 新对话先确认
 
-1. 源码版本是否为 `0.2.39`
-2. 本机安装是否为 `0.2.39`
-3. GitHub latest 是否为 `v0.2.39`
+1. 源码版本是否为 `0.2.41`
+2. 本机安装是否为 `0.2.41`
+3. GitHub latest 是否为 `v0.2.41`
 4. `references/library/library.json` 是否仍有 191 张参考图
 5. 自定义分类“小穴”是否仍有 29 张
 6. `app/renderer/characters.js` 是否仍包含 `yukikaze (azur lane)`
@@ -197,16 +197,16 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.39
-本机安装：0.2.39
-GitHub latest：v0.2.39
+源码：0.2.41
+本机安装：0.2.41
+GitHub latest：v0.2.41
 ```
 
-Release 附件（v0.2.39 共 11 个）：
+Release 附件（v0.2.41 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.39.exe
-Lumen-Studio-Flow-0.2.39.exe
+Lumen-Studio-Flow-Setup-0.2.41.exe
+Lumen-Studio-Flow-0.2.41.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
@@ -215,13 +215,13 @@ OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
 import_pose_gallery.py
 README.md
-RELEASE_NOTES_0.2.39.md
+RELEASE_NOTES_0.2.41.md
 ```
 
 说明：
 
 - `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
-- 旧版本已删除，只保留 v0.2.39
+- 旧版本已删除，只保留 v0.2.41
 - `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 / 0.2.37 未单独产出数据包**（角色数据无变化）
 
 ---
@@ -460,6 +460,57 @@ zoom0.35 d0.45           放大 4.1x，细节更多但容易把手指当成趾
 
 ---
 
+### 4.12 0.2.40 / 0.2.41：三个 bug + 2.5D 改成伪 3D
+
+用户反馈三件事，逐条定位：
+
+```text
+1) 重绘（img2img）出 3 张，提示却永远「完成 1 张」
+   原因：needsCorrection 只对 images[0] 做局部精修，然后用 repaired.images（1 张）
+         splice 掉整批 → 张数塌成 1。非 img2img 不触发修正，所以无此 bug。
+   修复：逐张精修、按下标替换，张数保持不变；进度显示 1/N。
+
+2) 选「2.5D 厚涂」会自动往参考槽塞内置预览图
+   原因：ensureStyleReference() 在该画风下自动 fetch style-previews/2.5d-thick.png 当参考。
+   修复：整个函数与调用一起删除。任何画风都不再自动添加参考，只有用户主动拖入/选择才加载。
+
+3) 精修区域风格与整图不一致
+   原因：repairFeet 里 config = readConfig()，精修固定用配置里的 2.9B；
+        主图若走 Anima Base（2.5D 系列都 pin 了 base），同图两模型混用。
+   修复：repairFeet 接受 payload.unet，精修沿用主图模型。
+```
+
+关于「变快 + 质量下降」的排查结论：
+
+```text
+- 无外包：config engine=local，全部请求打 http://127.0.0.1:8188，
+  模型来自本地 models/，ComfyUI history 里未出现任何 LoRA 节点（强度 0，不加载）
+- 真因：0.2.39 把 2.5D 厚涂的风格词整体换成「柔光版」。
+  柔光 = 少硬边 + 低局部对比，观感就是「糊一点、快一点」
+- 处理：恢复旧 2.5D 厚涂；柔光版独立为「2.5D 柔光厚涂」，两个风格并存由用户选
+```
+
+新增风格：
+
+```text
+2.5d-thick-soft  2.5D 柔光厚涂
+  标签：柔光 / 彩色轮廓光 / 次表面透光 / 弱线条 / 散景
+  预览：app\renderer\style-previews\2.5d-thick-soft.png（用真实 v2 输出裁的预览）
+  自动画风识别：提示词含「柔光厚涂 / soft thick」→ 该风格
+```
+
+后续待办（本轮没做，原因已确认）：
+
+```text
+部位检测：本地没有检测/分割模型（models 下无 yolo/sam/onnx 检测器），
+          要么下载轻量模型（需联网，需用户同意），要么继续用比例区域
+ControlNet：本地同样没有 controlnet 权重，ComfyUI 也只有 Anima 2.9B / Ref Adapter 两个自定义节点
+          → 要做必须先下载可用的 controlnet（体量 GB 级，且需确认与 Qwen/Anima 兼容）
+分档表：特写数据已齐（0.60–0.90）；半身/全景还缺，需要不同构图的参考图各跑一组
+```
+
+---
+
 ## 5. 画风定义
 
 ```text
@@ -473,7 +524,19 @@ painterly
   Anima Base + 25d_anima_v4 0.55
 
 2.5d-thick
-  参考图 img2img，denoise 0.70，自动载入内置绿色厚涂参考
+  参考图 img2img；不加载 LoRA；不自动添加任何参考图
+  定位：**伪 3D 立体感**，不是油画笔触
+  风格词：3D anime figure render / pseudo-3D shading / soft global illumination /
+          ambient occlusion / subsurface scattering / glossy specular skin /
+          volumetric light / rim light / studio lighting / depth of field
+  负面：oil painting, brush strokes, canvas texture, impasto（防止滑回油画）
+  适用：想要立体、光影扎实、细节清晰的 2.5D
+
+2.5d-thick-soft
+  同上伪 3D，但光线更柔、散景更重（接近 reference-2.5d.png 的夜景色调）
+  额外：cool rim light, soft ambient light, translucent skin, cinematic bokeh
+  适用：想要柔光夜景氛围
+  预览：app\renderer\style-previews\2.5d-thick-soft.png
 
 gal-3d
   MeinaMix-V10 + make25d_type2_v100 0.55
@@ -516,7 +579,7 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.38 安装包与 blockmap
+- 旧版 0.1.x / 0.2.0–0.2.40 安装包与 blockmap
 - 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
@@ -527,7 +590,7 @@ _archive\old-release-notes-2026-11-22
 ```text
 character-data-v0.2.35.zip（最新；0.2.36 起未单独产出）
 loras-share-v0.2.6.zip
-release\ 当前版本（0.2.39 Setup / portable / blockmap + latest.yml + win-unpacked）
+release\ 当前版本（0.2.41 Setup / portable / blockmap + latest.yml + win-unpacked）
 current style verification images
 ```
 
@@ -659,9 +722,9 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.39`
+1. 当前版本？→ `0.2.41`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.39`
+3. 最新 Release？→ `v0.2.41`
 4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
 5. 2.5D 厚涂怎么复刻旧对话结果？→ 2.5D 厚涂 + 参考图 + 自定义档 32 步 / CFG4.5 / 0.88 / seed 1601600，关自动画风
 6. 脚趾怎么修？→ 局部精修（勾“自动修正足部/手部细节”），可选部位（脚/手/脚+手）与区域（下半/中部/上半/左/右）
