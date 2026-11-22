@@ -1,7 +1,7 @@
 # Lumen Studio Flow 工作区文件地图
 
 更新时间：2026-11-22（16:55 复核版本）  
-当前版本：`0.2.36`（源码；本机安装 0.2.35，GitHub latest v0.2.35）
+当前版本：`0.2.36`（源码 / 本机安装 / GitHub latest 三者一致）
 
 这不是交接包。交接包等画风问题处理完后再写。  
 本文件用于说明哪些文件是什么、哪些绝对不能动、哪些已经归档/清理。
@@ -174,7 +174,7 @@ lumen-flow\_archive\visual-assets-2026-11-22.zip
 
 ```text
 旧 Lumen Studio Flow 0.1.x / 0.2.0–0.2.35 安装包、blockmap 和源码 zip
-旧 character-data-v0.2.6–v0.2.33
+旧 character-data-v0.2.6–v0.2.34
 旧 loras-share-v0.2.4 / v0.2.5
 旧 app.asar（如未被进程锁定）
 旧日志/错误文件（被占用的除外）
@@ -185,9 +185,10 @@ lumen-flow\_archive\visual-assets-2026-11-22.zip
 
 ```text
 release\ 只留当前版本（0.2.36 Setup / portable / blockmap + latest.yml + win-unpacked）
-character-data-v0.2.35（最新产出；0.2.36 未单独产出）
-character-data-v0.2.34（旧版目录仍在，待确认是否清理）
+character-data-v0.2.35（最新产出；0.2.36 未单独产出数据包）
+character-data-v0.2.35.zip（已校验：zip = 目录 = app\renderer 四文件哈希一致）
 loras-share-v0.2.6
+handoff-0.2.36-final（原 handoff-0.2.35-final 已重命名）
 ```
 
 ### 当前根目录保留的图片
@@ -272,34 +273,34 @@ amiya-base-compare.png
 
 ```text
 源码：0.2.36
-本机安装：0.2.35（0.2.36 已构建，尚未安装）
-GitHub latest：v0.2.35（0.2.36 尚未发布）
+本机安装：0.2.35（0.2.36 已发布，安装待完成）
+GitHub latest：v0.2.36（已发布，11 个附件）
 ```
 
 最新 Release：
 
 ```text
-https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.35
+https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.36
 ```
 
-### 版本差异记录（2026-11-22 复核）
+### 版本差异记录（2026-11-22 复核 → 已收敛）
 
-实际核对结果与交接包 0.2.35 不一致，以实际为准：
+发布前核对到源码已 bump 到 `0.2.36`，而当时本机与 GitHub 仍是 `0.2.35`。处理结果：
 
 ```text
 源码 package.json         0.2.36
 release\ 构建产物         0.2.36（Setup / portable / blockmap / win-unpacked）
-release\latest.yml        0.2.36
-本机安装 exe              0.2.35
-GitHub latest             v0.2.35
+release\latest.yml        0.2.36（sha512 与安装包实测一致）
+本机安装 exe              0.2.35 → 0.2.36
+GitHub latest             v0.2.35 → v0.2.36
 ```
 
 结论：
 
-- 源码已 bump 到 `0.2.36`，`0.2.36` 构建产物已在本地 `release\`，但**未发布到 GitHub、未安装到本机**
-- 文档不再回写 `0.2.35`，统一以源码 `0.2.36` 为当前版本
-- `character-data` 最新产出仍为 `v0.2.35`，暂无 `v0.2.36`
-- GitHub 上只剩 `v0.2.35` 一个 release（残留 `v0.2.25` 已删除）
+- `0.2.36` 已构建、已发布到 GitHub、已安装到本机，三者一致
+- 发布顺序为先建 `v0.2.36` 并验证附件，再删 `v0.2.35`，更新链路未断档
+- GitHub 上只剩 `v0.2.36` 一个 release（`v0.2.35` 已删除，`v0.2.25` 更早已删）
+- `character-data` 最新产出仍为 `v0.2.35`，**0.2.36 未单独产出数据包**（角色数据无变化）
 
 ---
 

@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-22  
-当前版本：`0.2.35`  
+更新时间：2026-11-22（17:30 发布 0.2.36）  
+当前版本：`0.2.36`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.35
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.36
 
 ---
 
@@ -27,7 +27,7 @@ F:\DSH WORKSPACE
 继续 Lumen Studio Flow。
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md。
-当前版本 0.2.35，先确认项目状态，再继续。
+当前版本 0.2.36，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -45,9 +45,9 @@ WORKSPACE_MAP.md
 
 ### 0.4 新对话先确认
 
-1. 源码版本是否为 `0.2.35`
-2. 本机安装是否为 `0.2.35`
-3. GitHub latest 是否为 `v0.2.35`
+1. 源码版本是否为 `0.2.36`
+2. 本机安装是否为 `0.2.36`
+3. GitHub latest 是否为 `v0.2.36`
 4. `references/library/library.json` 是否仍有 220 张参考图
 5. 自定义分类“小穴”是否仍有 29 张
 6. `app/renderer/characters.js` 是否仍包含 `yukikaze (azur lane)`
@@ -172,27 +172,32 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.35
-本机安装：0.2.35
-GitHub latest：v0.2.35
+源码：0.2.36
+本机安装：0.2.36
+GitHub latest：v0.2.36
 ```
 
-Release 附件：
+Release 附件（v0.2.36 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.35.exe
-Lumen-Studio-Flow-0.2.35.exe
-latest.yml
+Lumen-Studio-Flow-Setup-0.2.36.exe
+Lumen-Studio-Flow-0.2.36.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
 build_offline_bundle.ps1
 OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
-scripts/import_pose_gallery.py
+import_pose_gallery.py
+README.md
+RELEASE_NOTES_0.2.36.md
 ```
 
-旧版本已删除，只保留 v0.2.35。
+说明：
+
+- `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
+- 旧版本已删除，只保留 v0.2.36
+- `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 未单独产出数据包**（角色数据无变化）
 
 ---
 
@@ -385,8 +390,8 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.6 安装包
-- 旧版 character-data 0.2.6–0.2.33
+- 旧版 0.1.x / 0.2.0–0.2.35 安装包与 blockmap
+- 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
 - 旧交接文档
@@ -394,9 +399,9 @@ _archive\old-release-notes-2026-11-22
 保留：
 
 ```text
-character-data-v0.2.35.zip
+character-data-v0.2.35.zip（最新；0.2.36 未单独产出）
 loras-share-v0.2.6.zip
-release\
+release\ 当前版本（0.2.36 Setup / portable / blockmap + latest.yml + win-unpacked）
 current style verification images
 ```
 
@@ -475,10 +480,10 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.35`
+1. 当前版本？→ `0.2.36`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.35`
-4. 用户参考库多少张？→ 220，自定义“小穴”29
-5. 2.5D 厚涂怎么做？→ 参考图 img2img + denoise 0.70，不是纯 LoRA
+3. 最新 Release？→ `v0.2.36`
+4. 用户参考库多少张？→ 220（清理 29 条僵尸元数据后为 191），自定义“小穴”29
+5. 2.5D 厚涂怎么做？→ 参考图 img2img + denoise 0.70，不是纯 LoRA（应用内选该画风会自动载入内置参考并把滑杆设为 0.62，可手动调）
 6. anime-cel 是否通过？→ 通过，强化阴影/细节/负面词
 7. 哪些文件绝对不能动？→ 原始 Lumen Studio、references/library、自定义分类、用户训练素材

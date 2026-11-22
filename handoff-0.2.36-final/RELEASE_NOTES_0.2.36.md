@@ -1,4 +1,4 @@
-﻿# Lumen Studio Flow v0.2.35
+﻿# Lumen Studio Flow v0.2.36
 
 完全免费、为爱发电的本地 AI 绘画工作台。Electron + ComfyUI + Anima，本地优先，不上传素材。
 
@@ -36,7 +36,7 @@
 
 离线用户可使用 `build_offline_bundle.ps1` 生成独立完整运行环境包，安装后在设置中指向解压目录。
 
-1. 运行 `Lumen-Studio-Flow-Setup-0.2.35.exe`
+1. 运行 `Lumen-Studio-Flow-Setup-0.2.36.exe`
 2. 安装会创建桌面快捷方式
 3. 运行 `bootstrap_models.ps1` 自动拉取 Anima Base / Qwen3 / VAE
 4. 将 `Anima-2.9B-preview-v1.safetensors` 放入 `models/diffusion_models`
