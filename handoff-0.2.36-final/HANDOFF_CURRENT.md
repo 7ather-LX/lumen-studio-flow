@@ -140,17 +140,27 @@ references\library\library.json
 
 **只在本地，不进入 GitHub/安装包。**
 
-当前：
+当前（2026-11-22 清理 29 条僵尸元数据后，应用内实测 191）：
 
 ```text
-总参考图 220
+总参考图 191
 foot 85
 fabric 38
-character 45
+character 16
 style 10
 hand 8
 foot_real 5
 自定义分类“小穴” 29
+```
+
+清理说明：原有 220 条记录中有 29 条 `character` 记录的 `file` 指向不存在文件（重复导入留下的僵尸记录），
+其原图在 `pussy\`、同一张图已在自定义分类“小穴”中正常存在（SHA256 逐条一致）。
+已只删除这 29 条元数据，**没有删任何图片**。备份与清单：
+
+```text
+_archive\library-backup-20261122\library.json.20261122-173613.bak
+_archive\library-backup-20261122\deleted-29-records.json
+_archive\library-backup-20261122\cleanup-zombie-records.js
 ```
 
 ### 用户参考资产
@@ -483,7 +493,7 @@ Set-Location 'F:\DSH WORKSPACE'
 1. 当前版本？→ `0.2.36`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
 3. 最新 Release？→ `v0.2.36`
-4. 用户参考库多少张？→ 220（清理 29 条僵尸元数据后为 191），自定义“小穴”29
+4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
 5. 2.5D 厚涂怎么做？→ 参考图 img2img + denoise 0.70，不是纯 LoRA（应用内选该画风会自动载入内置参考并把滑杆设为 0.62，可手动调）
 6. anime-cel 是否通过？→ 通过，强化阴影/细节/负面词
 7. 哪些文件绝对不能动？→ 原始 Lumen Studio、references/library、自定义分类、用户训练素材

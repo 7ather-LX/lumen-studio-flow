@@ -273,7 +273,7 @@ amiya-base-compare.png
 
 ```text
 源码：0.2.36
-本机安装：0.2.35（0.2.36 已发布，安装待完成）
+本机安装：0.2.36（用 `win-unpacked` 覆盖部署，安装器在本机不生效，见 §9）
 GitHub latest：v0.2.36（已发布，11 个附件）
 ```
 
@@ -327,3 +327,49 @@ anime-cel（0.2.35 改进后）
 1. 继续修 2.5D 厚涂
 2. 清理根目录测试文件
 3. 整理最终交接包
+
+---
+
+## 9. 本机安装与启动注意事项（2026-11-22 实测）
+
+### 9.1 在 DSH/agent 里启动应用必须先清掉 `ELECTRON_RUN_AS_NODE`
+
+DSH 自身是 Electron，它的环境里带着：
+
+```text
+ELECTRON_RUN_AS_NODE=1
+```
+
+继承这个变量去启动 Lumen 时，Electron 会退化成纯 Node，`require("electron")` 拿不到 API，
+表现为**进程秒退、无窗口、退出码 0 或 9、没有任何日志**（主进程报
+`TypeError: Cannot read properties of undefined (reading 'whenReady')`）。
+
+启动前必须：
+
+```powershell
+Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
+Start-Process "C:\Users\25576\AppData\Local\Programs\Lumen Studio Flow\Lumen Studio Flow.exe"
+```
+
+### 9.2 NSIS 安装器在本机不生效，用 `win-unpacked` 部署
+
+`release\Lumen-Studio-Flow-Setup-0.2.36.exe` 直接运行（`/S` 静默或 GUI、有无沙箱、全新目录）
+都是**退出码 0 但不写任何文件**，也不产生卸载注册项。因此本机 0.2.36 是用
+
+```text
+release\win-unpacked\  →  C:\Users\25576\AppData\Local\Programs\Lumen Studio Flow\
+```
+
+整目录覆盖部署的（122 个文件 / 350MB），桌面快捷方式用 WScript.Shell 重建指向同一 exe。
+
+因此本机**没有卸载注册项**，控制面板/设置里可能不显示 Lumen Studio Flow；升级时同样覆盖 `win-unpacked` 即可。
+
+### 9.3 0.2.35 回滚副本
+
+部署 0.2.36 前把旧安装目录整体改名保留：
+
+```text
+C:\Users\25576\AppData\Local\Programs\Lumen Studio Flow.0.2.35.bak
+```
+
+GitHub 上 `v0.2.35` release 已删除，这份目录是本机唯一的 0.2.35 回滚来源，确认 0.2.36 稳定后再手动删除。
