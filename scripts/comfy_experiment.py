@@ -34,9 +34,10 @@ SERVER = "http://127.0.0.1:8188"
 STYLE_TAGS = {
     "none": "",
     "2.5d-thick": (
-        "2.5D, semi-realistic anime, thick painting, painterly rendering, soft airbrushed shading, "
-        "glossy skin, detailed skin, subsurface scattering, rim light, cinematic lighting, detailed eyes, "
-        "detailed hair, rich colors, polished illustration"
+        "2.5D, semi-realistic anime, 3D anime figure render, pseudo-3D shading, soft global illumination, "
+        "ambient occlusion, subsurface scattering, glossy specular skin, volumetric light, rim light, "
+        "studio lighting, depth of field, cinematic bokeh, smooth surfaces, "
+        "physically based rendering look, ultra detailed"
     ),
     "anime-cel": (
         "masterpiece, best quality, highres, absurdres, ultra detailed, anime cel shading, two-tone shading, "

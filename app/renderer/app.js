@@ -2056,6 +2056,24 @@
       if (hint) hint.textContent = preset.note;
     };
     $("#presetGear")?.addEventListener("change", () => applyGearPreset($("#presetGear").value));
+    const COMPOSITION_PRESETS = {
+      closeup: { aspect: "3:4", denoise: "0.88", note: "特写：3:4（896×1152）· 重绘 88%。低于 0.8 会残留原图发色。" },
+      half: { aspect: "2:3", denoise: "0.82", note: "半身：2:3（832×1216）· 重绘 82%。实测 0.75–0.85 构图稳定，0.90 开始漂。" },
+      full: { aspect: "16:9", denoise: "0.75", note: "全身/全景：16:9（1216×688）· 重绘 75%。实测 0.85 以上会缩小人物、偏色。" },
+    };
+    const applyCompositionPreset = (mode) => {
+      const preset = COMPOSITION_PRESETS[mode];
+      const hint = $("#compositionHint");
+      if (!preset) {
+        if (hint) hint.textContent = "自定义：画幅与重绘幅度完全由你决定。";
+        return;
+      }
+      applyAspect(preset.aspect);
+      $("#denoise").value = preset.denoise;
+      $("#denoiseValue").textContent = `${Math.round(Number(preset.denoise) * 100)}%`;
+      if (hint) hint.textContent = preset.note;
+    };
+    $("#compositionPreset")?.addEventListener("change", () => applyCompositionPreset($("#compositionPreset").value));
     $("#referenceMode").addEventListener("change", () => {
       $("#adapterControls").classList.toggle("hidden", $("#referenceMode").value !== "ref-adapter");
     });

@@ -360,6 +360,16 @@
                   </select>
                 </label>
                 <p class="hint" id="presetGearHint">档位会设置重绘幅度与风格强度，之后仍可手动微调。</p>
+                <label class="control">
+                  <span>构图档位</span>
+                  <select id="compositionPreset" class="setting-select">
+                    <option value="custom">自定义（不干预画幅）</option>
+                    <option value="closeup">特写 / 脸与局部 · 3:4 · 重绘 88%</option>
+                    <option value="half">半身 · 2:3 · 重绘 82%</option>
+                    <option value="full">全身 / 全景 · 16:9 · 重绘 75%</option>
+                  </select>
+                </label>
+                <p class="hint" id="compositionHint">构图档位同时设置画幅与推荐重绘幅度，避免全景被重画成特写。</p>
                 <div class="control-grid">
                   <label class="control">
                     <span>步数 <b id="stepsValue">30</b></span>
@@ -720,6 +730,7 @@
           <p><b>步数</b>：每张图采样多少步。20 步够快、32 步细节更稳；低于 16 步容易糊。<b>CFG</b>：提示词服从度。3.5 更柔和、4.5 更贴提示词、6 以上容易过饱和和崩结构。</p>
           <p><b>种子（seed）</b>：同 seed + 同参数 = 同构图，便于比较。想复现某张就填回那张的 seed；每次换 seed 才能得到新构图。</p>
           <p><b>出图档位</b>：一次设好「重绘幅度 + 风格强度」的组合，省得手动试。选完仍可手动微调。</p>
+          <p><b>构图档位</b>：按你要的构图直接设好画幅和推荐重绘幅度。实测结论——特写用 3:4 + 88%，半身用 2:3 + 82%，全身/全景用 16:9 + 75%。<b>全景千万不要用 0.85 以上</b>：提示词会压过参考图，人物缩小、跑色，甚至把整张图重画成特写。另外提示词里的构图词（close-up / cowboy shot / full body）必须和你要的构图一致，否则再低的 denoise 也留不住构图。</p>
           <p><b>精修（自动修正足部/手部）</b>：生成后再对选中区域做一次局部重绘并羽化贴回。<b>精修部位</b>决定补脚还是补手；<b>精修区域</b>决定裁哪一块（脚在画面下方选下半部，特写脚在中间选中部）；<b>精修范围</b>越小、放大倍数越高，趾头/指头看得越清（小范围更准）；<b>精修轮次</b>两次会在第一次结果上再修一遍，趾列更稳但更慢。</p>
           <h3>9. 常见问题</h3>
           <p><b>找不到 ComfyUI：</b>目录要选到包含 <code>ComfyUI</code> 和 <code>python_embeded</code> 的那一层。</p>
