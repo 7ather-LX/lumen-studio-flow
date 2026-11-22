@@ -26,7 +26,8 @@ F:\DSH WORKSPACE
 ```text
 继续 Lumen Studio Flow。
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
-和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md。
+和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md
+以及 F:\DSH WORKSPACE\lumen-flow\WORK_RULES.md（工作规范，必须遵守）。
 当前版本 0.2.37，先确认项目状态，再继续。
 ```
 
@@ -34,11 +35,12 @@ F:\DSH WORKSPACE
 
 跨对话记忆插件未配置成功，本次不使用。
 
-交接以这两个文件为准：
+交接以这三个文件为准：
 
 ```text
 HANDOFF_CURRENT.md
 WORKSPACE_MAP.md
+WORK_RULES.md
 ```
 
 不要假设新对话自动知道旧上下文。
@@ -48,9 +50,22 @@ WORKSPACE_MAP.md
 1. 源码版本是否为 `0.2.37`
 2. 本机安装是否为 `0.2.37`
 3. GitHub latest 是否为 `v0.2.37`
-4. `references/library/library.json` 是否仍有 220 张参考图
+4. `references/library/library.json` 是否仍有 191 张参考图
 5. 自定义分类“小穴”是否仍有 29 张
 6. `app/renderer/characters.js` 是否仍包含 `yukikaze (azur lane)`
+
+### 0.5 工作规范（必须遵守，见 WORK_RULES.md）
+
+```text
+不要启动软件 UI、不要用 Playwright/CDP 点「生成」、不要调 bridge.generate
+图片只写 training\output\_experiments\<日期>\
+绝不写 lumen-flow\outputs（那是用户作品栏）
+每批 1–3 张，立即筛选、立即删废案
+最终只留 1 张最终图 + 1 张对比图 + 1 份参数 json
+不碰 references\library / pussy\ / training\references / 用户角色源文件 / 自定义“小穴”
+```
+
+现成脚本：`scripts\comfy_experiment.py`（唯一推荐的出图方式）
 
 ---
 

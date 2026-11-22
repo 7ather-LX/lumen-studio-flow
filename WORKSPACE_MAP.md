@@ -401,3 +401,29 @@ Start-Process "...\Lumen Studio Flow.exe" -ArgumentList "--remote-debugging-port
 
 窗口起来后立刻 `ShowWindow($h, 6)` 最小化；截图用 `PrintWindow(hWnd, hdc, 2)`，都不会抢焦点。
 参考图可用 CDP `DOM.setFileInputFiles` 注入到 `#referenceInput`。
+
+---
+
+## 10. 出图工作规范入口
+
+所有生成 / 验证 / 清理图片的动作必须遵守：
+
+```text
+WORK_RULES.md
+```
+
+要点速查：
+
+```text
+不启动 UI、不用 Playwright/CDP 点生成、不调 bridge.generate
+图片只写 training\output\_experiments\<日期>\
+绝不写 lumen-flow\outputs（用户作品栏）
+每批 1–3 张 → 立即筛选 → 废案立即删
+最终只留 1 张最终图 + 1 张对比图 + 1 份参数 json
+```
+
+现成脚本：
+
+```text
+scripts\comfy_experiment.py
+```
