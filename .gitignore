@@ -11,6 +11,7 @@ node_modules/
 models/
 comfy/
 release/
+release-dev/
 references/library/
 training/references/
 training/output/

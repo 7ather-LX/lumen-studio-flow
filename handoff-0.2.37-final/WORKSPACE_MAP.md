@@ -1,7 +1,7 @@
 # Lumen Studio Flow 工作区文件地图
 
 更新时间：2026-11-22（16:55 复核版本）  
-当前版本：`0.2.36`（源码 / 本机安装 / GitHub latest 三者一致）
+当前版本：`0.2.37`（源码 / 本机安装 / GitHub latest 三者一致）
 
 这不是交接包。交接包等画风问题处理完后再写。  
 本文件用于说明哪些文件是什么、哪些绝对不能动、哪些已经归档/清理。
@@ -184,11 +184,11 @@ lumen-flow\_archive\visual-assets-2026-11-22.zip
 保留：
 
 ```text
-release\ 只留当前版本（0.2.36 Setup / portable / blockmap + latest.yml + win-unpacked）
-character-data-v0.2.35（最新产出；0.2.36 未单独产出数据包）
+release\ 只留当前版本（0.2.37 Setup / portable / blockmap + latest.yml + win-unpacked）
+character-data-v0.2.35（最新产出；0.2.36 / 0.2.37 未单独产出数据包）
 character-data-v0.2.35.zip（已校验：zip = 目录 = app\renderer 四文件哈希一致）
 loras-share-v0.2.6
-handoff-0.2.36-final（原 handoff-0.2.35-final 已重命名）
+handoff-0.2.37-final（原 handoff-0.2.35-final → 0.2.36-final → 当前）
 ```
 
 ### 当前根目录保留的图片
@@ -272,35 +272,40 @@ amiya-base-compare.png
 ## 7. 当前版本相关
 
 ```text
-源码：0.2.36
-本机安装：0.2.36（用 `win-unpacked` 覆盖部署，安装器在本机不生效，见 §9）
-GitHub latest：v0.2.36（已发布，11 个附件）
+源码：0.2.37
+本机安装：0.2.37（用 `win-unpacked` 覆盖部署，安装器在本机不生效，见 §9）
+GitHub latest：v0.2.37（已发布，11 个附件）
 ```
 
 最新 Release：
 
 ```text
-https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.36
+https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.37
 ```
 
-### 版本差异记录（2026-11-22 复核 → 已收敛）
-
-发布前核对到源码已 bump 到 `0.2.36`，而当时本机与 GitHub 仍是 `0.2.35`。处理结果：
+### 版本历史（2026-11-22）
 
 ```text
-源码 package.json         0.2.36
-release\ 构建产物         0.2.36（Setup / portable / blockmap / win-unpacked）
-release\latest.yml        0.2.36（sha512 与安装包实测一致）
-本机安装 exe              0.2.35 → 0.2.36
-GitHub latest             v0.2.35 → v0.2.36
+0.2.35  首次在此工作区发布到 GitHub（release 已删）
+0.2.36  文档统一、版本体检（release 已删）
+0.2.37  参数可控 + 脚趾局部精修（当前）
 ```
 
-结论：
+当前状态：
 
-- `0.2.36` 已构建、已发布到 GitHub、已安装到本机，三者一致
-- 发布顺序为先建 `v0.2.36` 并验证附件，再删 `v0.2.35`，更新链路未断档
-- GitHub 上只剩 `v0.2.36` 一个 release（`v0.2.35` 已删除，`v0.2.25` 更早已删）
-- `character-data` 最新产出仍为 `v0.2.35`，**0.2.36 未单独产出数据包**（角色数据无变化）
+```text
+源码 package.json         0.2.37
+release\ 构建产物         0.2.37（Setup / portable / blockmap / win-unpacked）
+release\latest.yml        0.2.37（sha512 与安装包实测一致）
+本机安装 exe              0.2.37
+GitHub latest             v0.2.37
+```
+
+规则（用户 2026-11-22 指定）：**以后有新改动就直接出新版本并发 GitHub，不再逐次询问。**
+
+- 发布顺序：先建新 release 并验证附件，再删上一个 release，更新链路不断档
+- GitHub 上只保留最新一个 release；tag 保留历史
+- `character-data` 最新产出仍是 `v0.2.35`，0.2.36 / 0.2.37 未单独产出数据包（角色数据无变化）
 
 ---
 
@@ -353,8 +358,8 @@ Start-Process "C:\Users\25576\AppData\Local\Programs\Lumen Studio Flow\Lumen Stu
 
 ### 9.2 NSIS 安装器在本机不生效，用 `win-unpacked` 部署
 
-`release\Lumen-Studio-Flow-Setup-0.2.36.exe` 直接运行（`/S` 静默或 GUI、有无沙箱、全新目录）
-都是**退出码 0 但不写任何文件**，也不产生卸载注册项。因此本机 0.2.36 是用
+`release\Lumen-Studio-Flow-Setup-0.2.37.exe` 直接运行（`/S` 静默或 GUI、有无沙箱、全新目录）
+都是**退出码 0 但不写任何文件**，也不产生卸载注册项（0.2.36 时同样如此）。因此本机 0.2.37 是用
 
 ```text
 release\win-unpacked\  →  C:\Users\25576\AppData\Local\Programs\Lumen Studio Flow\
@@ -366,10 +371,33 @@ release\win-unpacked\  →  C:\Users\25576\AppData\Local\Programs\Lumen Studio F
 
 ### 9.3 0.2.35 回滚副本
 
-部署 0.2.36 前把旧安装目录整体改名保留：
+部署 0.2.36 前把旧安装目录整体改名保留（用户要求先留着，验证完再删）：
 
 ```text
 C:\Users\25576\AppData\Local\Programs\Lumen Studio Flow.0.2.35.bak
 ```
 
-GitHub 上 `v0.2.35` release 已删除，这份目录是本机唯一的 0.2.35 回滚来源，确认 0.2.36 稳定后再手动删除。
+GitHub 上 `v0.2.35` release 已删除，这份目录是本机唯一的 0.2.35 回滚来源。
+
+### 9.4 从 F: 盘直接运行的 exe 写不进 AppData
+
+把构建产物放在 `F:\...\release-dev\win-unpacked` 直接跑，主进程写
+`AppData\Roaming\Lumen Studio Flow\inputs` 会 `EPERM`，表现为生成秒失败、进度停在 1%。
+安装到 `C:\` 的实例正常。
+
+本地测试构建先复制到 C: 盘再运行，例如：
+
+```text
+F:\DSH WORKSPACE\lumen-flow\release\win-unpacked
+  →  C:\Users\25576\AppData\Local\Programs\lumen-dev\
+```
+
+### 9.5 用 CDP 在后台驱动应用（不抢前台焦点）
+
+```powershell
+Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
+Start-Process "...\Lumen Studio Flow.exe" -ArgumentList "--remote-debugging-port=9224" -WindowStyle Minimized
+```
+
+窗口起来后立刻 `ShowWindow($h, 6)` 最小化；截图用 `PrintWindow(hWnd, hdc, 2)`，都不会抢焦点。
+参考图可用 CDP `DOM.setFileInputFiles` 注入到 `#referenceInput`。

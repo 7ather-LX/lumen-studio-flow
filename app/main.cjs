@@ -1090,16 +1090,137 @@ function buildFaceWorkflow(config, imageName, width, height, prompt) {
   };
 }
 
+function align8(value) {
+  return Math.max(8, Math.round(Number(value) / 8) * 8);
+}
+
+// 局部脚部精修：裁切脚部区域 → 放大重绘 → 缩回 → 羽化贴回原图。
+// 相比整图 img2img，不会改动构图、脸和手。
+function buildFeetWorkflow(config, imageName, width, height, prompt, negative, seed, steps, cfg, denoise) {
+  const regionW = Math.min(width, align8(width * 0.8));
+  const regionH = Math.min(height, align8(height * 0.5));
+  const x = align8((width - regionW) / 2);
+  const y = Math.max(0, Math.min(height - regionH, align8(height * 0.45)));
+  const ratio = regionW / regionH;
+  let targetW = 1024;
+  let targetH = align8(targetW / ratio);
+  if (targetH > 1024) {
+    targetH = 1024;
+    targetW = align8(targetH * ratio);
+  }
+  const feather = Math.max(24, align8(Math.min(regionW, regionH) * 0.14));
+  return {
+    1: { class_type: "LoadImage", inputs: { image: imageName } },
+    2: {
+      class_type: "ImageCrop",
+      inputs: { image: ["1", 0], width: regionW, height: regionH, x, y },
+    },
+    3: {
+      class_type: "ImageScale",
+      inputs: { image: ["2", 0], upscale_method: "lanczos", width: targetW, height: targetH, crop: "disabled" },
+    },
+    4: { class_type: "UNETLoader", inputs: { unet_name: config.unet, weight_dtype: "default" } },
+    5: {
+      class_type: "CLIPLoader",
+      inputs: { clip_name: config.clip, type: "stable_diffusion", device: "default" },
+    },
+    6: { class_type: "VAELoader", inputs: { vae_name: config.vae } },
+    7: { class_type: "CLIPTextEncode", inputs: { text: prompt, clip: ["5", 0] } },
+    8: { class_type: "CLIPTextEncode", inputs: { text: negative, clip: ["5", 0] } },
+    9: { class_type: "VAEEncode", inputs: { pixels: ["3", 0], vae: ["6", 0] } },
+    10: {
+      class_type: "KSampler",
+      inputs: {
+        model: ["4", 0],
+        positive: ["7", 0],
+        negative: ["8", 0],
+        latent_image: ["9", 0],
+        seed,
+        steps,
+        cfg,
+        sampler_name: "er_sde",
+        scheduler: "simple",
+        denoise,
+      },
+    },
+    11: { class_type: "VAEDecode", inputs: { samples: ["10", 0], vae: ["6", 0] } },
+    16: {
+      class_type: "ImageScale",
+      inputs: { image: ["11", 0], upscale_method: "lanczos", width: regionW, height: regionH, crop: "disabled" },
+    },
+    14: { class_type: "SolidMask", inputs: { value: 1, width: regionW, height: regionH } },
+    15: {
+      class_type: "FeatherMask",
+      inputs: { mask: ["14", 0], left: feather, top: feather, right: feather, bottom: feather },
+    },
+    12: {
+      class_type: "ImageCompositeMasked",
+      inputs: { destination: ["1", 0], source: ["16", 0], x, y, resize_source: false, mask: ["15", 0] },
+    },
+    13: { class_type: "SaveImage", inputs: { images: ["12", 0], filename_prefix: "LumenFeet" } },
+  };
+}
+
+async function detailFeetLocal(config, options) {
+  const imageName = await uploadComfyImage(config, options.path);
+  const workflow = buildFeetWorkflow(
+    config,
+    imageName,
+    options.width,
+    options.height,
+    options.prompt,
+    options.negative,
+    options.seed,
+    options.steps,
+    options.cfg,
+    options.denoise,
+  );
+  send("flow:progress", { stage: "Feet detail...", progress: 0.97 });
+  const response = await comfyFetch(
+    config.comfyUrl,
+    "/prompt",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: workflow, client_id: `lumen-feet-${Date.now()}` }),
+    },
+    20000,
+  ).then((item) => item.json());
+  if (response?.error) throw new Error(JSON.stringify(response.error));
+  const promptId = response.prompt_id;
+  let entry = null;
+  for (let index = 0; index < 300; index += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const history = await comfyFetch(config.comfyUrl, `/history/${promptId}`, {}, 8000).then((item) => item.json());
+    entry = history?.[promptId];
+    if (entry) break;
+    if (index > 260) throw new Error("Feet detailer timeout");
+  }
+  const output = Object.values(entry?.outputs || {}).flatMap((item) => item.images || [])[0];
+  if (!output) throw new Error("Feet detailer returned no image");
+  const query = new URLSearchParams({
+    filename: output.filename,
+    subfolder: output.subfolder || "",
+    type: output.type || "output",
+  });
+  const finalResponse = await comfyFetch(config.comfyUrl, `/view?${query.toString()}`, {}, 30000);
+  const buffer = Buffer.from(await finalResponse.arrayBuffer());
+  const filePath = path.join(outputDir(), `flow-${Date.now()}-feet.png`);
+  await fsp.writeFile(filePath, buffer);
+  return { name: path.basename(filePath), path: filePath, url: `data:image/png;base64,${buffer.toString("base64")}` };
+}
+
 async function repairFeet(payload) {
   const imagePath = String(payload?.path || "");
   if (!imagePath || !fs.existsSync(imagePath)) throw new Error("Image not found");
-  const dataUrl = `data:image/png;base64,${(await fsp.readFile(imagePath)).toString("base64")}`;
   const config = readConfig();
   const repairNote = String(payload.repairNote || "").trim();
   const focus = repairNote || String(payload.prompt || "");
   const detailTags = [];
   if (/feet|foot|toes|barefoot|足|脚|丝袜|裸足/i.test(focus)) {
-    detailTags.push("detailed toes, five toes per foot, accurate toe count, clean foot anatomy, detailed soles, realistic feet");
+    detailTags.push(
+      "detailed toes, exactly five toes per foot, correct toe order, big toe on inner side, even toe spacing, toenails aligned, clean foot anatomy, detailed sole, realistic feet",
+    );
   }
   if (/hand|finger|手|指/i.test(focus)) {
     detailTags.push("detailed hands, five fingers per hand, accurate finger count, clean hand anatomy");
@@ -1114,27 +1235,23 @@ async function repairFeet(payload) {
   ].filter(Boolean).join(", ");
   const negative = [
     String(payload.negativePrompt || "worst quality, low quality, blurry"),
-    /feet|foot|toes|足|脚|丝袜|裸足/i.test(focus) ? "missing toes, extra toes, fused toes, deformed feet, bad feet" : "",
+    /feet|foot|toes|足|脚|丝袜|裸足/i.test(focus) ? "missing toes, extra toes, six toes, fused toes, merged toes, detached toe, wrong toe order, deformed foot, bad feet" : "",
     /hand|finger|手|指/i.test(focus) ? "fused fingers, extra fingers, missing fingers, bad hands" : "",
     "bad anatomy",
   ].filter(Boolean).join(", ");
-  return runComfy({
+  const seedValue = Number(payload.seed);
+  const image = await detailFeetLocal(config, {
+    path: imagePath,
+    width: Math.max(256, Number(payload.width) || 1024),
+    height: Math.max(256, Number(payload.height) || 1024),
     prompt,
     negative,
-    width: Number(payload.width) || 1024,
-    height: Number(payload.height) || 1024,
-    steps: Number(payload.steps) || 24,
-    cfg: Number(payload.cfg) || 3.5,
-    batch: Math.max(1, Math.min(4, Number(payload.batch) || 3)),
-    seed: Number.isFinite(Number(payload.seed)) ? Number(payload.seed) : -1,
-    initImage: dataUrl,
-    referenceMode: "img2img",
-    denoise: Math.max(0.18, Math.min(0.45, Number(payload.denoise) || 0.28)),
-    hires: false,
-    unet: payload.unet || config.unet,
-    performanceProfile: "feet-repair",
-    skipFootRepair: true,
+    seed: Number.isFinite(seedValue) && seedValue >= 0 ? Math.floor(seedValue) : Math.floor(Math.random() * 2 ** 31),
+    steps: Math.max(8, Math.min(40, Number(payload.steps) || 24)),
+    cfg: Math.max(1, Math.min(10, Number(payload.cfg) || 4)),
+    denoise: 0.45,
   });
+  return { images: [image], seed: seedValue };
 }
 
 async function detailFace(config, imagePath, width, height, prompt) {

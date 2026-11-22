@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-22（17:30 发布 0.2.36）  
-当前版本：`0.2.36`  
+更新时间：2026-11-22（18:20 发布 0.2.37）  
+当前版本：`0.2.37`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.36
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.37
 
 ---
 
@@ -27,7 +27,7 @@ F:\DSH WORKSPACE
 继续 Lumen Studio Flow。
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md。
-当前版本 0.2.36，先确认项目状态，再继续。
+当前版本 0.2.37，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -45,9 +45,9 @@ WORKSPACE_MAP.md
 
 ### 0.4 新对话先确认
 
-1. 源码版本是否为 `0.2.36`
-2. 本机安装是否为 `0.2.36`
-3. GitHub latest 是否为 `v0.2.36`
+1. 源码版本是否为 `0.2.37`
+2. 本机安装是否为 `0.2.37`
+3. GitHub latest 是否为 `v0.2.37`
 4. `references/library/library.json` 是否仍有 220 张参考图
 5. 自定义分类“小穴”是否仍有 29 张
 6. `app/renderer/characters.js` 是否仍包含 `yukikaze (azur lane)`
@@ -182,16 +182,16 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.36
-本机安装：0.2.36
-GitHub latest：v0.2.36
+源码：0.2.37
+本机安装：0.2.37
+GitHub latest：v0.2.37
 ```
 
-Release 附件（v0.2.36 共 11 个）：
+Release 附件（v0.2.37 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.36.exe
-Lumen-Studio-Flow-0.2.36.exe
+Lumen-Studio-Flow-Setup-0.2.37.exe
+Lumen-Studio-Flow-0.2.37.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
@@ -200,14 +200,14 @@ OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
 import_pose_gallery.py
 README.md
-RELEASE_NOTES_0.2.36.md
+RELEASE_NOTES_0.2.37.md
 ```
 
 说明：
 
 - `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
-- 旧版本已删除，只保留 v0.2.36
-- `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 未单独产出数据包**（角色数据无变化）
+- 旧版本已删除，只保留 v0.2.37
+- `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 / 0.2.37 未单独产出数据包**（角色数据无变化）
 
 ---
 
@@ -342,6 +342,37 @@ Anima Base
 
 低 denoise 会残留原图棕发/黑发，因此最终用了 0.88。
 
+### 4.8 0.2.37：参数可控 + 脚趾局部精修
+
+起因：用户拿旧对话的成功图在软件里复现不出来，且脚趾出现多趾/脱节。
+
+定位到的 4 个「静默改参数」问题（均已修）：
+
+```text
+自动识别画风        → 提示词含 2.5D/semi-realistic 会把「2.5D 厚涂」顶成「2.5D 半写实」
+参考图自动跟画幅     → 先点画幅再拖参考图，画幅会被冲掉（顺序必须是先参考图后画幅）
+性能档强制覆盖       → 自动/快速/质量档强制改 steps/cfg/batch/hires，滑杆无效
+种子回填            → 生成后写回输入框，下一张沿用，构图漂移
+```
+
+0.2.37 的改动：
+
+```text
+新增 性能档「自定义 · 用手动参数」   → 完全听滑杆
+新增 「生成后自动修正足部/手部细节」开关 → 可关，只出首遍
+重绘幅度 step 0.05 → 0.01            → 0.88 可精确输入
+repairFeet 整图重绘 → 局部精修        → 裁剪下半部 80%×50% → 放大 1024 重绘(0.45) → 缩回 → 羽化 80px 贴回
+脚趾提示词/负面强化                  → 五趾/趾序/大趾在内侧/趾甲对齐；六趾/脱节/趾序错乱
+```
+
+复刻验证（软件内，ComfyUI 实执行）：`steps=32 cfg=4.5 denoise=0.88 seed=1601600 896×1152`，单遍、无 hires，
+与旧对话结果构图与质感一致。对比图：`_archive\compare-reproduced.png`、`_archive\compare-toes-0237.png`。
+
+### 4.9 环境坑：从 F: 盘直接运行的 exe 写不进 AppData
+
+用 `release-dev\win-unpacked`（在 F:）直接跑，主进程写 `AppData\Roaming\Lumen Studio Flow\inputs` 会 EPERM，
+表现为「生成即失败、进度 1%」。装到 C: 的实例正常。本地测试构建请先复制到 C: 盘再运行。
+
 ---
 
 ## 5. 画风定义
@@ -400,7 +431,7 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.35 安装包与 blockmap
+- 旧版 0.1.x / 0.2.0–0.2.36 安装包与 blockmap
 - 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
@@ -421,21 +452,34 @@ current style verification images
 
 ## 7. 已知问题
 
-### P0：2.5D 厚涂仍在持续调
+### P0：2.5D 厚涂稳定性
 
-当前 0.70 的绿色预览可用，但还不是所有构图都稳定。需要继续固定 seed 对比：
+0.2.37 起参数完全可控（性能档「自定义」），已确认可复刻旧对话结果：
 
 ```text
-denoise 0.60 / 0.65 / 0.70 / 0.75
+画风 2.5D 厚涂 · 参考图 img2img · 3:4（896×1152）
+自定义档：步数 32 / CFG 4.5 / 重绘幅度 0.88 / 数量 1
+固定种子（旧对话成功值为 1601600）
+自动识别画风：关　自动修正足部：按需
 ```
+
+低于 0.85 会残留原图发色。仍待办：固定 seed 网格对比 0.60 / 0.65 / 0.70 / 0.75 / 0.85 / 0.88 / 0.90，
+按构图类型（特写 / 半身 / 全景）记录最稳档位，形成参数表。
 
 ### P1：足部/脚趾
 
-5 趾仍会偶发融合/多趾。需要局部重绘或 ControlNet，单纯提示词不够。
+0.2.37 已从「整图重绘」改为**局部精修**：裁出脚部区域（下半部 80%×50%）→ 放大到 1024 重绘（denoise 0.45）
+→ 缩回 → 羽化 80px 贴回。多趾、趾头脱节、趾序错乱明显改善，脸/手/构图不再被改动。
+
+仍需改进：
+
+- 裁剪区域是固定比例，特写构图若脚不在下半部会裁不到（后续应做检测或让用户框选）
+- 复杂角度（脚背/侧视/多脚）仍会翻车，需 ControlNet 或更细的部位检测
+- 当前只处理一张图（batch 1 时即整批）
 
 ### P1：复杂手部与道具
 
-Mejiro 特写里手部/工具仍有轻微变形。复杂交互需要局部修正。
+Mejiro 特写里手部/工具仍有轻微变形。复杂交互需要局部修正（可参照脚部精修的做法）。
 
 ### P2：旧实验画风
 
@@ -490,10 +534,11 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.36`
+1. 当前版本？→ `0.2.37`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.36`
+3. 最新 Release？→ `v0.2.37`
 4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
-5. 2.5D 厚涂怎么做？→ 参考图 img2img + denoise 0.70，不是纯 LoRA（应用内选该画风会自动载入内置参考并把滑杆设为 0.62，可手动调）
-6. anime-cel 是否通过？→ 通过，强化阴影/细节/负面词
-7. 哪些文件绝对不能动？→ 原始 Lumen Studio、references/library、自定义分类、用户训练素材
+5. 2.5D 厚涂怎么复刻旧对话结果？→ 2.5D 厚涂 + 参考图 + 自定义档 32 步 / CFG4.5 / 0.88 / seed 1601600，关自动画风
+6. 脚趾怎么修？→ 0.2.37 局部精修（勾“自动修正足部/手部细节”），不再整图重绘
+7. anime-cel 是否通过？→ 通过，强化阴影/细节/负面词
+8. 哪些文件绝对不能动？→ 原始 Lumen Studio、references/library、自定义分类、用户训练素材

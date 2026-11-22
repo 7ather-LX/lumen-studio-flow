@@ -735,6 +735,10 @@
     if (mode === "low") {
       return { mode, unet: "anima-base-v1.0.safetensors", steps: 16, cfg: 3.5, hires: false, hiresScale: 1, batch: 1, label: "低显存" };
     }
+    if (mode === "custom") {
+      // 自定义：完全用手动滑杆，不做任何覆盖
+      return { mode: "custom", unet: "anima-base-v1.0.safetensors", steps: null, cfg: null, hires: null, hiresScale: 1, batch: null, label: "自定义" };
+    }
     return { mode: "quality", unet: "Anima-2.9B-preview-v1.safetensors", steps: 24, cfg: 3.5, hires: true, hiresScale: 1.15, batch: 1, label: "质量档" };
   }
 
@@ -1106,7 +1110,7 @@
     const faceDetail = Boolean($("#faceDetail")?.checked);
     const denoise = Number($("#denoise")?.value || 0.5);
     const referenceMode = $("#referenceMode")?.value || "img2img";
-    if (performance) {
+    if (performance && performance.mode !== "custom") {
       steps = performance.steps;
       cfg = performance.cfg;
       batch = performance.mode === "low" ? 1 : batch;
@@ -1157,7 +1161,7 @@
         characterStrength: 1,
         denoise,
         referenceMode,
-        autoCorrect: Boolean(state.initImage),
+        autoCorrect: Boolean(state.initImage) && $("#autoRepair")?.checked !== false,
         repairNote: $("#repairNote")?.value.trim() || "",
         refGuidance: Number($("#adapterStrength")?.value || 4.5),
         refStrength: 1,
