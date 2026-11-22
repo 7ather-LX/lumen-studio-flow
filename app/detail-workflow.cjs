@@ -38,12 +38,16 @@ function align8(value) {
   return Math.max(8, n);
 }
 
-function regionFor(mode, width, height) {
+function regionFor(mode, width, height, zoom = 1) {
   const preset = REGION_PRESETS[mode] || REGION_PRESETS.bottom;
-  const w = Math.min(width, align8(width * preset.w));
-  const h = Math.min(height, align8(height * preset.h));
-  const x = Math.max(0, Math.min(width - w, align8(width * preset.x)));
-  const y = Math.max(0, Math.min(height - h, align8(height * preset.y)));
+  const scale = Math.max(0.2, Math.min(1, Number(zoom) || 1));
+  let w = Math.min(width, align8(width * preset.w * scale));
+  let h = Math.min(height, align8(height * preset.h * scale));
+  // 围绕基础区域中心收缩，保证放大倍数提升而中心不变
+  const baseCx = (preset.x + preset.w / 2) * width;
+  const baseCy = (preset.y + preset.h / 2) * height;
+  const x = Math.max(0, Math.min(width - w, align8(baseCx - w / 2)));
+  const y = Math.max(0, Math.min(height - h, align8(baseCy - h / 2)));
   return { x, y, width: w, height: h };
 }
 
@@ -72,9 +76,10 @@ function buildDetailWorkflow(options) {
     denoise,
     region = "bottom",
     part = "feet",
+    zoom = 1,
     filenamePrefix = "LumenDetail",
   } = options;
-  const area = regionFor(region, width, height);
+  const area = regionFor(region, width, height, zoom);
   const target = fitTarget(area);
   const feather = Math.max(24, align8(Math.min(area.width, area.height) * 0.14));
   const partPrompt = PART_PROMPTS[part] || PART_PROMPTS.feet;

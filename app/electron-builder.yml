@@ -41,3 +41,5 @@ extraResources:
     to: bootstrap_runtime.ps1
   - from: runtime-plugins
     to: runtime-plugins
+  - from: icon.ico
+    to: icon.ico

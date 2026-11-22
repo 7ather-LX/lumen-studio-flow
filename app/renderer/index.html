@@ -170,6 +170,22 @@
                       <option value="right">右侧</option>
                     </select>
                   </label>
+                  <label class="control">
+                    <span>精修范围</span>
+                    <select id="detailZoom" class="setting-select">
+                      <option value="1">大范围（含背景）</option>
+                      <option value="0.7">中范围</option>
+                      <option value="0.5">小范围（只修脚）</option>
+                      <option value="0.35">极近（趾头特写）</option>
+                    </select>
+                  </label>
+                  <label class="control">
+                    <span>精修轮次</span>
+                    <select id="detailPasses" class="setting-select">
+                      <option value="1">单次</option>
+                      <option value="2">两次（趾列更稳）</option>
+                    </select>
+                  </label>
                 </div>
                 <label class="control reference-strength">
                   <span>重绘幅度 <b id="denoiseValue">50%</b></span>
@@ -332,6 +348,17 @@
                   </select>
                 </label>
                 <p class="hint" id="performanceHint">自动识别 · 2.9B 质量档</p>
+                <label class="control">
+                  <span>出图档位</span>
+                  <select id="presetGear" class="setting-select">
+                    <option value="custom">自定义（不干预滑杆）</option>
+                    <option value="detail">轻修细节 · 重绘 30%</option>
+                    <option value="texture">保构图换质感 · 重绘 45%</option>
+                    <option value="recast">换角色保构图 · 重绘 70%</option>
+                    <option value="recast-style">换角色+2.5D 厚涂 · 重绘 88%（推荐）</option>
+                  </select>
+                </label>
+                <p class="hint" id="presetGearHint">档位会设置重绘幅度与风格强度，之后仍可手动微调。</p>
                 <div class="control-grid">
                   <label class="control">
                     <span>步数 <b id="stepsValue">30</b></span>
@@ -686,7 +713,14 @@
           <p>本地生成没有次数限制。只有把引擎切到外部 API 时才会使用外部额度；外部额度不会锁住本地 ComfyUI。API 地址、模型和 Key 在设置里填写。</p>
           <h3>7. 关闭与显存</h3>
           <p>关闭软件时会结束由软件启动的 ComfyUI 进程树，释放显存和内存；外部启动的 ComfyUI 不会被误杀。若显存仍未释放，可在任务管理器确认 python.exe 是否退出。</p>
-          <h3>8. 常见问题</h3>
+          <h3>8. 参数说明（重要）</h3>
+          <p><b>重绘幅度（denoise）</b>：决定「保留多少参考图」。30% 只补细节；45% 换材质和光影、构图基本不变；70% 换角色但保动作；<b>85–90% 才是换角色 + 换质感的正区间</b>。低于 0.8 会残留参考图的发色与五官特征，2.5D 厚涂换角色请用 0.88。</p>
+          <p><b>风格 LoRA 强度</b>：0 表示不额外加载画风 LoRA，完全靠提示词和参考图；0.4–0.6 会明显带偏向；1.0 是满强度。2.5D 厚涂本身不需要 LoRA，保持 0–0.3 更干净。</p>
+          <p><b>步数</b>：每张图采样多少步。20 步够快、32 步细节更稳；低于 16 步容易糊。<b>CFG</b>：提示词服从度。3.5 更柔和、4.5 更贴提示词、6 以上容易过饱和和崩结构。</p>
+          <p><b>种子（seed）</b>：同 seed + 同参数 = 同构图，便于比较。想复现某张就填回那张的 seed；每次换 seed 才能得到新构图。</p>
+          <p><b>出图档位</b>：一次设好「重绘幅度 + 风格强度」的组合，省得手动试。选完仍可手动微调。</p>
+          <p><b>精修（自动修正足部/手部）</b>：生成后再对选中区域做一次局部重绘并羽化贴回。<b>精修部位</b>决定补脚还是补手；<b>精修区域</b>决定裁哪一块（脚在画面下方选下半部，特写脚在中间选中部）；<b>精修范围</b>越小、放大倍数越高，趾头/指头看得越清（小范围更准）；<b>精修轮次</b>两次会在第一次结果上再修一遍，趾列更稳但更慢。</p>
+          <h3>9. 常见问题</h3>
           <p><b>找不到 ComfyUI：</b>目录要选到包含 <code>ComfyUI</code> 和 <code>python_embeded</code> 的那一层。</p>
           <p><b>角色不像：</b>换复杂度更高的官方/立绘参考，角色引导提高到 6–8，并检查 negative 是否包含 hat / sunglasses / 错误发色。</p>
           <p><b>黑帽/墨镜：</b>在 negative 加 <code>hat, cap, beret, top hat, sunglasses, goggles</code>，默认三张里筛一张。</p>

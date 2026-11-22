@@ -1109,6 +1109,7 @@ async function detailPartLocal(config, options) {
     denoise: options.denoise,
     region: options.region || "bottom",
     part: options.part || "feet",
+    zoom: Number(options.zoom) || 1,
     filenamePrefix: "LumenDetail",
   });
   send("flow:progress", { stage: "Detail pass...", progress: 0.97 });
@@ -1175,19 +1176,29 @@ async function repairFeet(payload) {
     .join(", ");
   const negative = String(payload.negativePrompt || "worst quality, low quality, blurry");
   const seedValue = Number(payload.seed);
-  const image = await detailPartLocal(config, {
-    path: imagePath,
-    width: Math.max(256, Number(payload.width) || 1024),
-    height: Math.max(256, Number(payload.height) || 1024),
-    prompt,
-    negative,
-    region: String(payload.detailRegion || "bottom"),
-    part,
-    seed: Number.isFinite(seedValue) && seedValue >= 0 ? Math.floor(seedValue) : Math.floor(Math.random() * 2 ** 31),
-    steps: Math.max(8, Math.min(40, Number(payload.steps) || 24)),
-    cfg: Math.max(1, Math.min(10, Number(payload.cfg) || 4)),
-    denoise: Math.max(0.25, Math.min(0.6, Number(payload.detailDenoise) || 0.45)),
-  });
+  const passes = Math.max(1, Math.min(2, Number(payload.detailPasses) || 1));
+  const zoom = Math.max(0.2, Math.min(1, Number(payload.detailZoom) || 1));
+  const baseDenoise = Math.max(0.25, Math.min(0.6, Number(payload.detailDenoise) || 0.45));
+  let source = imagePath;
+  let image = null;
+  for (let pass = 0; pass < passes; pass += 1) {
+    image = await detailPartLocal(config, {
+      path: source,
+      width: Math.max(256, Number(payload.width) || 1024),
+      height: Math.max(256, Number(payload.height) || 1024),
+      prompt,
+      negative,
+      region: String(payload.detailRegion || "bottom"),
+      part,
+      zoom,
+      seed: Number.isFinite(seedValue) && seedValue >= 0 ? Math.floor(seedValue) : Math.floor(Math.random() * 2 ** 31),
+      steps: Math.max(8, Math.min(40, Number(payload.steps) || 24)),
+      cfg: Math.max(1, Math.min(10, Number(payload.cfg) || 4)),
+      denoise: pass === 0 ? baseDenoise : Math.max(0.25, baseDenoise - 0.15),
+    });
+    if (!image?.path) break;
+    source = image.path;
+  }
   return { images: [image], seed: seedValue };
 }
 

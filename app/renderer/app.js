@@ -89,8 +89,8 @@
     "2.5d-thick": {
       label: "2.5D 厚涂",
       artists: [],
-      tags: "2.5D, semi-realistic anime, thick painting, painterly rendering, soft airbrushed shading, glossy skin, detailed skin, subsurface scattering, rim light, cinematic lighting, detailed eyes, detailed hair, rich colors, polished illustration",
-      hint: "2.5D 厚涂：以参考图 img2img 保留厚涂质感；请上传构图/质感参考，未上传时会自动载入内置参考",
+      tags: "2.5D, semi-realistic anime, thick painting, painterly brushwork, soft airbrushed shading, subsurface scattering, glossy soft skin, translucent skin, warm rim light, cool rim light, soft ambient light, cinematic bokeh, depth of field, delicate soft lineart, clean soft rendering, rich skin tones, polished illustration, high detail",
+      hint: "2.5D 厚涂：参考图 img2img 保留厚涂柔光；建议重绘幅度 0.85–0.90（低于 0.8 会残留原图发色）",
       lora: "",
       loraStrength: 0,
       referenceAsset: "./style-previews/2.5d-thick.png",
@@ -1164,6 +1164,8 @@
         autoCorrect: Boolean(state.initImage) && $("#autoRepair")?.checked !== false,
         detailPart: $("#detailPart")?.value || "auto",
         detailRegion: $("#detailRegion")?.value || "bottom",
+        detailZoom: Number($("#detailZoom")?.value || 1),
+        detailPasses: Number($("#detailPasses")?.value || 1),
         repairNote: $("#repairNote")?.value.trim() || "",
         refGuidance: Number($("#adapterStrength")?.value || 4.5),
         refStrength: 1,
@@ -2054,6 +2056,28 @@
     document.querySelectorAll("[data-refine]").forEach((node) => {
       node.addEventListener("click", () => applyRefinePreset(node.dataset.refine));
     });
+    const GEAR_PRESETS = {
+      detail: { denoise: "0.30", styleStrength: "0.35", note: "轻修细节：只补细节，不动构图与配色。" },
+      texture: { denoise: "0.45", styleStrength: "0.55", note: "保构图换质感：构图基本不变，材质和光影重画。" },
+      recast: { denoise: "0.70", styleStrength: "0.75", note: "换角色保构图：保留动作与机位，角色可以换掉。" },
+      "recast-style": { denoise: "0.88", styleStrength: "1", note: "换角色+2.5D 厚涂：参考图只当构图/动作，角色与质感重画。低于 0.8 会残留原图发色。" },
+    };
+    const applyGearPreset = (mode) => {
+      const preset = GEAR_PRESETS[mode];
+      const hint = $("#presetGearHint");
+      if (!preset) {
+        if (hint) hint.textContent = "自定义：重绘幅度与风格强度完全由滑杆决定。";
+        return;
+      }
+      $("#denoise").value = preset.denoise;
+      $("#denoiseValue").textContent = `${Math.round(Number(preset.denoise) * 100)}%`;
+      if ($("#styleStrength")) {
+        $("#styleStrength").value = preset.styleStrength;
+        $("#styleStrengthValue").textContent = preset.styleStrength;
+      }
+      if (hint) hint.textContent = preset.note;
+    };
+    $("#presetGear")?.addEventListener("change", () => applyGearPreset($("#presetGear").value));
     $("#referenceMode").addEventListener("change", () => {
       $("#adapterControls").classList.toggle("hidden", $("#referenceMode").value !== "ref-adapter");
     });

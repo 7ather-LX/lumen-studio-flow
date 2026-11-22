@@ -43,6 +43,13 @@ STYLE_TAGS = {
         "crisp cel shadows, detailed shading, ambient occlusion, rim light, detailed eyes, detailed hair, "
         "detailed fabric, detailed folds, soft cinematic lighting, japanese anime key visual"
     ),
+    # 对齐 reference-2.5d.png 的质感：大幅柔光、彩色轮廓光、次表面透光、几乎没有硬线条
+    "2.5d-thick-v2": (
+        "2.5D, semi-realistic anime, thick painting, painterly brushwork, soft airbrushed shading, "
+        "subsurface scattering, glossy soft skin, translucent skin, warm rim light, cool rim light, "
+        "soft ambient light, cinematic bokeh, depth of field, delicate soft lineart, clean soft rendering, "
+        "rich skin tones, polished illustration, high detail"
+    ),
 }
 
 
@@ -110,12 +117,16 @@ def build_img2img(image_name: str, width: int, height: int, prompt: str, negativ
 
 
 def build_feet_detail(image_name: str, width: int, height: int, prompt: str, negative: str,
-                      seed: int, steps: int, cfg: float, denoise: float, prefix: str) -> dict:
-    """局部脚部精修：裁下半部 80%x50% → 放大 1024 → 重绘 → 缩回 → 羽化贴回。"""
-    region_w = min(width, align8(width * 0.8))
-    region_h = min(height, align8(height * 0.5))
-    x = align8((width - region_w) / 2)
-    y = max(0, min(height - region_h, align8(height * 0.45)))
+                      seed: int, steps: int, cfg: float, denoise: float, prefix: str,
+                      zoom: float = 1.0) -> dict:
+    """局部精修：裁区域 → 放大 1024 → 重绘 → 缩回 → 羽化贴回。zoom 越小裁剪越紧、放大倍数越高。"""
+    scale = max(0.2, min(1.0, zoom))
+    region_w = min(width, align8(width * 0.8 * scale))
+    region_h = min(height, align8(height * 0.5 * scale))
+    base_cx = (0.1 + 0.8 / 2) * width
+    base_cy = (0.45 + 0.5 / 2) * height
+    x = max(0, min(width - region_w, align8(base_cx - region_w / 2)))
+    y = max(0, min(height - region_h, align8(base_cy - region_h / 2)))
     ratio = region_w / region_h
     tw, th = 1024, align8(1024 / ratio)
     if th > 1024:
@@ -140,6 +151,29 @@ def build_feet_detail(image_name: str, width: int, height: int, prompt: str, neg
         "13": {"class_type": "SaveImage", "inputs": {"images": ["12", 0], "filename_prefix": prefix}},
     })
     return wf
+
+
+def apply_lora(workflow: dict, lora: str, strength: float) -> dict:
+    """插入 LoraLoader 并改接 model/clip。"""
+    if not lora:
+        return workflow
+    workflow["20"] = {
+        "class_type": "LoraLoader",
+        "inputs": {
+            "model": ["4", 0],
+            "clip": ["5", 0],
+            "lora_name": lora,
+            "strength_model": strength,
+            "strength_clip": strength,
+        },
+    }
+    for key in ("7", "8"):
+        if key in workflow:
+            workflow[key]["inputs"]["clip"] = ["20", 1]
+    for key, node in workflow.items():
+        if node.get("class_type") == "KSampler":
+            node["inputs"]["model"] = ["20", 0]
+    return workflow
 
 
 def run_workflow(workflow: dict, out_dir: Path, out_name: str, timeout_s: int = 600) -> Path:
@@ -181,6 +215,9 @@ def main() -> int:
     ap.add_argument("--date", default=_dt.date.today().isoformat())
     ap.add_argument("--feet-detail", action="store_true", help="生成后再跑一次局部脚部精修")
     ap.add_argument("--feet-denoise", type=float, default=0.45)
+    ap.add_argument("--feet-zoom", type=float, default=1.0, help="精修范围：1.0=大范围，0.5=只修脚")
+    ap.add_argument("--lora", default="", help="LoRA 文件名，例如 25d_anima_v4.safetensors")
+    ap.add_argument("--lora-strength", type=float, default=0.4)
     args = ap.parse_args()
 
     prompt = Path(args.prompt_file).read_text(encoding="utf-8").strip() if args.prompt_file else args.prompt
@@ -199,6 +236,7 @@ def main() -> int:
     base_out = exp_dir / f"{args.tag}-seed{args.seed}.png"
     wf = build_img2img(name, args.width, args.height, prompt, negative, args.seed, args.steps, args.cfg,
                        args.denoise, f"experiments/{args.date}-{args.tag}/{args.tag}")
+    apply_lora(wf, args.lora, args.lora_strength)
     produced = run_workflow(wf, exp_dir, base_out.name)
     print("generated:", produced)
 
@@ -212,7 +250,9 @@ def main() -> int:
         feet_out = exp_dir / f"{args.tag}-seed{args.seed}-feetdetail.png"
         wf2 = build_feet_detail(name2, args.width, args.height, detail_prompt, detail_negative,
                                 args.seed, args.steps, args.cfg, args.feet_denoise,
-                                f"experiments/{args.date}-{args.tag}/{args.tag}-feet")
+                                f"experiments/{args.date}-{args.tag}/{args.tag}-feet",
+                                zoom=args.feet_zoom)
+        apply_lora(wf2, args.lora, args.lora_strength)
         print("feet detail:", run_workflow(wf2, exp_dir, feet_out.name))
 
     meta = {
