@@ -43,3 +43,7 @@ extraResources:
     to: runtime-plugins
   - from: icon.ico
     to: icon.ico
+  - from: detect-pose.py
+    to: detect-pose.py
+  - from: parsing
+    to: parsing

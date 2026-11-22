@@ -1107,6 +1107,47 @@ const detailWorkflow = require("./detail-workflow.cjs");
 
 // 局部精修：按区域裁切 → 放大重绘 → 缩回 → 羽化贴回原图。
 // 区域 / 部位由 payload.detailRegion、payload.detailPart 决定（renderer 传）。
+function resolvePythonForTools(config) {
+  const root = String(config?.comfyDir || "");
+  const candidates = [
+    config?.pythonExe,
+    root && path.join(root, "python_embeded", "python.exe"),
+    root && path.join(root, ".venv", "Scripts", "python.exe"),
+    root && path.resolve(root, "..", ".venv", "Scripts", "python.exe"),
+    root && path.resolve(root, "..", "..", ".venv", "Scripts", "python.exe"),
+    root && path.join(root, "venv", "Scripts", "python.exe"),
+    root && path.join(root, "python.exe"),
+  ].filter(Boolean);
+  return candidates.find((candidate) => fs.existsSync(candidate)) || "";
+}
+
+function detectPartRect(config, imagePath, part) {
+  const script = app.isPackaged
+    ? path.join(process.resourcesPath, "detect-pose.py")
+    : path.join(__dirname, "detect-pose.py");
+  if (!fs.existsSync(script)) return null;
+  const python = resolvePythonForTools(config);
+  if (!python) return null;
+  try {
+    const result = spawnSync(python, [script, imagePath, part], {
+      encoding: "utf8",
+      timeout: 90000,
+      windowsHide: true,
+    });
+    const lines = String(result.stdout || "").trim().split(/\r?\n/);
+    const last = lines[lines.length - 1] || "";
+    const parsed = JSON.parse(last);
+    if (!parsed?.ok) {
+      send("flow:progress", { stage: `Detect skipped: ${parsed?.reason || "unknown"}`, progress: 0.96 });
+      return null;
+    }
+    return { x: parsed.x, y: parsed.y, width: parsed.w, height: parsed.h, part: parsed.part, conf: parsed.conf };
+  } catch (error) {
+    send("flow:progress", { stage: `Detect skipped: ${error?.message || error}`, progress: 0.96 });
+    return null;
+  }
+}
+
 async function detailPartLocal(config, options) {
   const imageName = await uploadComfyImage(config, options.path);
   const built = detailWorkflow.buildDetailWorkflow({
@@ -1123,6 +1164,7 @@ async function detailPartLocal(config, options) {
     region: options.region || "bottom",
     part: options.part || "feet",
     zoom: Number(options.zoom) || 1,
+    rect: options.rect || null,
     filenamePrefix: "LumenDetail",
   });
   send("flow:progress", { stage: "Detail pass...", progress: 0.97 });
@@ -1193,6 +1235,14 @@ async function repairFeet(payload) {
   const seedValue = Number(payload.seed);
   const passes = Math.max(1, Math.min(2, Number(payload.detailPasses) || 1));
   const zoom = Math.max(0.2, Math.min(1, Number(payload.detailZoom) || 1));
+  const requestedRegion = String(payload.detailRegion || "bottom");
+  // auto：先用位姿模型定位脚/手，失败则回退到所选区域
+  let rect = null;
+  if (requestedRegion === "auto") {
+    send("flow:progress", { stage: "Detecting feet/hands...", progress: 0.96 });
+    rect = detectPartRect(config, imagePath, part);
+  }
+  const region = requestedRegion;
   const baseDenoise = Math.max(0.25, Math.min(0.6, Number(payload.detailDenoise) || 0.45));
   let source = imagePath;
   let image = null;
@@ -1203,9 +1253,10 @@ async function repairFeet(payload) {
       height: Math.max(256, Number(payload.height) || 1024),
       prompt,
       negative,
-      region: String(payload.detailRegion || "bottom"),
+      region,
       part,
       zoom,
+      rect,
       seed: Number.isFinite(seedValue) && seedValue >= 0 ? Math.floor(seedValue) : Math.floor(Math.random() * 2 ** 31),
       steps: Math.max(8, Math.min(40, Number(payload.steps) || 24)),
       cfg: Math.max(1, Math.min(10, Number(payload.cfg) || 4)),

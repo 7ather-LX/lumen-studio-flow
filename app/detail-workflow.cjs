@@ -38,7 +38,14 @@ function align8(value) {
   return Math.max(8, n);
 }
 
-function regionFor(mode, width, height, zoom = 1) {
+function regionFor(mode, width, height, zoom = 1, rect = null) {
+  if (rect && Number(rect.width) > 0 && Number(rect.height) > 0) {
+    const w = Math.min(width, align8(rect.width));
+    const h = Math.min(height, align8(rect.height));
+    const x = Math.max(0, Math.min(width - w, align8(rect.x)));
+    const y = Math.max(0, Math.min(height - h, align8(rect.y)));
+    return { x, y, width: w, height: h };
+  }
   const preset = REGION_PRESETS[mode] || REGION_PRESETS.bottom;
   const scale = Math.max(0.2, Math.min(1, Number(zoom) || 1));
   let w = Math.min(width, align8(width * preset.w * scale));
@@ -77,9 +84,10 @@ function buildDetailWorkflow(options) {
     region = "bottom",
     part = "feet",
     zoom = 1,
+    rect = null,
     filenamePrefix = "LumenDetail",
   } = options;
-  const area = regionFor(region, width, height, zoom);
+  const area = regionFor(region, width, height, zoom, rect);
   const target = fitTarget(area);
   const feather = Math.max(24, align8(Math.min(area.width, area.height) * 0.14));
   const partPrompt = PART_PROMPTS[part] || PART_PROMPTS.feet;
