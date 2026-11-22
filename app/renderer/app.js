@@ -1162,6 +1162,8 @@
         denoise,
         referenceMode,
         autoCorrect: Boolean(state.initImage) && $("#autoRepair")?.checked !== false,
+        detailPart: $("#detailPart")?.value || "auto",
+        detailRegion: $("#detailRegion")?.value || "bottom",
         repairNote: $("#repairNote")?.value.trim() || "",
         refGuidance: Number($("#adapterStrength")?.value || 4.5),
         refStrength: 1,
