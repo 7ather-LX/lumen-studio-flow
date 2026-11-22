@@ -33,6 +33,12 @@ SERVER = "http://127.0.0.1:8188"
 
 STYLE_TAGS = {
     "none": "",
+    "2.5d-thick-soft": (
+        "2.5D, semi-realistic anime, 3D anime figure render, pseudo-3D shading, soft global illumination, "
+        "ambient occlusion, subsurface scattering, glossy specular skin, translucent skin, warm rim light, "
+        "cool rim light, soft ambient light, volumetric light, cinematic bokeh, depth of field, "
+        "smooth surfaces, physically based rendering look, high detail"
+    ),
     "2.5d-thick": (
         "2.5D, semi-realistic anime, 3D anime figure render, pseudo-3D shading, soft global illumination, "
         "ambient occlusion, subsurface scattering, glossy specular skin, volumetric light, rim light, "

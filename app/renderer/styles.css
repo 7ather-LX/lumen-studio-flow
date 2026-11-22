@@ -1583,3 +1583,22 @@ html, body { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: aut
 .prompt-item .prompt-head button { font-size: 9px; padding: 3px 5px; }
 .reference-cancel { justify-self: start; color: var(--dim); font-size: 10px; padding: 2px 0; }
 .reference-cancel:hover { color: #ef7f7f; }
+
+/* 面板折叠（默认收起次要区块，可手动展开） */
+.panel.collapsed > *:not(.panel-head) {
+  display: none;
+}
+.panel.collapsed .panel-head {
+  margin-bottom: 0;
+  align-items: center;
+}
+.panel-head .collapse-toggle {
+  flex: 0 0 auto;
+  align-self: center;
+  font-size: 11px;
+  padding: 4px 10px;
+  opacity: 0.75;
+}
+.panel-head .collapse-toggle:hover {
+  opacity: 1;
+}

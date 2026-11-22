@@ -1,4 +1,4 @@
-# Lumen Studio Flow 交接包 0.2.42
+# Lumen Studio Flow 交接包 0.2.43
 
 先读 `HANDOFF_CURRENT.md`，再读 `WORKSPACE_MAP.md`。
 
@@ -13,7 +13,7 @@
 - `thick-final-contact.png`：2.5D 厚涂 0.50 / 0.60 / 0.70 对比
 - `style-green-final-contact.png`：绿色角色全画风预览
 - `amiya-base-compare.png`：Anima 基础阿米娅白丝/黑丝
-- `RELEASE_NOTES_0.2.42.md`：当前版本说明
+- `RELEASE_NOTES_0.2.43.md`：当前版本说明
 
 ## 新对话
 
@@ -23,7 +23,7 @@
 继续 Lumen Studio Flow。
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md。
-当前版本 0.2.42，先确认项目状态，再继续。
+当前版本 0.2.43，先确认项目状态，再继续。
 ```
 
 本交接不依赖 Hindsight 插件。

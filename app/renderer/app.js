@@ -99,9 +99,9 @@
     "2.5d-thick-soft": {
       label: "2.5D 柔光",
       artists: [],
-      tags: "2.5D, semi-realistic anime, 3D anime figure render, pseudo-3D shading, soft global illumination, ambient occlusion, subsurface scattering, glossy specular skin, translucent skin, warm rim light, cool rim light, soft ambient light, volumetric light, cinematic bokeh, depth of field, smooth surfaces, physically based rendering look, high detail",
-      hint: "2.5D 柔光：同样伪 3D，但光线更柔、散景更重，接近 reference-2.5d.png 那种夜景色调",
-      negative: "oil painting, brush strokes, canvas texture, impasto, flat shading, cel shading, hard outlines, lineart only, flat lighting",
+      tags: "2.5D, semi-realistic anime, 3D anime figure render, pseudo-3D shading, soft diffuse lighting, gentle rim light, soft ambient light, atmospheric haze, muted colors, low contrast, pastel tone, filmic color grading, soft skin shading, subsurface scattering, mild specular highlights, natural skin texture, shallow depth of field, cinematic bokeh, smooth surfaces, high detail",
+      hint: "2.5D 柔光：低对比 + 柔漫射光 + 含蓄高光，接近 pool 参考图；建议 CFG 4.0（3.5 偏灰、4.5 偏塑料），重绘 0.80–0.85",
+      negative: "oversaturated, neon glow, plastic skin, latex, harsh highlights, high contrast, glossy plastic, harsh shadows, cel shading, flat shading, lineart only, oil painting, brush strokes",
       lora: "",
       loraStrength: 0,
     },
@@ -717,6 +717,28 @@
     $("#progressBar").style.width = `${percent}%`;
     $("#progressPercent").textContent = `${percent}%`;
     $("#progressStage").textContent = stage || "生成中";
+  }
+
+  function setupCollapsiblePanels() {
+    document.querySelectorAll("[data-collapse]").forEach((panel) => {
+      const head = panel.querySelector(".panel-head");
+      if (!head || head.querySelector(".collapse-toggle")) return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "mini-button collapse-toggle";
+      if (panel.dataset.collapse === "closed") panel.classList.add("collapsed");
+      const sync = () => {
+        button.textContent = panel.classList.contains("collapsed") ? "展开" : "收起";
+        button.setAttribute("aria-expanded", String(!panel.classList.contains("collapsed")));
+      };
+      sync();
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        panel.classList.toggle("collapsed");
+        sync();
+      });
+      head.appendChild(button);
+    });
   }
 
   function applyUiScale(value) {
@@ -2535,6 +2557,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     void loadStyleLoras();
     applyAspect("1:1");
+    setupCollapsiblePanels();
     applyStyle("anime-cel");
     updateAnimaPreview();
     bridge?.onLlmToken?.(({ token }) => {
