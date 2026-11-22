@@ -99,9 +99,9 @@
     "2.5d-thick-soft": {
       label: "2.5D 柔光",
       artists: [],
-      tags: "2.5D, semi-realistic anime, 3D anime figure render, pseudo-3D shading, soft global illumination, ambient occlusion, subsurface scattering, diffuse reflection, soft broad highlights, soft-edged specular, gentle skin sheen, semi-matte skin, smooth diffuse shading, even skin lighting, warm rim light, cool rim light, soft ambient light, cinematic bokeh, depth of field, smooth surfaces, physically based rendering look, high detail",
-      hint: "2.5D 柔光：宽而软的高光（不是镜面点光，也不是完全没高光）。建议 CFG 4.5、重绘 0.80–0.85",
-      negative: "mirror reflection, sharp specular spot, hard highlight edge, wet plastic, glossy plastic, latex, blown highlights, overexposed highlights, glow bloom, plastic sheen, cel shading, lineart only",
+      tags: "2.5D, semi-realistic anime, pseudo-3D shading, anime illustration rendering, soft global illumination, ambient occlusion, subsurface scattering, diffuse reflection, soft broad highlights, soft-edged specular, gentle skin sheen, semi-matte skin, smooth diffuse shading, even skin lighting, detailed individual hair strands, silky hair, natural hair flow, wispy strands, layered hair, matte hair with gentle sheen, hair strands catching soft light, anime hair shading, warm rim light, cool rim light, soft ambient light, cinematic bokeh, depth of field, high detail",
+      hint: "2.5D 柔光：身体漫反射 + 头发去塑料感（发丝/柔和光泽）。建议 CFG 4.5、重绘 0.80–0.85",
+      negative: "mirror reflection, sharp specular spot, hard highlight edge, wet plastic, glossy plastic, latex, blown highlights, overexposed highlights, glow bloom, plastic sheen, plastic hair, sculpted hair, helmet hair, hard hair highlights, glossy hair, metal hair, bright white highlight streak on hair, hard specular band on hair, clumped hair, hair blob, solid hair mass, resin hair, toy hair, cel shading, lineart only",
       lora: "",
       loraStrength: 0,
     },

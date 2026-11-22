@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-22（23:00 发布 0.2.45）  
-当前版本：`0.2.45`  
+更新时间：2026-11-23（00:05 发布 0.2.46）  
+当前版本：`0.2.46`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.45
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.46
 
 ---
 
@@ -28,7 +28,7 @@ F:\DSH WORKSPACE
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md
 以及 F:\DSH WORKSPACE\lumen-flow\WORK_RULES.md（工作规范，必须遵守）。
-当前版本 0.2.45，先确认项目状态，再继续。
+当前版本 0.2.46，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -47,9 +47,9 @@ WORK_RULES.md
 
 ### 0.4 新对话先确认
 
-1. 源码版本是否为 `0.2.45`
-2. 本机安装是否为 `0.2.45`
-3. GitHub latest 是否为 `v0.2.45`
+1. 源码版本是否为 `0.2.46`
+2. 本机安装是否为 `0.2.46`
+3. GitHub latest 是否为 `v0.2.46`
 4. `references/library/library.json` 是否仍有 191 张参考图
 5. 自定义分类“小穴”是否仍有 29 张
 6. `app/renderer/characters.js` 是否仍包含 `yukikaze (azur lane)`
@@ -197,16 +197,16 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.45
-本机安装：0.2.45
-GitHub latest：v0.2.45
+源码：0.2.46
+本机安装：0.2.46
+GitHub latest：v0.2.46
 ```
 
-Release 附件（v0.2.45 共 11 个）：
+Release 附件（v0.2.46 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.45.exe
-Lumen-Studio-Flow-0.2.45.exe
+Lumen-Studio-Flow-Setup-0.2.46.exe
+Lumen-Studio-Flow-0.2.46.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
@@ -215,13 +215,13 @@ OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
 import_pose_gallery.py
 README.md
-RELEASE_NOTES_0.2.45.md
+RELEASE_NOTES_0.2.46.md
 ```
 
 说明：
 
 - `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
-- 旧版本已删除，只保留 v0.2.45
+- 旧版本已删除，只保留 v0.2.46
 - `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 / 0.2.37 未单独产出数据包**（角色数据无变化）
 
 ---
@@ -644,6 +644,46 @@ H4  diffuse reflection
 
 ---
 
+### 4.16 0.2.46：柔光的头发去塑料感
+
+用户反馈：身体已合格，但**头发仍像 3D 手办**（成块 + 贯穿式硬高光带）。
+
+根因：柔光风格词里带 `3D anime figure render`，它会把头发当建模体渲染。
+
+迭代：
+
+```text
+H4  原始                     刘海一条贯穿硬高光，头发成块
+H5  + 发丝词                发丝分得开，高光仍偏硬
+H6  - 3D 手办词
+    + anime illustration rendering
+    + 发丝/柔光词
+    + 头发专用负面           ← 采用：硬高光带基本消失，发丝可见
+```
+
+采用的正向词：
+
+```text
+anime illustration rendering
+detailed individual hair strands, silky hair, natural hair flow, wispy strands, layered hair,
+matte hair with gentle sheen, hair strands catching soft light, anime hair shading
+```
+
+采用的头发负面：
+
+```text
+plastic hair, sculpted hair, helmet hair, hard hair highlights, glossy hair, metal hair,
+bright white highlight streak on hair, hard specular band on hair,
+clumped hair, hair blob, solid hair mass, resin hair, toy hair
+```
+
+注意：`3D anime figure render` 从**柔光**里移除了，但仍保留在**2.5D 厚涂**里——
+厚涂的定位就是 3D 建模质感，柔光要的是插画感。
+
+联系表：`contact-hair-h6.png`（参考 / H4 / H5 / H6）
+
+---
+
 ## 5. 画风定义
 
 ```text
@@ -712,7 +752,7 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.44 安装包与 blockmap
+- 旧版 0.1.x / 0.2.0–0.2.45 安装包与 blockmap
 - 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
@@ -723,7 +763,7 @@ _archive\old-release-notes-2026-11-22
 ```text
 character-data-v0.2.35.zip（最新；0.2.36 起未单独产出）
 loras-share-v0.2.6.zip
-release\ 当前版本（0.2.45 Setup / portable / blockmap + latest.yml + win-unpacked）
+release\ 当前版本（0.2.46 Setup / portable / blockmap + latest.yml + win-unpacked）
 current style verification images
 ```
 
@@ -855,9 +895,9 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.45`
+1. 当前版本？→ `0.2.46`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.45`
+3. 最新 Release？→ `v0.2.46`
 4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
 5. 2.5D 厚涂怎么复刻旧对话结果？→ 2.5D 厚涂 + 参考图 + 自定义档 32 步 / CFG4.5 / 0.88 / seed 1601600，关自动画风
 6. 脚趾怎么修？→ 局部精修（勾“自动修正足部/手部细节”），可选部位（脚/手/脚+手）与区域（下半/中部/上半/左/右）
