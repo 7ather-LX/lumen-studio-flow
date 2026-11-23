@@ -944,6 +944,14 @@ async function setHiddenFor(names, hidden) {
     if (!bridge) return;
     try {
       const info = await bridge.upscaleInfo();
+      const autoEngine = $("#autoUpscaleEngine");
+      if (autoEngine && info?.models?.length && autoEngine.options.length <= 1) {
+        autoEngine.innerHTML = [
+          '<option value="">自动（优先 AI 模型）</option>',
+          ...info.models.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`),
+          '<option value="lanczos">Lanczos（快速）</option>',
+        ].join("");
+      }
       const select = $("#upscaleEngine");
       if (select && info?.models?.length) {
         const current = select.value && select.value !== "lanczos" ? select.value : "";
@@ -1289,6 +1297,10 @@ async function setHiddenFor(names, hidden) {
         customWorkflow: state.customWorkflow,
         autoUpscale: Boolean($("#autoUpscale")?.checked),
         upscaleFactor: Number($("#autoUpscaleFactor")?.value || 2),
+        upscaleModel: (() => {
+          const value = String($("#autoUpscaleEngine")?.value || "");
+          return value === "lanczos" ? "" : value;
+        })(),
       });
       if (res?.images?.length) {
         renderResults(res.images);

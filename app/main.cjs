@@ -1012,7 +1012,7 @@ async function runComfy(payload) {
   }
   if (payload.autoUpscale && images.length) {
     const factor = Math.max(1, Math.min(4, Number(payload.upscaleFactor) || 2));
-    const model = String(payload.upscaleModel || "");
+    const model = String(payload.upscaleModel || "") || pickBestUpscaleModel(config);
     for (let index = 0; index < images.length; index += 1) {
       try {
         send("flow:progress", {
@@ -1593,6 +1593,12 @@ function listUpscaleModels(config) {
   } catch {
     return [];
   }
+}
+
+function pickBestUpscaleModel(config) {
+  const models = listUpscaleModels(config);
+  if (!models.length) return "";
+  return models.find((name) => /anime/i.test(name)) || models.find((name) => /x4/i.test(name)) || models[0];
 }
 
 function buildUpscaleWorkflow({ imageName, width, height, factor, model, filenamePrefix }) {
