@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-23（00:40 发布 0.2.47）  
-当前版本：`0.2.47`  
+更新时间：2026-11-23（12:20 发布 0.2.48）  
+当前版本：`0.2.48`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.47
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.48
 
 ---
 
@@ -28,7 +28,7 @@ F:\DSH WORKSPACE
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md
 以及 F:\DSH WORKSPACE\lumen-flow\WORK_RULES.md（工作规范，必须遵守）。
-当前版本 0.2.47，先确认项目状态，再继续。
+当前版本 0.2.48，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -47,9 +47,9 @@ WORK_RULES.md
 
 ### 0.4 新对话先确认
 
-1. 源码版本是否为 `0.2.47`
-2. 本机安装是否为 `0.2.47`
-3. GitHub latest 是否为 `v0.2.47`
+1. 源码版本是否为 `0.2.48`
+2. 本机安装是否为 `0.2.48`
+3. GitHub latest 是否为 `v0.2.48`
 4. `references/library/library.json` 是否仍有 191 张参考图
 5. 自定义分类“小穴”是否仍有 29 张
 6. `app/renderer/characters.js` 是否仍包含 `yukikaze (azur lane)`
@@ -197,16 +197,16 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.47
-本机安装：0.2.47
-GitHub latest：v0.2.47
+源码：0.2.48
+本机安装：0.2.48
+GitHub latest：v0.2.48
 ```
 
-Release 附件（v0.2.47 共 11 个）：
+Release 附件（v0.2.48 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.47.exe
-Lumen-Studio-Flow-0.2.47.exe
+Lumen-Studio-Flow-Setup-0.2.48.exe
+Lumen-Studio-Flow-0.2.48.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
@@ -215,13 +215,13 @@ OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
 import_pose_gallery.py
 README.md
-RELEASE_NOTES_0.2.47.md
+RELEASE_NOTES_0.2.48.md
 ```
 
 说明：
 
 - `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
-- 旧版本已删除，只保留 v0.2.47
+- 旧版本已删除，只保留 v0.2.48
 - `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 / 0.2.37 未单独产出数据包**（角色数据无变化）
 
 ---
@@ -730,6 +730,56 @@ UI 精修区域新增「自动（检测脚/手位置）」
 
 ---
 
+### 4.18 0.2.48：画风演示图用错角色（回归修复）
+
+用户指出：鼠标悬停画风会显示演示图，为了避免用他人角色引起纠纷，演示图统一用原创角色
+（绿军装 / 绿贝雷 + 马蹄徽 / 棕长发 / 绿眼）。但两个文件是错的。
+
+```text
+2.5d-thick.png        目白阿尔丹（我调伪 3D 时换上去的实验输出，忘了换回）
+2.5d-thick-soft.png   目白阿尔丹（同上）
+其余 22 张             都是原创角色，正常
+```
+
+修复方式（用用户给的两段温泉提示词，只换角色）：
+
+```text
+1girl, solo, original character, horse girl,
+long dark brown hair, green eyes, green beret with gold horseshoe emblem,
+horse ears, horse tail, medium breasts,
+from behind, looking over shoulder, looking at viewer, hand on own shoulder,
+bathing, hot spring, outdoor bath, wet skin, wet hair, water droplets,
+upper body, close-up, three-quarter view, wooden background, soft warm lighting, cinematic
+```
+
+两个风格各自追加**软件里当前的真实标签**（从 app.js 直接取，保证演示图与出图一致）：
+
+```text
+2.5d-thick       伪 3D：3D anime figure render / pseudo-3D shading / GI / AO / SSS /
+                 glossy specular skin / volumetric light / DOF
+2.5d-thick-soft  柔光：anime illustration rendering / diffuse reflection /
+                 soft broad highlights / soft-edged specular / 发丝三连 / matte hair
+```
+
+顺带补的两个工具改动：
+
+```text
+comfy_experiment.py 支持 --ref 留空走 text2img（新增 build_txt2img + EmptyLatentImage）
+```
+
+产出：
+
+```text
+experiments\2026-11-23\oc-thick-seed20261123.png   2.5D 厚涂预览源图
+experiments\2026-11-23\oc-soft-seed20261123.png    2.5D 柔光预览源图
+contact-oc-previews.png                            原始角色 / 厚涂 / 柔光 三栏对比
+contact-all-previews.png                           24 张预览总览（确认只有两张错）
+```
+
+预览统一缩到 640 宽后写入 `app\renderer\style-previews\`。
+
+---
+
 ## 5. 画风定义
 
 ```text
@@ -798,7 +848,7 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.46 安装包与 blockmap
+- 旧版 0.1.x / 0.2.0–0.2.47 安装包与 blockmap
 - 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
@@ -809,7 +859,7 @@ _archive\old-release-notes-2026-11-22
 ```text
 character-data-v0.2.35.zip（最新；0.2.36 起未单独产出）
 loras-share-v0.2.6.zip
-release\ 当前版本（0.2.47 Setup / portable / blockmap + latest.yml + win-unpacked）
+release\ 当前版本（0.2.48 Setup / portable / blockmap + latest.yml + win-unpacked）
 current style verification images
 ```
 
@@ -941,9 +991,9 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.47`
+1. 当前版本？→ `0.2.48`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.47`
+3. 最新 Release？→ `v0.2.48`
 4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
 5. 2.5D 厚涂怎么复刻旧对话结果？→ 2.5D 厚涂 + 参考图 + 自定义档 32 步 / CFG4.5 / 0.88 / seed 1601600，关自动画风
 6. 脚趾怎么修？→ 局部精修（勾“自动修正足部/手部细节”），可选部位（脚/手/脚+手）与区域（下半/中部/上半/左/右）

@@ -105,6 +105,22 @@ def base_nodes(prompt: str, negative: str, seed: int, steps: int, cfg: float):
     }
 
 
+def build_txt2img(width: int, height: int, prompt: str, negative: str,
+                  seed: int, steps: int, cfg: float, prefix: str) -> dict:
+    wf = base_nodes(prompt, negative, seed, steps, cfg)
+    wf.pop("_seed"), wf.pop("_steps"), wf.pop("_cfg")
+    wf.update({
+        "9": {"class_type": "EmptyLatentImage", "inputs": {"width": width, "height": height, "batch_size": 1}},
+        "10": {"class_type": "KSampler", "inputs": {
+            "model": ["4", 0], "positive": ["7", 0], "negative": ["8", 0], "latent_image": ["9", 0],
+            "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": "er_sde", "scheduler": "simple",
+            "denoise": 1.0}},
+        "11": {"class_type": "VAEDecode", "inputs": {"samples": ["10", 0], "vae": ["6", 0]}},
+        "12": {"class_type": "SaveImage", "inputs": {"images": ["11", 0], "filename_prefix": prefix}},
+    })
+    return wf
+
+
 def build_img2img(image_name: str, width: int, height: int, prompt: str, negative: str,
                   seed: int, steps: int, cfg: float, denoise: float, prefix: str) -> dict:
     wf = base_nodes(prompt, negative, seed, steps, cfg)
@@ -206,7 +222,7 @@ def run_workflow(workflow: dict, out_dir: Path, out_name: str, timeout_s: int = 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ref", required=True, help="参考图路径（img2img）")
+    ap.add_argument("--ref", default="", help="参考图路径（img2img）；留空则纯文本生成")
     ap.add_argument("--prompt", default="")
     ap.add_argument("--prompt-file")
     ap.add_argument("--negative", default="")
@@ -237,12 +253,17 @@ def main() -> int:
     exp_dir = LUMEN / "training" / "output" / "_experiments" / args.date
     exp_dir.mkdir(parents=True, exist_ok=True)
 
-    ref = Path(args.ref)
-    name = upload_image(ref)
+    if args.ref:
+        ref = Path(args.ref)
+        name = upload_image(ref)
 
     base_out = exp_dir / f"{args.tag}-seed{args.seed}.png"
-    wf = build_img2img(name, args.width, args.height, prompt, negative, args.seed, args.steps, args.cfg,
-                       args.denoise, f"experiments/{args.date}-{args.tag}/{args.tag}")
+    if args.ref:
+        wf = build_img2img(name, args.width, args.height, prompt, negative, args.seed, args.steps, args.cfg,
+                           args.denoise, f"experiments/{args.date}-{args.tag}/{args.tag}")
+    else:
+        wf = build_txt2img(args.width, args.height, prompt, negative, args.seed, args.steps, args.cfg,
+                           f"experiments/{args.date}-{args.tag}/{args.tag}")
     apply_lora(wf, args.lora, args.lora_strength)
     produced = run_workflow(wf, exp_dir, base_out.name)
     print("generated:", produced)
@@ -272,7 +293,7 @@ def main() -> int:
         "seed": args.seed,
         "width": args.width,
         "height": args.height,
-        "reference": str(ref),
+        "reference": str(ref) if args.ref else None,
         "feet_detail": args.feet_detail,
         "feet_denoise": args.feet_denoise if args.feet_detail else None,
         "prompt": prompt,
