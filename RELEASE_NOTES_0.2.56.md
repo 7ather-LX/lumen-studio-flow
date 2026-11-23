@@ -1,26 +1,27 @@
-# Lumen Studio Flow v0.2.55
+# Lumen Studio Flow v0.2.56
 
 完全免费、为爱发电的本地 AI 绘画工作台。Electron + ComfyUI + Anima，本地优先，不上传素材。
 
-## 修复：高清化后丢失生成参数
+## 画风演示图：取消颜色量化，修正偏色
 
-现象：高清化出来的作品，详情页里提示词、步数、CFG、种子、模型全是空。
+之前为了压体积把预览图做了 256 色量化，副作用是**颜色被压偏**——2.5D 柔光那张的绿眼被压成了青蓝。
 
-原因：高清化时写的新 json 只记录了放大信息，没有继承原图的生成元数据。
-
-修复：
+现在：
 
 ```text
-1. 高清化写 json 时先读取原图同名 json，整份继承
-   （prompt / negativePrompt / seed / steps / cfg / model / lora …）
-   再叠加放大字段：upscaled / source / factor / engine / sourceWidth / sourceHeight / width / height
-2. 详情页在放大作品上额外显示：
-   模式行：高清化 2× · AI 模型
-   尺寸行：832 × 1216 → 1664 × 2432
+人物类 18 张重新导出：不量化、RGB 直出，竖图 720 宽、横图 1000 宽
+风景类 6 张保持原图不动
+总体积 6.8MB → 17.3MB（换回准确颜色）
 ```
 
-注意：**在此之前已经高清化过的旧文件**，其 json 已经被覆盖，参数无法追回；
-重新高清化一次即可带上完整信息（原图仍在的话）。
+同时确认 2.5D 两张演示图都是「3D 手办 + 柔光 / 3D 建模」方向：
+
+```text
+2.5D 厚涂   平整、哑光、建模感强
+2.5D 柔光   体积光 + 轮廓光 + 湿皮肤反光，绿眼肤色准确
+```
+
+两者都是原创角色：棕长发、绿眼、不戴帽、无马耳。
 
 ## 安装
 
@@ -28,7 +29,7 @@
 
 离线用户可使用 `build_offline_bundle.ps1` 生成独立完整运行环境包，安装后在设置中指向解压目录。
 
-1. 运行 `Lumen-Studio-Flow-Setup-0.2.55.exe`
+1. 运行 `Lumen-Studio-Flow-Setup-0.2.56.exe`
 2. 安装会创建桌面快捷方式
 3. 运行 `bootstrap_models.ps1` 自动拉取 Anima Base / Qwen3 / VAE
 4. 将 `Anima-2.9B-preview-v1.safetensors` 放入 `models/diffusion_models`
