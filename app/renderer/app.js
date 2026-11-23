@@ -940,36 +940,48 @@ async function setHiddenFor(names, hidden) {
     void loadGallery();
   }
 
+let upscaleEngineFilled = false;
+
+  function fillUpscaleEngines(info) {
+    if (!info?.models?.length) return;
+    const labelFor = (name) => {
+      if (/anime/i.test(name)) return `动漫专用超分（${name}）`;
+      if (/x2/i.test(name)) return `通用超分 2x（${name}）`;
+      if (/x4/i.test(name)) return `通用超分 4x（${name}）`;
+      return `AI 超分（${name}）`;
+    };
+    const preferred = info.models.find((name) => /anime/i.test(name)) || info.models[0];
+    const select = $("#upscaleEngine");
+    if (select && (!upscaleEngineFilled || select.options.length <= 1)) {
+      select.innerHTML = [
+        ...info.models.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(labelFor(name))}</option>`),
+        '<option value="lanczos">Lanczos 快速（仅像素放大，细节不增强）</option>',
+      ].join("");
+      select.value = preferred || "lanczos";
+    }
+    const autoEngine = $("#autoUpscaleEngine");
+    if (autoEngine && autoEngine.options.length <= 1) {
+      autoEngine.innerHTML = [
+        '<option value="">自动（优先 AI 模型）</option>',
+        ...info.models.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`),
+        '<option value="lanczos">Lanczos（快速）</option>',
+      ].join("");
+    }
+    upscaleEngineFilled = true;
+  }
+
+  async function initUpscaleEngines() {
+    if (!bridge) return;
+    try {
+      fillUpscaleEngines(await bridge.upscaleInfo());
+    } catch {}
+  }
+
   async function loadUpscaleSources() {
     if (!bridge) return;
     try {
       const info = await bridge.upscaleInfo();
-      const autoEngine = $("#autoUpscaleEngine");
-      if (autoEngine && info?.models?.length && autoEngine.options.length <= 1) {
-        autoEngine.innerHTML = [
-          '<option value="">自动（优先 AI 模型）</option>',
-          ...info.models.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`),
-          '<option value="lanczos">Lanczos（快速）</option>',
-        ].join("");
-      }
-      const select = $("#upscaleEngine");
-      if (select && info?.models?.length) {
-        const current = select.value && select.value !== "lanczos" ? select.value : "";
-        const labelFor = (name) => {
-          if (/anime/i.test(name)) return `动漫专用超分（${name}）`;
-          if (/x2/i.test(name)) return `通用超分 2x（${name}）`;
-          if (/x4/i.test(name)) return `通用超分 4x（${name}）`;
-          return `AI 超分（${name}）`;
-        };
-        const preferred = info.models.find((name) => /anime/i.test(name)) || info.models[0];
-        select.innerHTML = [
-          ...info.models.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(labelFor(name))}</option>`),
-          '<option value="lanczos">Lanczos 快速（仅像素放大，细节不增强）</option>',
-        ].join("");
-        select.value = current && info.models.includes(current)
-          ? current
-          : (preferred || "lanczos");
-      }
+      fillUpscaleEngines(info);
       const images = await bridge.listOutputs({ mode: "visible" });
       const grid = $("#upscaleSources");
       if (!grid) return;
@@ -994,6 +1006,49 @@ async function setHiddenFor(names, hidden) {
     } catch (error) {
       toast(error?.message || String(error));
     }
+  }
+
+function upscaleSettings() {
+    const factor = Number($("#upscaleFactor")?.value || 2);
+    const engine = String($("#upscaleEngine")?.value || "lanczos");
+    return { factor, model: engine === "lanczos" ? "" : engine };
+  }
+
+  async function upscaleWorks(names, options = {}) {
+    if (!bridge || !names.length) return [];
+    const { factor, model } = options.factor ? options : upscaleSettings();
+    const results = [];
+    const total = names.length;
+    for (let index = 0; index < total; index += 1) {
+      const name = names[index];
+      try {
+        state.upscaleStatus = `高清化 ${index + 1}/${total}：${name}`;
+        const node = $("#upscaleStatus");
+        if (node) node.textContent = state.upscaleStatus;
+        const result = await bridge.upscale({ name, factor, model });
+        // 从「隐藏作品」页发起时，新生成的高清副本也保持隐藏
+        if (state.hiddenMode === "hidden" && result?.name) {
+          try { await bridge.hiddenSet({ names: [result.name], hidden: true }); } catch {}
+        }
+        results.push(result);
+      } catch (error) {
+        toast(`${name} 高清化失败：${error?.message || error}`);
+      }
+    }
+    if (results.length) {
+      state.upscaleResult = results[results.length - 1];
+      const img = $("#upscaleResultImage");
+      const info = $("#upscaleResultInfo");
+      const last = results[results.length - 1];
+      if (img) img.src = last.url;
+      if (info) {
+        info.textContent = `${last.name} · ${last.sourceWidth}x${last.sourceHeight} → ${last.width}x${last.height} · ${last.engine === "lanczos" ? "Lanczos" : "AI 模型"}`;
+      }
+      $("#upscaleResult")?.classList.remove("hidden");
+      toast(`高清化完成，共 ${results.length} 张（原图保留）。`);
+      await loadGallery();
+    }
+    return results;
   }
 
   async function runUpscale() {
@@ -2309,6 +2364,19 @@ async function setHiddenFor(names, hidden) {
     $("#refreshGallery").addEventListener("click", () => void loadGallery());
     $("#galleryModeVisible")?.addEventListener("click", () => applyGalleryMode("visible"));
     $("#galleryModeHidden")?.addEventListener("click", () => applyGalleryMode("hidden"));
+    $("#galleryBatchUpscale")?.addEventListener("click", async () => {
+      const names = [...state.selectedPaths].map((item) => item.split(/[\\/]/).pop()).filter(Boolean);
+      if (!names.length) { toast("先勾选要高清化的作品。"); return; }
+      const label = state.hiddenMode === "hidden" ? "隐藏作品" : "作品";
+      toast(`开始批量高清化 ${names.length} 张${label}（原图保留）…`);
+      await upscaleWorks(names);
+    });
+    $("#imageDetailUpscale")?.addEventListener("click", async () => {
+      const image = state.detailImage;
+      if (!image) return;
+      $("#imageDetailModal").classList.add("hidden");
+      await upscaleWorks([image.name]);
+    });
     $("#galleryHideSelected")?.addEventListener("click", () => {
       const names = [...state.selectedPaths].map((item) => item.split(/[\\/]/).pop()).filter(Boolean);
       if (!names.length) { toast("先勾选要隐藏的作品。"); return; }
@@ -2732,6 +2800,7 @@ async function setHiddenFor(names, hidden) {
     void loadStyleLoras();
     applyAspect("1:1");
     setupCollapsiblePanels();
+    void initUpscaleEngines();
     applyStyle("anime-cel");
     updateAnimaPreview();
     bridge?.onLlmToken?.(({ token }) => {
