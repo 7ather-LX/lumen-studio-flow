@@ -323,6 +323,12 @@ GitHub latest             v0.2.55
 
 - 发布顺序：先建新 release 并验证附件，再删上一个 release，更新链路不断档
 - GitHub 上只保留最新一个 release；tag 保留历史
+- **源码也要同步**：`git push origin main --force` + `git push origin --tags`
+  （本地历史与远端旧快照是两套历史，首次需要 force；之后常规 push 即可）
+  验收：`gh api repos/7ather-LX/lumen-studio-flow/contents/app/package.json?ref=main`
+  的 version 必须等于当前版本，否则视为没更新完
+- 只发 release 不推源码 = 版本没更新完（2026-11-23 用户明确提醒过）
+
 - `character-data` 最新产出仍是 `v0.2.35`，0.2.36 / 0.2.37 未单独产出数据包（角色数据无变化）
 
 ---
