@@ -1684,6 +1684,20 @@
     )].join("\n");
   }
 
+  function isDegenerateAnswer(text) {
+    let body = String(text || "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+    const first = body.indexOf("{");
+    const last = body.lastIndexOf("}");
+    if (first >= 0 && last > first) body = body.slice(first, last + 1);
+    try {
+      const data = JSON.parse(body);
+      const keys = ["character", "work", "style", "artist", "prompt", "negative_prompt", "notes"];
+      return keys.every((key) => !String(data?.[key] ?? "").trim());
+    } catch {
+      return false;
+    }
+  }
+
   async function sendAiChat() {
     const input = $("#aiChatInput");
     const text = input.value.trim();
@@ -1701,10 +1715,22 @@
       const systemContent = referenceContext
         ? `${AI_SYSTEM_PROMPT}\n\nREFERENCE_LIBRARY (use these exact tags when relevant):\n${referenceContext}`
         : AI_SYSTEM_PROMPT;
-      const res = await bridge.llmChat({
-        messages: [{ role: "system", content: systemContent }, ...state.aiMessages].slice(-14),
-      });
-      const finalText = res?.content || state.aiDraft || "没有返回内容。";
+      // 只发送有内容的轮次：末尾的空 assistant 占位会被模型当成续写起点，导致字段被挖空
+      const history = state.aiMessages.filter((msg) => String(msg.content || "").trim());
+      const buildMessages = (extra) => [
+        { role: "system", content: systemContent },
+        ...history,
+        ...(extra ? [extra] : []),
+      ].slice(-14);
+      let res = await bridge.llmChat({ messages: buildMessages(null) });
+      let finalText = res?.content || state.aiDraft || "没有返回内容。";
+      if (isDegenerateAnswer(finalText)) {
+        $("#aiChatStatus").textContent = "输出为空字段，重试一次…";
+        res = await bridge.llmChat({
+          messages: buildMessages({ role: "user", content: "上一次输出所有字段都是空的。请按 JSON 结构重新完整填写，不要留空字段、不要解释。" }),
+        });
+        if (res?.content) finalText = res.content;
+      }
       state.aiLastAnswer = finalText;
       const last = state.aiMessages[state.aiMessages.length - 1];
       if (last?.role === "assistant") last.content = finalText;

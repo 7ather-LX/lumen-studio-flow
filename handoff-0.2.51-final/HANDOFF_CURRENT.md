@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-23（19:05 发布 0.2.50）  
-当前版本：`0.2.50`  
+更新时间：2026-11-23（20:20 发布 0.2.51）  
+当前版本：`0.2.51`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.50
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.51
 
 ---
 
@@ -28,7 +28,7 @@ F:\DSH WORKSPACE
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md
 以及 F:\DSH WORKSPACE\lumen-flow\WORK_RULES.md（工作规范，必须遵守）。
-当前版本 0.2.50，先确认项目状态，再继续。
+当前版本 0.2.51，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -47,9 +47,9 @@ WORK_RULES.md
 
 ### 0.4 新对话先确认
 
-1. 源码版本是否为 `0.2.50`
-2. 本机安装是否为 `0.2.50`
-3. GitHub latest 是否为 `v0.2.50`
+1. 源码版本是否为 `0.2.51`
+2. 本机安装是否为 `0.2.51`
+3. GitHub latest 是否为 `v0.2.51`
 4. `references/library/library.json` 是否仍有 191 张参考图
 5. 自定义分类“小穴”是否仍有 29 张
 6. `app/renderer/characters.js` 是否仍包含 `yukikaze (azur lane)`
@@ -197,16 +197,16 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.50
-本机安装：0.2.50
-GitHub latest：v0.2.50
+源码：0.2.51
+本机安装：0.2.51
+GitHub latest：v0.2.51
 ```
 
-Release 附件（v0.2.50 共 11 个）：
+Release 附件（v0.2.51 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.50.exe
-Lumen-Studio-Flow-0.2.50.exe
+Lumen-Studio-Flow-Setup-0.2.51.exe
+Lumen-Studio-Flow-0.2.51.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
@@ -215,13 +215,13 @@ OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
 import_pose_gallery.py
 README.md
-RELEASE_NOTES_0.2.50.md
+RELEASE_NOTES_0.2.51.md
 ```
 
 说明：
 
 - `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
-- 旧版本已删除，只保留 v0.2.50
+- 旧版本已删除，只保留 v0.2.51
 - `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 / 0.2.37 未单独产出数据包**（角色数据无变化）
 
 ---
@@ -860,6 +860,52 @@ contact-toe-oracle.png      原图 / A / C(0.42) / C(0.55)
 
 ---
 
+### 4.21 0.2.51：AI 关键词空字段 + 演示图误换风景图
+
+**AI 关键词助手返回全空 JSON**
+
+用户输入「崩坏星穹铁道的流萤 + 姿势」，返回七个字段全空。
+
+排查方法：直接对应用同款的本地 llama-server（端口 8091，`F:\novel` 下的
+DeepSeek-V4-Pro-Qwen3.5-9B Q4_K_M）逐项复现。
+
+```text
+A 带 json_schema 非流式        正常
+B 不带 response_format         正常
+C 带 json_object               正常（但慢 18s）
+D 流式 + 无参考库              正常
+E 流式 + 参考库注入            正常
+F 历史里带一条空骨架回复       正常
+H 完全复刻 app 的 messages     字段被挖空（character/style/notes 空）
+I 去掉末尾的空 assistant 占位  正常
+```
+
+根因：`sendAiChat` 在请求前先 push 一条 `{role:"assistant", content:""}` 占位，
+它被模型当成「续写起点」，于是从空壳往下写。外部 API 会忽略空消息，本地小模型不会。
+
+修复：
+
+```text
+1. 发送前过滤掉 content 为空的轮次
+2. 新增 isDegenerateAnswer()：七个字段全空时带提示重试一次
+```
+
+**演示图误换风景图**
+
+0.2.49 把 6 个本该是风景/抽象的演示图换成了人物：
+
+```text
+cinematic / ink-wash / lineart / manga-bw / retro / ukiyo-e
+```
+
+已用 `git checkout 1b5ff5d^ -- <path>` 从历史恢复，字节大小与原图一致
+（1038 / 978 / 666 / 549 / 1070 / 1129 KB）。人物类演示图保持不动。
+
+**遗留**：2.5D 柔光演示图只做到「角色正确、无马耳、不戴帽」，2.5D 质感不足，
+继续调，暂不改软件内那张。
+
+---
+
 ## 5. 画风定义
 
 ```text
@@ -928,7 +974,7 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.49 安装包与 blockmap
+- 旧版 0.1.x / 0.2.0–0.2.50 安装包与 blockmap
 - 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
@@ -939,7 +985,7 @@ _archive\old-release-notes-2026-11-22
 ```text
 character-data-v0.2.35.zip（最新；0.2.36 起未单独产出）
 loras-share-v0.2.6.zip
-release\ 当前版本（0.2.50 Setup / portable / blockmap + latest.yml + win-unpacked）
+release\ 当前版本（0.2.51 Setup / portable / blockmap + latest.yml + win-unpacked）
 current style verification images
 ```
 
@@ -1071,9 +1117,9 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.50`
+1. 当前版本？→ `0.2.51`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.50`
+3. 最新 Release？→ `v0.2.51`
 4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
 5. 2.5D 厚涂怎么复刻旧对话结果？→ 2.5D 厚涂 + 参考图 + 自定义档 32 步 / CFG4.5 / 0.88 / seed 1601600，关自动画风
 6. 脚趾怎么修？→ 局部精修（勾“自动修正足部/手部细节”），可选部位（脚/手/脚+手）与区域（下半/中部/上半/左/右）
