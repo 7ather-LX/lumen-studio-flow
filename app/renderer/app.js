@@ -2042,7 +2042,8 @@ function upscaleSettings() {
 
   function setupStylePreview() {
     const files = {
-      "follow-prompt": "follow-prompt", "anima-base": "anima-base", "anime-cel": "anime-cel", painterly: "painterly", "2.5d-thick": "2.5d-thick",
+      "follow-prompt": "follow-prompt", "anima-base": "anima-base", "anime-cel": "anime-cel", painterly: "painterly",
+      "2.5d-thick": "2.5d-thick", "2.5d-thick-soft": "2.5d-thick-soft",
       "gal-3d": "gal-3d", "ririko-cel": "ririko-cel", "mushroom-moe": "mushroom-moe",
       "bilibili-cel": "bilibili-cel", "bilibili-25d": "bilibili-25d", "bilibili-moe": "bilibili-moe",
       "25d-lora": "25d-lora", "target-25d": "target-25d", "manga-bw": "manga-bw",
@@ -2807,6 +2808,13 @@ function upscaleSettings() {
     applyAspect("1:1");
     setupCollapsiblePanels();
     void initUpscaleEngines();
+    (async () => {
+      try {
+        const version = await bridge.version();
+        const label = $("#appVersionLabel");
+        if (label && version) label.textContent = `v${version} · local first`;
+      } catch {}
+    })();
     applyStyle("anime-cel");
     updateAnimaPreview();
     bridge?.onLlmToken?.(({ token }) => {

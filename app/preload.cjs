@@ -3,6 +3,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("flow", {
+  version: () => ipcRenderer.invoke("flow:version"),
   getConfig: () => ipcRenderer.invoke("flow:config:get"),
   setConfig: (patch) => ipcRenderer.invoke("flow:config:set", patch),
   health: () => ipcRenderer.invoke("flow:health"),

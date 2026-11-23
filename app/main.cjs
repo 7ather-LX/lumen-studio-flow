@@ -1471,6 +1471,7 @@ app.on("before-quit", () => {
   }
 });
 
+ipcMain.handle("flow:version", () => app.getVersion());
 ipcMain.handle("flow:config:get", () => readConfig());
 ipcMain.handle("flow:config:set", (_event, patch) => writeConfig(patch));
 ipcMain.handle("flow:health", () => health(readConfig()));
