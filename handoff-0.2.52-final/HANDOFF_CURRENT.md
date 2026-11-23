@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-23（20:20 发布 0.2.51）  
-当前版本：`0.2.51`  
+更新时间：2026-11-23（21:40 发布 0.2.52）  
+当前版本：`0.2.52`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.51
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.52
 
 ---
 
@@ -28,7 +28,7 @@ F:\DSH WORKSPACE
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md
 以及 F:\DSH WORKSPACE\lumen-flow\WORK_RULES.md（工作规范，必须遵守）。
-当前版本 0.2.51，先确认项目状态，再继续。
+当前版本 0.2.52，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -47,9 +47,9 @@ WORK_RULES.md
 
 ### 0.4 新对话先确认
 
-1. 源码版本是否为 `0.2.51`
-2. 本机安装是否为 `0.2.51`
-3. GitHub latest 是否为 `v0.2.51`
+1. 源码版本是否为 `0.2.52`
+2. 本机安装是否为 `0.2.52`
+3. GitHub latest 是否为 `v0.2.52`
 4. `references/library/library.json` 是否仍有 191 张参考图
 5. 自定义分类“小穴”是否仍有 29 张
 6. `app/renderer/characters.js` 是否仍包含 `yukikaze (azur lane)`
@@ -197,16 +197,16 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.51
-本机安装：0.2.51
-GitHub latest：v0.2.51
+源码：0.2.52
+本机安装：0.2.52
+GitHub latest：v0.2.52
 ```
 
-Release 附件（v0.2.51 共 11 个）：
+Release 附件（v0.2.52 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.51.exe
-Lumen-Studio-Flow-0.2.51.exe
+Lumen-Studio-Flow-Setup-0.2.52.exe
+Lumen-Studio-Flow-0.2.52.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
@@ -215,13 +215,13 @@ OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
 import_pose_gallery.py
 README.md
-RELEASE_NOTES_0.2.51.md
+RELEASE_NOTES_0.2.52.md
 ```
 
 说明：
 
 - `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
-- 旧版本已删除，只保留 v0.2.51
+- 旧版本已删除，只保留 v0.2.52
 - `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 / 0.2.37 未单独产出数据包**（角色数据无变化）
 
 ---
@@ -906,6 +906,59 @@ cinematic / ink-wash / lineart / manga-bw / retro / ukiyo-e
 
 ---
 
+### 4.22 0.2.52：高清化加工 + 隐藏作品 + 柔光演示图
+
+**高清化（必须只放大、不改内容）**
+
+用户要求：输出图片像素偏低，需要高清化；**不能变角色、风格、场景**；体积要按倍数增长（1MB → 约 3MB）。
+
+实现原则：整条链路不含采样器。
+
+```text
+LoadImage → UpscaleModelLoader → ImageUpscaleWithModel → ImageScale(lanczos, 目标尺寸) → SaveImage
+兜底（无模型时）：LoadImage → ImageScale(lanczos) → SaveImage
+```
+
+没有 KSampler、没有 denoise，所以画面内容不会重新生成。
+
+模型（用 `gh release download` 从 xinntao/Real-ESRGAN 取得，放在 `comfy\models\upscale_models\`）：
+
+```text
+RealESRGAN_x4plus_anime_6B.pth   17.1MB   动漫专用，线条干净
+RealESRGAN_x4plus.pth            63.9MB   通用，纹理更多
+RealESRGAN_x2plus.pth            64.0MB   通用 2x
+```
+
+实测（832×1216 源图）：
+
+```text
+源图 1.15MB → Lanczos 2x 3.01MB / 动漫模型 2x 3.34MB / 通用模型 2x 4.26MB
+耗时 0.8s / 3.2s / 6.5s
+```
+
+踩过的坑：`gh api ... > file.pth` 在 PowerShell 里会写成 UTF-16，体积翻倍且文件损坏
+（17.1MB 变 32.6MB）。改用 `gh release download --dir` 后正常，并用文件头 `50 4B`（zip）校验。
+
+**隐藏作品**
+
+```text
+存储：%APPDATA%\Lumen Studio Flow\hidden-works.json（只存文件名，不删文件）
+列表：flow:list-outputs 带 mode=visible|hidden，先过滤再截断 60 张
+UI  ：作品页「作品 / 隐藏作品」两个页签 → 隐藏作品单独一页，不混合显示
+     勾选多张 → 隐藏选中 / 取消隐藏；详情页有「隐藏此作品」
+```
+
+**自动高清化**
+
+创作页「输出」面板新增开关 + 倍数。`generate` 里在高清化阶段逐张放大，
+成功后把低清原图与同名 json 一起删除，只把高清结果返回给作品栏。
+
+**柔光演示图**
+
+换成 `3D 手办感 + 柔光`（体积光、轮廓光、湿皮肤反光），仍走 `2.5d-thick-soft` 标签。
+
+---
+
 ## 5. 画风定义
 
 ```text
@@ -974,7 +1027,7 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.50 安装包与 blockmap
+- 旧版 0.1.x / 0.2.0–0.2.51 安装包与 blockmap
 - 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
@@ -985,7 +1038,7 @@ _archive\old-release-notes-2026-11-22
 ```text
 character-data-v0.2.35.zip（最新；0.2.36 起未单独产出）
 loras-share-v0.2.6.zip
-release\ 当前版本（0.2.51 Setup / portable / blockmap + latest.yml + win-unpacked）
+release\ 当前版本（0.2.52 Setup / portable / blockmap + latest.yml + win-unpacked）
 current style verification images
 ```
 
@@ -1117,9 +1170,9 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.51`
+1. 当前版本？→ `0.2.52`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.51`
+3. 最新 Release？→ `v0.2.52`
 4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
 5. 2.5D 厚涂怎么复刻旧对话结果？→ 2.5D 厚涂 + 参考图 + 自定义档 32 步 / CFG4.5 / 0.88 / seed 1601600，关自动画风
 6. 脚趾怎么修？→ 局部精修（勾“自动修正足部/手部细节”），可选部位（脚/手/脚+手）与区域（下半/中部/上半/左/右）

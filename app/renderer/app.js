@@ -38,6 +38,9 @@
     promptRecipes: [],
     editingPromptId: null,
     favorites: new Set(JSON.parse(localStorage.getItem("lumen-favorites") || "[]")),
+    hiddenMode: "visible",
+    upscaleSource: null,
+    upscaleResult: null,
     currentImage: null,
     busy: false,
     progressUnsubscribe: null,
@@ -659,8 +662,11 @@
     if (targetView) targetView.classList.add("active");
     document.querySelectorAll(".nav-item").forEach((node) => node.classList.toggle("active", node.dataset.view === view));
     const title = $("#viewTitle");
-    if (title) title.textContent = view === "gallery" ? "Archive" : "Create";
+    if (title) {
+      title.textContent = view === "gallery" ? "Archive" : view === "upscale" ? "Upscale" : "Create";
+    }
     if (view === "gallery") void loadGallery();
+    if (view === "upscale") void loadUpscaleSources();
   }
 
   function setStatus(ok, label, detail) {
@@ -912,14 +918,121 @@
     if (count) count.textContent = `${state.selectedPaths.size} 已选`;
   }
 
+async function setHiddenFor(names, hidden) {
+    if (!bridge || !names.length) return;
+    try {
+      await bridge.hiddenSet({ names, hidden });
+      state.selectedPaths.clear();
+      toast(`${hidden ? "已隐藏" : "已取消隐藏"} ${names.length} 张。`);
+      await loadGallery();
+    } catch (error) {
+      toast(error?.message || String(error));
+    }
+  }
+
+  function applyGalleryMode(mode) {
+    state.hiddenMode = mode === "hidden" ? "hidden" : "visible";
+    state.selectedPaths.clear();
+    $("#galleryModeVisible")?.classList.toggle("active", state.hiddenMode === "visible");
+    $("#galleryModeHidden")?.classList.toggle("active", state.hiddenMode === "hidden");
+    $("#galleryHideSelected")?.classList.toggle("hidden", state.hiddenMode === "hidden");
+    $("#galleryUnhideSelected")?.classList.toggle("hidden", state.hiddenMode !== "hidden");
+    void loadGallery();
+  }
+
+  async function loadUpscaleSources() {
+    if (!bridge) return;
+    try {
+      const info = await bridge.upscaleInfo();
+      const select = $("#upscaleEngine");
+      if (select && info?.models?.length) {
+        const current = select.value && select.value !== "lanczos" ? select.value : "";
+        const labelFor = (name) => {
+          if (/anime/i.test(name)) return `动漫专用超分（${name}）`;
+          if (/x2/i.test(name)) return `通用超分 2x（${name}）`;
+          if (/x4/i.test(name)) return `通用超分 4x（${name}）`;
+          return `AI 超分（${name}）`;
+        };
+        const preferred = info.models.find((name) => /anime/i.test(name)) || info.models[0];
+        select.innerHTML = [
+          ...info.models.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(labelFor(name))}</option>`),
+          '<option value="lanczos">Lanczos 快速（仅像素放大，细节不增强）</option>',
+        ].join("");
+        select.value = current && info.models.includes(current)
+          ? current
+          : (preferred || "lanczos");
+      }
+      const images = await bridge.listOutputs({ mode: "visible" });
+      const grid = $("#upscaleSources");
+      if (!grid) return;
+      if (!images.length) {
+        grid.innerHTML = '<div class="gallery-empty">还没有作品可加工。</div>';
+        return;
+      }
+      grid.innerHTML = images.slice(0, 24).map((image) => `
+        <div class="gallery-item" data-upscale-path="${escapeHtml(image.path)}" data-upscale-name="${escapeHtml(image.name)}">
+          <img src="${image.url}" alt="${escapeHtml(image.name)}" loading="lazy" />
+          <span class="gallery-caption"><span>${escapeHtml(image.name)}</span><span>${image.width || ""}x${image.height || ""}</span></span>
+        </div>`).join("");
+      grid.querySelectorAll("[data-upscale-path]").forEach((node) => {
+        node.addEventListener("click", () => {
+          grid.querySelectorAll(".gallery-item").forEach((item) => item.classList.remove("selected"));
+          node.classList.add("selected");
+          state.upscaleSource = { path: node.dataset.upscalePath, name: node.dataset.upscaleName };
+          const status = $("#upscaleStatus");
+          if (status) status.textContent = `已选择：${node.dataset.upscaleName}`;
+        });
+      });
+    } catch (error) {
+      toast(error?.message || String(error));
+    }
+  }
+
+  async function runUpscale() {
+    if (!bridge) return;
+    const source = state.upscaleSource;
+    if (!source?.name) {
+      toast("请先点选一张作品。");
+      return;
+    }
+    const button = $("#runUpscale");
+    const status = $("#upscaleStatus");
+    const factor = Number($("#upscaleFactor")?.value || 2);
+    const engine = String($("#upscaleEngine")?.value || "lanczos");
+    const model = engine === "lanczos" ? "" : engine;
+    if (button) button.disabled = true;
+    if (status) status.textContent = `高清化中（${factor}x）…`;
+    try {
+      const result = await bridge.upscale({ name: source.name, factor, model });
+      state.upscaleResult = result;
+      const img = $("#upscaleResultImage");
+      const info = $("#upscaleResultInfo");
+      if (img) img.src = result.url;
+      if (info) {
+        info.textContent = `${result.name} · ${result.sourceWidth}x${result.sourceHeight} → ${result.width}x${result.height} · ${result.engine === "lanczos" ? "Lanczos" : "AI 模型"}`;
+      }
+      $("#upscaleResult")?.classList.remove("hidden");
+      if (status) status.textContent = "完成，已保存到作品栏。";
+      await loadGallery();
+    } catch (error) {
+      if (status) status.textContent = "高清化失败";
+      toast(error?.message || String(error));
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
   async function loadGallery() {
     if (!bridge) return;
     try {
-      const images = await bridge.listOutputs();
+      const images = await bridge.listOutputs({ mode: state.hiddenMode });
       state.images = images;
       const grid = $("#galleryGrid");
       if (!images.length) {
-        grid.innerHTML = '<div class="gallery-empty">还没有作品。</div>';
+        grid.innerHTML = state.hiddenMode === "hidden"
+          ? '<div class="gallery-empty">没有隐藏的作品。</div>'
+          : '<div class="gallery-empty">还没有作品。</div>';
+        updateGallerySelection();
         return;
       }
       grid.innerHTML = images
@@ -1174,6 +1287,8 @@
         lora: STYLE_MODELS[state.style]?.lora || state.styleLoras?.[state.style] || style?.lora || "",
         loraStrength: Number($("#styleStrength")?.value ?? STYLE_MODELS[state.style]?.loraStrength ?? style?.loraStrength ?? 1),
         customWorkflow: state.customWorkflow,
+        autoUpscale: Boolean($("#autoUpscale")?.checked),
+        upscaleFactor: Number($("#autoUpscaleFactor")?.value || 2),
       });
       if (res?.images?.length) {
         renderResults(res.images);
@@ -2180,6 +2295,27 @@
     $("#performanceProfile").addEventListener("change", () => applyPerformanceProfile());
     $("#generateButton").addEventListener("click", () => void generate());
     $("#refreshGallery").addEventListener("click", () => void loadGallery());
+    $("#galleryModeVisible")?.addEventListener("click", () => applyGalleryMode("visible"));
+    $("#galleryModeHidden")?.addEventListener("click", () => applyGalleryMode("hidden"));
+    $("#galleryHideSelected")?.addEventListener("click", () => {
+      const names = [...state.selectedPaths].map((item) => item.split(/[\\/]/).pop()).filter(Boolean);
+      if (!names.length) { toast("先勾选要隐藏的作品。"); return; }
+      void setHiddenFor(names, true);
+    });
+    $("#galleryUnhideSelected")?.addEventListener("click", () => {
+      const names = [...state.selectedPaths].map((item) => item.split(/[\\/]/).pop()).filter(Boolean);
+      if (!names.length) { toast("先勾选要恢复的作品。"); return; }
+      void setHiddenFor(names, false);
+    });
+    $("#imageDetailHide")?.addEventListener("click", async () => {
+      const image = state.detailImage;
+      if (!image) return;
+      const hidden = state.hiddenMode !== "hidden";
+      $("#imageDetailModal").classList.add("hidden");
+      await setHiddenFor([image.name], hidden);
+    });
+    $("#refreshUpscaleSources")?.addEventListener("click", () => void loadUpscaleSources());
+    $("#runUpscale")?.addEventListener("click", () => void runUpscale());
     $("#gallerySelectAll").addEventListener("click", () => {
       state.selectedPaths = new Set(state.images.map((image) => image.path));
       document.querySelectorAll(".gallery-check").forEach((node) => { node.checked = true; });

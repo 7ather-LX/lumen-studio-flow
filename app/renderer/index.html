@@ -34,7 +34,8 @@
           <button class="nav-item" id="settingsButton"><span class="nav-index">06</span><span>设置</span></button>
           <button class="nav-item" id="trainingButton"><span class="nav-index">07</span><span>训练素材</span></button>
           <button class="nav-item" id="workflowButton"><span class="nav-index">08</span><span>工作流</span></button>
-          <button class="nav-item" id="helpButton"><span class="nav-index">09</span><span>使用说明</span></button>
+        <button class="nav-item" data-view="upscale"><span class="nav-index">10</span><span>高清化</span></button>
+        <button class="nav-item" id="helpButton"><span class="nav-index">09</span><span>使用说明</span></button>
         </nav>
 
         <div class="sidebar-section">
@@ -420,6 +421,15 @@
                   </div>
                   <span class="hint" id="resultMeta">等待生成</span>
                 </div>
+                <label class="inline-check">
+                  <input type="checkbox" id="autoUpscale" />
+                  <span>自动高清化（生成后自动放大，低清图自动删除）</span>
+                  <select id="autoUpscaleFactor" class="setting-select compact">
+                    <option value="2">2x</option>
+                    <option value="3">3x</option>
+                    <option value="4">4x</option>
+                  </select>
+                </label>
                 <div class="result-stage" id="resultStage">
                   <div class="empty-state">
                     <div class="empty-orbit"></div>
@@ -467,15 +477,62 @@
             </div>
             <button class="text-button" id="refreshGallery">刷新</button>
           </div>
+          <div class="gallery-modes" id="galleryModes">
+            <button class="text-button active" id="galleryModeVisible">作品</button>
+            <button class="text-button" id="galleryModeHidden">隐藏作品</button>
+          </div>
           <div class="gallery-batch" id="galleryBatchBar">
             <button class="text-button" id="gallerySelectAll">全选</button>
             <button class="text-button" id="galleryFavorite">收藏选中</button>
             <button class="text-button" id="galleryBatchRefine">批量再加工</button>
+            <button class="text-button" id="galleryHideSelected">隐藏选中</button>
+            <button class="text-button hidden" id="galleryUnhideSelected">取消隐藏</button>
             <button class="text-button danger" id="galleryBatchDelete">删除选中</button>
             <span class="hint" id="gallerySelectedCount">0 已选</span>
           </div>
           <div class="gallery-grid" id="galleryGrid">
             <div class="gallery-empty">还没有作品。</div>
+          </div>
+        </section>
+
+        <section class="view" id="view-upscale">
+          <div class="gallery-head">
+            <div>
+              <span class="eyebrow">10 / UPSCALE</span>
+              <h2>高清化加工</h2>
+            </div>
+            <button class="text-button" id="refreshUpscaleSources">刷新来源</button>
+          </div>
+          <p class="hint">
+            只做分辨率提升，不经过采样器、不做任何重绘：画面内容、角色、风格、构图都不会改变。
+          </p>
+          <div class="control-row">
+            <label class="control">
+              <span>放大倍数</span>
+              <select id="upscaleFactor" class="setting-select compact">
+                <option value="2">2x</option>
+                <option value="3">3x</option>
+                <option value="4">4x</option>
+              </select>
+            </label>
+            <label class="control">
+              <span>放大引擎</span>
+              <select id="upscaleEngine" class="setting-select">
+                <option value="lanczos">Lanczos 重采样（纯像素放大）</option>
+              </select>
+            </label>
+            <button class="primary-button" id="runUpscale">开始高清化</button>
+            <span class="hint" id="upscaleStatus">选择下方任意一张作品</span>
+          </div>
+          <div class="gallery-grid" id="upscaleSources">
+            <div class="gallery-empty">还没有作品。</div>
+          </div>
+          <div class="upscale-result hidden" id="upscaleResult">
+            <div class="detail-section-head">
+              <h3>结果</h3>
+              <span class="hint" id="upscaleResultInfo"></span>
+            </div>
+            <img id="upscaleResultImage" alt="upscaled result" />
           </div>
         </section>
       </main>
@@ -826,6 +883,7 @@
             <img id="imageDetailPreview" alt="detail" />
             <div class="detail-image-tools">
               <button class="mini-button" id="imageDetailFav">☆ 收藏</button>
+              <button class="mini-button" id="imageDetailHide">隐藏此作品</button>
               <button class="mini-button" id="imageDetailDownload">↓ 下载</button>
             </div>
             <div class="detail-zoom-controls">

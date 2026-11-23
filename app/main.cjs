@@ -1010,6 +1010,29 @@ async function runComfy(payload) {
       }
     }
   }
+  if (payload.autoUpscale && images.length) {
+    const factor = Math.max(1, Math.min(4, Number(payload.upscaleFactor) || 2));
+    const model = String(payload.upscaleModel || "");
+    for (let index = 0; index < images.length; index += 1) {
+      try {
+        send("flow:progress", {
+          stage: `Upscaling ${index + 1}/${images.length} (${factor}x)...`,
+          progress: 0.985,
+        });
+        const original = images[index];
+        const upgraded = await upscaleImage(config, { name: original.name, factor, model });
+        images[index] = upgraded;
+        // 低清原图与它的元数据一起删除，作品栏里只留高清结果
+        try { await fsp.unlink(original.path); } catch {}
+        try { await fsp.unlink(original.path.replace(/\.[^.]+$/, ".json")); } catch {}
+      } catch (error) {
+        send("flow:progress", {
+          stage: `Upscale skipped (${index + 1}/${images.length}): ${error?.message || error}`,
+          progress: 0.99,
+        });
+      }
+    }
+  }
   send("flow:progress", { stage: "Working...", progress: 1 });
   return { images, seed: built.seed, promptId, width: built.width, height: built.height };
 }
@@ -1499,13 +1522,212 @@ ipcMain.handle("flow:llm:start", () => startLlm());
 ipcMain.handle("flow:llm:stop", () => stopLlm());
 ipcMain.handle("flow:llm:chat", (_event, payload) => chatLlm(payload));
 
-ipcMain.handle("flow:list-outputs", async () => {
+// ---------- 隐藏作品 ----------
+function hiddenWorksPath() {
+  return path.join(dataRoot(), "hidden-works.json");
+}
+
+function readHiddenWorks() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(hiddenWorksPath(), "utf8"));
+    return new Set(Array.isArray(raw) ? raw.filter((name) => typeof name === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+async function writeHiddenWorks(set) {
+  await fsp.mkdir(dataRoot(), { recursive: true });
+  const list = [...set].sort();
+  await fsp.writeFile(hiddenWorksPath(), JSON.stringify(list, null, 2), "utf8");
+  return list;
+}
+
+async function setHiddenWorks(payload) {
+  const names = (Array.isArray(payload?.names) ? payload.names : [payload?.name])
+    .map((name) => path.basename(String(name || "")))
+    .filter((name) => /\.(png|jpe?g|webp)$/i.test(name));
+  const hidden = readHiddenWorks();
+  const makeHidden = payload?.hidden !== false;
+  for (const name of names) {
+    if (makeHidden) hidden.add(name); else hidden.delete(name);
+  }
+  await writeHiddenWorks(hidden);
+  return { hidden: [...hidden] };
+}
+
+// ---------- 高清化（只改分辨率，不经过采样器） ----------
+function readImageSize(buffer) {
+  try {
+    if (buffer.length > 24 && buffer[0] === 0x89 && buffer.toString("ascii", 1, 4) === "PNG") {
+      return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+    }
+    if (buffer.length > 4 && buffer[0] === 0xff && buffer[1] === 0xd8) {
+      let offset = 2;
+      while (offset + 9 < buffer.length) {
+        if (buffer[offset] !== 0xff) { offset += 1; continue; }
+        const marker = buffer[offset + 1];
+        const length = buffer.readUInt16BE(offset + 2);
+        if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+          return { width: buffer.readUInt16BE(offset + 7), height: buffer.readUInt16BE(offset + 5) };
+        }
+        offset += 2 + length;
+      }
+    }
+    if (buffer.length > 30 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") {
+      if (buffer.toString("ascii", 12, 16) === "VP8X") {
+        return { width: 1 + buffer.readUIntLE(24, 3), height: 1 + buffer.readUIntLE(27, 3) };
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function upscaleModelDir(config) {
+  return path.join(normalizeComfyDir(config.comfyDir), "models", "upscale_models");
+}
+
+function listUpscaleModels(config) {
+  try {
+    return fs.readdirSync(upscaleModelDir(config)).filter((name) => /\.(pth|safetensors|onnx)$/i.test(name));
+  } catch {
+    return [];
+  }
+}
+
+function buildUpscaleWorkflow({ imageName, width, height, factor, model, filenamePrefix }) {
+  const targetW = Math.max(64, Math.round((width * factor) / 2) * 2);
+  const targetH = Math.max(64, Math.round((height * factor) / 2) * 2);
+  const nodes = {
+    "1": { class_type: "LoadImage", inputs: { image: imageName } },
+    "5": { class_type: "SaveImage", inputs: { images: ["4", 0], filename_prefix: filenamePrefix } },
+  };
+  if (model) {
+    nodes["2"] = { class_type: "UpscaleModelLoader", inputs: { model_name: model } };
+    nodes["3"] = { class_type: "ImageUpscaleWithModel", inputs: { upscale_model: ["2", 0], image: ["1", 0] } };
+    nodes["4"] = { class_type: "ImageScale", inputs: { image: ["3", 0], upscale_method: "lanczos", width: targetW, height: targetH, crop: "disabled" } };
+  } else {
+    nodes["4"] = { class_type: "ImageScale", inputs: { image: ["1", 0], upscale_method: "lanczos", width: targetW, height: targetH, crop: "disabled" } };
+  }
+  return { workflow: nodes, width: targetW, height: targetH };
+}
+
+async function ensureComfyReady(config) {
+  let status = await health(config);
+  if (status.ok) return;
+  send("flow:progress", { stage: "Starting ComfyUI...", progress: 0.02 });
+  await startComfy();
+  status = await health(config);
+  if (!status.ok) throw new Error("ComfyUI request failed");
+}
+
+async function runWorkflowRaw(config, workflow) {
+  const clientId = `lumen-raw-${Date.now()}`;
+  const submit = await comfyFetch(
+    config.comfyUrl,
+    "/prompt",
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: workflow, client_id: clientId }) },
+    20000,
+  ).then((response) => response.json());
+  if (submit?.error) throw new Error(JSON.stringify(submit.error));
+  const promptId = submit.prompt_id;
+  if (!promptId) throw new Error("ComfyUI request failed");
+  let entry = null;
+  const started = Date.now();
+  for (let index = 0; index < 600; index += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const history = await (await comfyFetch(config.comfyUrl, `/history/${promptId}`, {}, 8000)).json();
+    entry = history?.[promptId];
+    if (entry) {
+      if (entry.status?.status_str === "error") throw new Error("ComfyUI request failed");
+      break;
+    }
+    if (Date.now() - started > 10 * 60 * 1000) throw new Error("ComfyUI request failed");
+  }
+  if (!entry) throw new Error("ComfyUI request failed");
+  const outDir = path.join(app.getPath("temp"), `lumen-raw-${Date.now()}`);
+  await fsp.mkdir(outDir, { recursive: true });
+  const files = [];
+  for (const output of Object.values(entry.outputs || {})) {
+    for (const image of output.images || []) {
+      const query = new URLSearchParams({ filename: image.filename, subfolder: image.subfolder || "", type: image.type || "output" });
+      const response = await comfyFetch(config.comfyUrl, `/view?${query.toString()}`, {}, 30000);
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const filePath = path.join(outDir, `hd-${files.length + 1}.png`);
+      await fsp.writeFile(filePath, buffer);
+      files.push({ path: filePath, buffer });
+    }
+  }
+  return files;
+}
+
+async function upscaleImage(config, options) {
+  const factor = Math.max(1, Math.min(4, Number(options?.factor) || 2));
+  const model = String(options?.model || "");
+  let sourcePath = "";
+  if (options?.name) {
+    const name = path.basename(String(options.name));
+    if (!/\.(png|jpe?g|webp)$/i.test(name)) throw new Error("Invalid image name");
+    sourcePath = path.join(outputDir(), name);
+  } else if (options?.dataUrl) {
+    const match = String(options.dataUrl).match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/);
+    if (!match) throw new Error("Invalid image data");
+    const ext = match[1] === "jpeg" ? "jpg" : match[1];
+    sourcePath = path.join(app.getPath("temp"), `lumen-upscale-${Date.now()}.${ext}`);
+    await fsp.writeFile(sourcePath, Buffer.from(match[2], "base64"));
+  }
+  if (!sourcePath || !fs.existsSync(sourcePath)) throw new Error("找不到要高清化的图片");
+
+  await ensureComfyReady(config);
+  const buffer = await fsp.readFile(sourcePath);
+  const size = readImageSize(buffer);
+  if (!size?.width || !size?.height) throw new Error("无法读取图片尺寸");
+
+  const tmpIn = path.join(app.getPath("temp"), `lumen-hd-in-${Date.now()}${path.extname(sourcePath)}`);
+  await fsp.writeFile(tmpIn, buffer);
+  const imageName = await uploadComfyImage(config, tmpIn);
+  const prefix = `LumenHD${Date.now()}`;
+  const built = buildUpscaleWorkflow({ imageName, width: size.width, height: size.height, factor, model, filenamePrefix: prefix });
+  const files = await runWorkflowRaw(config, built.workflow);
+  if (!files.length) throw new Error("高清化没有输出结果");
+
+  await fsp.mkdir(outputDir(), { recursive: true });
+  const baseName = path.basename(sourcePath).replace(/\.[^.]+$/, "");
+  const outName = `${baseName}-hd${factor}x.png`;
+  const outPath = path.join(outputDir(), outName);
+  await fsp.copyFile(files[0].path, outPath);
+  const meta = {
+    name: outName,
+    upscaled: true,
+    source: path.basename(sourcePath),
+    factor,
+    engine: model ? `model:${model}` : "lanczos",
+    width: built.width,
+    height: built.height,
+    sourceWidth: size.width,
+    sourceHeight: size.height,
+    createdAt: new Date().toISOString(),
+  };
+  await fsp.writeFile(outPath.replace(/\.[^.]+$/, ".json"), JSON.stringify(meta, null, 2), "utf8");
+  return {
+    name: outName,
+    path: outPath,
+    url: `data:image/png;base64,${(await fsp.readFile(outPath)).toString("base64")}`,
+    hidden: readHiddenWorks().has(outName),
+    ...meta,
+  };
+}
+
+ipcMain.handle("flow:list-outputs", async (_event, payload) => {
   ensureDirs();
+  const mode = payload?.mode === "hidden" ? "hidden" : "visible";
+  const hiddenSet = readHiddenWorks();
   const names = (await fsp.readdir(outputDir()))
     .filter((name) => /\.(png|jpe?g|webp)$/i.test(name))
+    .filter((name) => (mode === "hidden" ? hiddenSet.has(name) : !hiddenSet.has(name)))
     .sort()
     .reverse()
-    .slice(0, 30);
+    .slice(0, 60);
   const items = [];
   for (const name of names) {
     const filePath = path.join(outputDir(), name);
@@ -1521,6 +1743,7 @@ ipcMain.handle("flow:list-outputs", async () => {
       path: filePath,
       mtime: stat.mtimeMs,
       url: `data:image/${ext === "jpg" ? "jpeg" : ext};base64,${buffer.toString("base64")}`,
+      hidden: hiddenSet.has(name),
       ...metadata,
     });
   }
@@ -1538,6 +1761,10 @@ ipcMain.handle("flow:delete-output", async (_event, payload) => {
   return { ok: true };
 });
 
+ipcMain.handle("flow:hidden:list", () => ({ hidden: [...readHiddenWorks()] }));
+ipcMain.handle("flow:hidden:set", (_event, payload) => setHiddenWorks(payload));
+ipcMain.handle("flow:upscale", async (_event, payload) => upscaleImage(readConfig(), payload));
+ipcMain.handle("flow:upscale:info", () => ({ models: listUpscaleModels(readConfig()) }));
 ipcMain.handle("flow:repair-feet", async (_event, payload) => repairFeet(payload));
 
 ipcMain.handle("flow:reveal", async (_event, target) => {
