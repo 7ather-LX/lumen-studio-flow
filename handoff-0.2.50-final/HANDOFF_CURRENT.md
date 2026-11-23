@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-23（12:20 发布 0.2.48）  
-当前版本：`0.2.48`  
+更新时间：2026-11-23（19:05 发布 0.2.50）  
+当前版本：`0.2.50`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.48
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.50
 
 ---
 
@@ -28,7 +28,7 @@ F:\DSH WORKSPACE
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md
 以及 F:\DSH WORKSPACE\lumen-flow\WORK_RULES.md（工作规范，必须遵守）。
-当前版本 0.2.48，先确认项目状态，再继续。
+当前版本 0.2.50，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -47,9 +47,9 @@ WORK_RULES.md
 
 ### 0.4 新对话先确认
 
-1. 源码版本是否为 `0.2.48`
-2. 本机安装是否为 `0.2.48`
-3. GitHub latest 是否为 `v0.2.48`
+1. 源码版本是否为 `0.2.50`
+2. 本机安装是否为 `0.2.50`
+3. GitHub latest 是否为 `v0.2.50`
 4. `references/library/library.json` 是否仍有 191 张参考图
 5. 自定义分类“小穴”是否仍有 29 张
 6. `app/renderer/characters.js` 是否仍包含 `yukikaze (azur lane)`
@@ -197,16 +197,16 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.48
-本机安装：0.2.48
-GitHub latest：v0.2.48
+源码：0.2.50
+本机安装：0.2.50
+GitHub latest：v0.2.50
 ```
 
-Release 附件（v0.2.48 共 11 个）：
+Release 附件（v0.2.50 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.48.exe
-Lumen-Studio-Flow-0.2.48.exe
+Lumen-Studio-Flow-Setup-0.2.50.exe
+Lumen-Studio-Flow-0.2.50.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
@@ -215,13 +215,13 @@ OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
 import_pose_gallery.py
 README.md
-RELEASE_NOTES_0.2.48.md
+RELEASE_NOTES_0.2.50.md
 ```
 
 说明：
 
 - `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
-- 旧版本已删除，只保留 v0.2.48
+- 旧版本已删除，只保留 v0.2.50
 - `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 / 0.2.37 未单独产出数据包**（角色数据无变化）
 
 ---
@@ -780,6 +780,86 @@ contact-all-previews.png                           24 张预览总览（确认�
 
 ---
 
+### 4.19 0.2.49：24 张画风演示图全部重做
+
+用户指出 0.2.48 的两个 2.5D 预览有两处设定错误，并要求其余画风也换掉「立正站姿」。
+
+错误：
+
+```text
+1. 给角色加了「马耳 / 马尾」——原始立绘根本不是马娘，那只贝雷帽上的马蹄是校徽
+2. 泡澡场景还戴着贝雷帽
+```
+
+正确角色设定：
+
+```text
+long brown hair, green eyes, green beret with gold horseshoe emblem,
+green double-breasted military uniform, white collar, yellow bow,
+brass buttons, black belt, black tights, green heels
+```
+
+生成方式：
+
+```text
+scripts 里的 _archive/gen-style-previews.py
+  - 从 app.js 直接抽 22 个画风的真实 tags / negative / lora / 强度
+  - 每个画风配不同镜头与姿势（坐窗台 / 低角度 / 走廊回头 / 沙发翘腿 /
+    森林蹲下 / 俯视 / 特写侧脸 / 仰角 / 竹林撑伞 / 咖啡厅 / 仰躺 / 跳跃 /
+    天台中景 / 花田 / 霓虹巷 / 温泉回眸 …）
+  - text2img，30 步，CFG 4.5，LoRA 按真实强度加载
+```
+
+返工两轮：
+
+```text
+第一版太写实 CG  → 加 anime face / large anime eyes，负面加 photorealistic
+lineart 出彩色 / ink-wash 不像水墨 / cinematic 人物太小
+  → lineart 补 monochrome 词与专属负面；ink-wash 补 sumi-e；
+    cinematic 改中景
+```
+
+体积：23MB → 6.8MB（缩到 600/860 宽 + 256 色量化），肉眼几乎无差。
+
+### 4.20 0.2.50：自动区域脚部定位 + 局部重绘能力边界
+
+问题：请求「脚」但只检测到手时会返回手框；抬腿时框会落在小腿甚至躯干上。
+
+修法（`app\detect-pose.py`）：
+
+```text
+脚踝可见        → 用脚踝做紧框
+脚踝不可见      → 用 踝/膝/胯 包围盒，按肩宽上扩 1.0×、下扩 1.5×
+请求 feet 时    → 永远给 feet 框，不再误返回 hands
+```
+
+三张图复测：沙发图 477×420（完整包住抬起的双脚）、站姿半身退化为下半部宽框、
+特写图 645×404。
+
+**局部重绘能力边界实测**（同一张脚部粘连的图）：
+
+```text
+原图                       上脚趾数粘连
+A 比例区域 + 大范围 + 1 次 0.45   趾头分得开一些，结构不变
+B 比例区域 + 0.35 + 2 次 0.42     区域仅 344×120，装不下两只脚，几乎无效
+C 理想框（手工包住双脚）
+   0.42 / 0.55                    比 A 略好，仍只是分离度改善
+```
+
+结论：**局部 img2img 只能改善清晰度与趾头分离，改不了趾数 / 趾序这类结构错误**。
+要修结构需要深度或线稿类的约束（ControlNet 级）或脚部专用检测分割模型。
+另外「小范围」不能盲目调太小，区域要真的装得下目标，建议 0.6–0.8 起。
+
+证据图：
+
+```text
+contact-previews-new.png    24 张预览总览
+contact-toe-test.png        原图 / A / B
+contact-toe-oracle.png      原图 / A / C(0.42) / C(0.55)
+```
+
+---
+
 ## 5. 画风定义
 
 ```text
@@ -848,7 +928,7 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.47 安装包与 blockmap
+- 旧版 0.1.x / 0.2.0–0.2.49 安装包与 blockmap
 - 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
@@ -859,7 +939,7 @@ _archive\old-release-notes-2026-11-22
 ```text
 character-data-v0.2.35.zip（最新；0.2.36 起未单独产出）
 loras-share-v0.2.6.zip
-release\ 当前版本（0.2.48 Setup / portable / blockmap + latest.yml + win-unpacked）
+release\ 当前版本（0.2.50 Setup / portable / blockmap + latest.yml + win-unpacked）
 current style verification images
 ```
 
@@ -991,9 +1071,9 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.48`
+1. 当前版本？→ `0.2.50`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.48`
+3. 最新 Release？→ `v0.2.50`
 4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
 5. 2.5D 厚涂怎么复刻旧对话结果？→ 2.5D 厚涂 + 参考图 + 自定义档 32 步 / CFG4.5 / 0.88 / seed 1601600，关自动画风
 6. 脚趾怎么修？→ 局部精修（勾“自动修正足部/手部细节”），可选部位（脚/手/脚+手）与区域（下半/中部/上半/左/右）

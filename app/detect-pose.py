@@ -85,17 +85,28 @@ def main():
 
     l_wrist, r_wrist = vis(9), vis(10)
     l_ankle, r_ankle = vis(15), vis(16)
+    l_knee, r_knee = vis(13), vis(14)
+    l_hip, r_hip = vis(11), vis(12)
     l_sh, r_sh = vis(5), vis(6)
     unit = abs(l_sh[0] - r_sh[0]) if (l_sh and r_sh) else w * 0.18
 
     def boxes():
         out = {}
+        # 脚：优先用脚踝做紧框；脚踝不可见时退化为「踝/膝/胯包围盒」
         if l_ankle or r_ankle:
             xs = [p[0] for p in (l_ankle, r_ankle) if p]
             ys = [p[1] for p in (l_ankle, r_ankle) if p]
             cx, cy = sum(xs) / len(xs), sum(ys) / len(ys)
             half = max(unit * 1.5, w * 0.12)
             out["feet"] = (cx - half, cy - half * 0.9, cx + half, cy + half * 1.5)
+        else:
+            foot_pts = [p for p in (l_knee, r_knee, l_hip, r_hip) if p]
+            if foot_pts:
+                xs = [p[0] for p in foot_pts]
+                y_low = min(p[1] for p in foot_pts)
+                x0 = min(xs) - unit * 1.2
+                x1 = max(xs) + unit * 1.2
+                out["feet"] = (x0, y_low - unit * 1.0, x1, h)
         if l_wrist or r_wrist:
             xs = [p[0] for p in (l_wrist, r_wrist) if p]
             ys = [p[1] for p in (l_wrist, r_wrist) if p]
