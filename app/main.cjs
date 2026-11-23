@@ -1702,16 +1702,30 @@ async function upscaleImage(config, options) {
   const outName = `${baseName}-hd${factor}x.png`;
   const outPath = path.join(outputDir(), outName);
   await fsp.copyFile(files[0].path, outPath);
+  // 继承原图元数据（提示词 / 步数 / CFG / 种子 / 模型等），再叠加放大信息
+  let sourceMeta = {};
+  try {
+    sourceMeta = JSON.parse(await fsp.readFile(sourcePath.replace(/\.[^.]+$/, ".json"), "utf8"));
+  } catch {}
+  if (!sourceMeta || typeof sourceMeta !== "object" || Array.isArray(sourceMeta)) sourceMeta = {};
   const meta = {
+    ...sourceMeta,
     name: outName,
+    prompt: sourceMeta.prompt ?? "",
+    negativePrompt: sourceMeta.negativePrompt ?? "",
+    seed: sourceMeta.seed ?? null,
+    steps: sourceMeta.steps ?? null,
+    cfg: sourceMeta.cfg ?? null,
+    model: sourceMeta.model ?? "",
+    lora: sourceMeta.lora ?? "",
     upscaled: true,
     source: path.basename(sourcePath),
     factor,
     engine: model ? `model:${model}` : "lanczos",
+    sourceWidth: sourceMeta.sourceWidth || size.width,
+    sourceHeight: sourceMeta.sourceHeight || size.height,
     width: built.width,
     height: built.height,
-    sourceWidth: size.width,
-    sourceHeight: size.height,
     createdAt: new Date().toISOString(),
   };
   await fsp.writeFile(outPath.replace(/\.[^.]+$/, ".json"), JSON.stringify(meta, null, 2), "utf8");

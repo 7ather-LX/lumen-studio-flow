@@ -887,10 +887,16 @@
     $("#imageDetailPreview").src = image.url;
     $("#imageDetailName").textContent = image.name || "";
     $("#imageDetailTime").textContent = image.createdAt ? new Date(image.createdAt).toLocaleString() : (image.mtime ? new Date(image.mtime).toLocaleString() : "");
-    $("#imageDetailMode").textContent = image.api ? "外部 API" : "本地生成";
+    $("#imageDetailMode").textContent = image.upscaled
+      ? `高清化 ${image.factor || ""}${image.factor ? "×" : ""} · ${String(image.engine || "").startsWith("model:") ? "AI 模型" : "Lanczos"}`
+      : (image.api ? "外部 API" : "本地生成");
     $("#imageDetailPrompt").textContent = image.prompt || "这张图没有保存提示词。";
     $("#imageDetailNegative").textContent = image.negativePrompt || "—";
-    $("#imageDetailSize").textContent = image.width && image.height ? `${image.width} × ${image.height}` : "—";
+    $("#imageDetailSize").textContent = image.width && image.height
+      ? (image.upscaled && image.sourceWidth
+        ? `${image.sourceWidth} × ${image.sourceHeight} → ${image.width} × ${image.height}`
+        : `${image.width} × ${image.height}`)
+      : "—";
     $("#imageDetailSteps").textContent = image.steps ?? "—";
     $("#imageDetailCfg").textContent = image.cfg ?? "—";
     $("#imageDetailSeed").textContent = image.seed ?? "—";

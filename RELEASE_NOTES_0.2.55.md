@@ -1,26 +1,26 @@
-# Lumen Studio Flow v0.2.54
+# Lumen Studio Flow v0.2.55
 
 完全免费、为爱发电的本地 AI 绘画工作台。Electron + ComfyUI + Anima，本地优先，不上传素材。
 
-## 新增：作品页也能高清化
+## 修复：高清化后丢失生成参数
 
-之前只有「高清化」独立页面能放大，现在补上两处入口：
+现象：高清化出来的作品，详情页里提示词、步数、CFG、种子、模型全是空。
 
-```text
-作品详情页 → ✨ 高清化          单张直接放大，原图保留
-作品页批处理 → 批量高清化        勾选多张后一次放大，逐张显示进度
-隐藏作品页 → 批量高清化          同样可用；生成的高清副本自动保持隐藏
-```
+原因：高清化时写的新 json 只记录了放大信息，没有继承原图的生成元数据。
 
-引擎与倍数沿用「高清化」页面上的设置（默认动漫专用模型、2×），无需重复选择。
-启动时就会加载引擎列表，所以在任何页面点高清化都会走 AI 模型，不会退回 Lanczos。
-
-删除语义不变：
+修复：
 
 ```text
-作品页 / 详情页 / 隐藏页发起 → 原图保留，新增 xxx-hd{倍数}x.png
-创作页勾选「自动高清化」     → 超分成功后才删除低清原图
+1. 高清化写 json 时先读取原图同名 json，整份继承
+   （prompt / negativePrompt / seed / steps / cfg / model / lora …）
+   再叠加放大字段：upscaled / source / factor / engine / sourceWidth / sourceHeight / width / height
+2. 详情页在放大作品上额外显示：
+   模式行：高清化 2× · AI 模型
+   尺寸行：832 × 1216 → 1664 × 2432
 ```
+
+注意：**在此之前已经高清化过的旧文件**，其 json 已经被覆盖，参数无法追回；
+重新高清化一次即可带上完整信息（原图仍在的话）。
 
 ## 安装
 
@@ -28,7 +28,7 @@
 
 离线用户可使用 `build_offline_bundle.ps1` 生成独立完整运行环境包，安装后在设置中指向解压目录。
 
-1. 运行 `Lumen-Studio-Flow-Setup-0.2.54.exe`
+1. 运行 `Lumen-Studio-Flow-Setup-0.2.55.exe`
 2. 安装会创建桌面快捷方式
 3. 运行 `bootstrap_models.ps1` 自动拉取 Anima Base / Qwen3 / VAE
 4. 将 `Anima-2.9B-preview-v1.safetensors` 放入 `models/diffusion_models`
