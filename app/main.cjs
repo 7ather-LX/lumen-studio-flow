@@ -1680,7 +1680,11 @@ async function upscaleImage(config, options) {
     const match = String(options.dataUrl).match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/);
     if (!match) throw new Error("Invalid image data");
     const ext = match[1] === "jpeg" ? "jpg" : match[1];
-    sourcePath = path.join(app.getPath("temp"), `lumen-upscale-${Date.now()}.${ext}`);
+    const rawName = String(options?.sourceName || "").trim();
+    const safeStem = rawName
+      ? rawName.replace(/\.[^.]+$/, "").replace(/[\\/:*?"<>|\s]+/g, "-").slice(0, 60)
+      : `imported-${Date.now()}`;
+    sourcePath = path.join(app.getPath("temp"), `${safeStem}.${ext}`);
     await fsp.writeFile(sourcePath, Buffer.from(match[2], "base64"));
   }
   if (!sourcePath || !fs.existsSync(sourcePath)) throw new Error("找不到要高清化的图片");
@@ -1709,9 +1713,12 @@ async function upscaleImage(config, options) {
     sourceMeta = JSON.parse(await fsp.readFile(sourcePath.replace(/\.[^.]+$/, ".json"), "utf8"));
   } catch {}
   if (!sourceMeta || typeof sourceMeta !== "object" || Array.isArray(sourceMeta)) sourceMeta = {};
+  const imported = Boolean(options?.dataUrl);
   const meta = {
     ...sourceMeta,
     name: outName,
+    imported,
+    ...(imported ? { sourceName: String(options?.sourceName || path.basename(sourcePath)) } : {}),
     prompt: sourceMeta.prompt ?? "",
     negativePrompt: sourceMeta.negativePrompt ?? "",
     seed: sourceMeta.seed ?? null,

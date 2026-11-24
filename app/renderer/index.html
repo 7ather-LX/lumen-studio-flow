@@ -34,8 +34,8 @@
           <button class="nav-item" id="settingsButton"><span class="nav-index">06</span><span>设置</span></button>
           <button class="nav-item" id="trainingButton"><span class="nav-index">07</span><span>训练素材</span></button>
           <button class="nav-item" id="workflowButton"><span class="nav-index">08</span><span>工作流</span></button>
-        <button class="nav-item" data-view="upscale"><span class="nav-index">10</span><span>高清化</span></button>
         <button class="nav-item" id="helpButton"><span class="nav-index">09</span><span>使用说明</span></button>
+        <button class="nav-item" data-view="upscale"><span class="nav-index">10</span><span>高清化</span></button>
         </nav>
 
         <div class="sidebar-section">
@@ -525,8 +525,17 @@
                 <option value="lanczos">Lanczos 重采样（纯像素放大）</option>
               </select>
             </label>
+            <button class="text-button" id="pickUpscaleFile">导入本机图片</button>
+            <input type="file" id="upscaleFileInput" accept="image/png,image/jpeg,image/webp" class="hidden" />
             <button class="primary-button" id="runUpscale">开始高清化</button>
-            <span class="hint" id="upscaleStatus">选择下方任意一张作品</span>
+            <span class="hint" id="upscaleStatus">选择下方任意一张作品，或导入本机图片</span>
+          </div>
+          <div class="upscale-import hidden" id="upscaleImportBox">
+            <div class="detail-section-head">
+              <h3>本机图片</h3>
+              <span class="hint" id="upscaleImportName"></span>
+            </div>
+            <img id="upscaleImportPreview" alt="imported" />
           </div>
           <div class="gallery-grid" id="upscaleSources">
             <div class="gallery-empty">还没有作品。</div>

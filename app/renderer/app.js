@@ -1005,6 +1005,7 @@ let upscaleEngineFilled = false;
           grid.querySelectorAll(".gallery-item").forEach((item) => item.classList.remove("selected"));
           node.classList.add("selected");
           state.upscaleSource = { path: node.dataset.upscalePath, name: node.dataset.upscaleName };
+          $("#upscaleImportBox")?.classList.add("hidden");
           const status = $("#upscaleStatus");
           if (status) status.textContent = `已选择：${node.dataset.upscaleName}`;
         });
@@ -1057,6 +1058,35 @@ function upscaleSettings() {
     return results;
   }
 
+function setupUpscaleImport() {
+    const button = $("#pickUpscaleFile");
+    const input = $("#upscaleFileInput");
+    if (!button || !input) return;
+    button.addEventListener("click", () => input.click());
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (!/^image\/(png|jpeg|webp)$/i.test(file.type)) {
+        toast("只支持 PNG / JPG / WEBP 图片。");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.upscaleSource = { dataUrl: String(reader.result || ""), name: file.name };
+        const box = $("#upscaleImportBox");
+        const img = $("#upscaleImportPreview");
+        const label = $("#upscaleImportName");
+        if (img) img.src = String(reader.result || "");
+        if (label) label.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+        box?.classList.remove("hidden");
+        document.querySelectorAll("#upscaleSources .gallery-item").forEach((item) => item.classList.remove("selected"));
+        const status = $("#upscaleStatus");
+        if (status) status.textContent = `已导入：${file.name}（高清化后自动进作品库）`;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function runUpscale() {
     if (!bridge) return;
     const source = state.upscaleSource;
@@ -1072,7 +1102,9 @@ function upscaleSettings() {
     if (button) button.disabled = true;
     if (status) status.textContent = `高清化中（${factor}x）…`;
     try {
-      const result = await bridge.upscale({ name: source.name, factor, model });
+      const result = source.dataUrl
+      ? await bridge.upscale({ dataUrl: source.dataUrl, sourceName: source.name, factor, model })
+      : await bridge.upscale({ name: source.name, factor, model });
       state.upscaleResult = result;
       const img = $("#upscaleResultImage");
       const info = $("#upscaleResultInfo");
@@ -2403,6 +2435,7 @@ function upscaleSettings() {
     });
     $("#refreshUpscaleSources")?.addEventListener("click", () => void loadUpscaleSources());
     $("#runUpscale")?.addEventListener("click", () => void runUpscale());
+    setupUpscaleImport();
     $("#gallerySelectAll").addEventListener("click", () => {
       state.selectedPaths = new Set(state.images.map((image) => image.path));
       document.querySelectorAll(".gallery-check").forEach((node) => { node.checked = true; });
