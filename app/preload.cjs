@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld("flow", {
   hiddenList: () => ipcRenderer.invoke("flow:hidden:list"),
   hiddenSet: (payload) => ipcRenderer.invoke("flow:hidden:set", payload),
   upscale: (payload) => ipcRenderer.invoke("flow:upscale", payload),
+  repairRegion: (payload) => ipcRenderer.invoke("flow:repair-region", payload),
   upscaleInfo: () => ipcRenderer.invoke("flow:upscale:info"),
   deleteOutput: (payload) => ipcRenderer.invoke("flow:delete-output", payload),
   repairFeet: (payload) => ipcRenderer.invoke("flow:repair-feet", payload),

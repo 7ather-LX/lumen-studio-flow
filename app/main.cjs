@@ -1557,6 +1557,139 @@ async function setHiddenWorks(payload) {
   return { hidden: [...hidden] };
 }
 
+// ---------- 局部修正（框选：修复 / 擦除） ----------
+function regionEraseScript() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "region-erase.py")
+    : path.join(__dirname, "region-erase.py");
+}
+
+async function repairRegion(payload) {
+  const config = readConfig();
+  const name = path.basename(String(payload?.name || ""));
+  if (!/\.(png|jpe?g|webp)$/i.test(name)) throw new Error("Invalid image name");
+  const sourcePath = path.join(outputDir(), name);
+  if (!fs.existsSync(sourcePath)) throw new Error("找不到要修正的图片");
+
+  const rect = payload?.rect || {};
+  const rw = Math.max(16, Math.round(Number(rect.w) || 0));
+  const rh = Math.max(16, Math.round(Number(rect.h) || 0));
+  const rx = Math.max(0, Math.round(Number(rect.x) || 0));
+  const ry = Math.max(0, Math.round(Number(rect.y) || 0));
+  if (!rw || !rh) throw new Error("请先在图上框选要修正的区域");
+
+  const mode = payload?.mode === "erase" ? "erase" : "repair";
+  const blend = Math.max(0, Math.min(0.9, Number(payload?.blend) || 0));
+
+  await ensureComfyReady(config);
+  const buffer = await fsp.readFile(sourcePath);
+  const size = readImageSize(buffer);
+  if (!size?.width || !size?.height) throw new Error("无法读取图片尺寸");
+
+  let workingPath = sourcePath;
+  let tempFiles = [];
+  if (mode === "erase") {
+    const script = regionEraseScript();
+    if (!fs.existsSync(script)) throw new Error("擦除脚本缺失，请重新安装应用");
+    const python = resolvePythonForTools(config);
+    if (!python) throw new Error("找不到 Python，无法执行擦除");
+    const outPath = path.join(app.getPath("temp"), `lumen-erase-${Date.now()}.png`);
+    const result = spawnSync(
+      python,
+      [script, sourcePath, outPath, String(rx), String(ry), String(rw), String(rh), String(payload?.donor || "auto")],
+      { encoding: "utf8", timeout: 120000, windowsHide: true },
+    );
+    if (!fs.existsSync(outPath)) {
+      throw new Error(`擦除失败：${String(result?.stderr || result?.stdout || "").slice(-200)}`);
+    }
+    workingPath = outPath;
+    tempFiles.push(outPath);
+  }
+
+  const uploadName = await uploadComfyImage(config, workingPath);
+  const prefix = `LumenFix${Date.now()}`;
+  const defaultPrompt = mode === "erase"
+    ? "long hair strands, soft blurred background, natural lighting, no people"
+    : "detailed anatomy, five fingers, five toes, natural shapes, clean lines, same lighting";
+  const built = detailWorkflow.buildDetailWorkflow({
+    config,
+    imageName: uploadName,
+    width: size.width,
+    height: size.height,
+    prompt: String(payload?.prompt || defaultPrompt),
+    negative: String(payload?.negative || "extra fingers, extra toes, fused digits, deformed, blurry, text, watermark"),
+    seed: Number(payload?.seed) || Math.floor(Math.random() * 1e9),
+    steps: Math.max(8, Math.min(60, Number(payload?.steps) || 24)),
+    cfg: Number(payload?.cfg) || 4.5,
+    denoise: mode === "erase" ? Math.min(0.9, blend) : Math.max(0.15, Math.min(0.9, Number(payload?.denoise) || 0.5)),
+    region: "auto",
+    part: "hands",
+    zoom: 1,
+    rect: { x: rx, y: ry, width: rw, height: rh },
+    filenamePrefix: prefix,
+  });
+
+  if (mode === "erase" && blend <= 0.001) {
+    // 不需要融合：直接把克隆填补的结果作为成品
+    const baseName = name.replace(/\.[^.]+$/, "");
+    const outName = `${baseName}-fix.png`;
+    const outPath = path.join(outputDir(), outName);
+    await fsp.copyFile(workingPath, outPath);
+    const meta = {
+      ...(await readOutputMeta(sourcePath)),
+      name: outName,
+      fixed: true,
+      fixMode: "erase",
+      fixRect: { x: rx, y: ry, w: rw, h: rh },
+      source: name,
+      width: size.width,
+      height: size.height,
+      createdAt: new Date().toISOString(),
+    };
+    await fsp.writeFile(outPath.replace(/\.[^.]+$/, ".json"), JSON.stringify(meta, null, 2), "utf8");
+    tempFiles.forEach((file) => { try { fs.unlinkSync(file); } catch {} });
+    return { ok: true, item: { name: outName, path: outPath, url: `data:image/png;base64,${(await fsp.readFile(outPath)).toString("base64")}`, ...meta } };
+  }
+
+  const files = await runWorkflowRaw(config, built.workflow);
+  if (!files.length) throw new Error("修正没有输出结果");
+  const baseName = name.replace(/\.[^.]+$/, "");
+  const outName = `${baseName}-fix.png`;
+  const outPath = path.join(outputDir(), outName);
+  await fsp.copyFile(files[0].path, outPath);
+  const meta = {
+    ...(await readOutputMeta(sourcePath)),
+    name: outName,
+    fixed: true,
+    fixMode: mode,
+    fixRect: { x: rx, y: ry, w: rw, h: rh },
+    fixDenoise: mode === "erase" ? blend : Math.max(0.15, Math.min(0.9, Number(payload?.denoise) || 0.5)),
+    source: name,
+    width: size.width,
+    height: size.height,
+    createdAt: new Date().toISOString(),
+  };
+  await fsp.writeFile(outPath.replace(/\.[^.]+$/, ".json"), JSON.stringify(meta, null, 2), "utf8");
+  tempFiles.forEach((file) => { try { fs.unlinkSync(file); } catch {} });
+  return {
+    ok: true,
+    item: {
+      name: outName,
+      path: outPath,
+      url: `data:image/png;base64,${(await fsp.readFile(outPath)).toString("base64")}`,
+      ...meta,
+    },
+  };
+}
+
+async function readOutputMeta(imagePath) {
+  try {
+    return JSON.parse(await fsp.readFile(imagePath.replace(/\.[^.]+$/, ".json"), "utf8")) || {};
+  } catch {
+    return {};
+  }
+}
+
 // ---------- 高清化（只改分辨率，不经过采样器） ----------
 function readImageSize(buffer) {
   try {
@@ -1750,12 +1883,19 @@ ipcMain.handle("flow:list-outputs", async (_event, payload) => {
   ensureDirs();
   const mode = payload?.mode === "hidden" ? "hidden" : "visible";
   const hiddenSet = readHiddenWorks();
-  const names = (await fsp.readdir(outputDir()))
-    .filter((name) => /\.(png|jpe?g|webp)$/i.test(name))
-    .filter((name) => (mode === "hidden" ? hiddenSet.has(name) : !hiddenSet.has(name)))
-    .sort()
-    .reverse()
-    .slice(0, 60);
+  // 按修改时间倒序（新建/高清化/修正的作品才会出现在最上方）
+  const allNames = (await fsp.readdir(outputDir())).filter((name) => /\.(png|jpe?g|webp)$/i.test(name));
+  const withTime = [];
+  for (const name of allNames) {
+    if (mode === "hidden" ? !hiddenSet.has(name) : hiddenSet.has(name)) continue;
+    let mtime = 0;
+    try { mtime = (await fsp.stat(path.join(outputDir(), name))).mtimeMs; } catch {}
+    withTime.push({ name, mtime });
+  }
+  const names = withTime
+    .sort((a, b) => b.mtime - a.mtime || b.name.localeCompare(a.name))
+    .slice(0, 60)
+    .map((item) => item.name);
   const items = [];
   for (const name of names) {
     const filePath = path.join(outputDir(), name);
@@ -1792,6 +1932,7 @@ ipcMain.handle("flow:delete-output", async (_event, payload) => {
 ipcMain.handle("flow:hidden:list", () => ({ hidden: [...readHiddenWorks()] }));
 ipcMain.handle("flow:hidden:set", (_event, payload) => setHiddenWorks(payload));
 ipcMain.handle("flow:upscale", async (_event, payload) => upscaleImage(readConfig(), payload));
+ipcMain.handle("flow:repair-region", async (_event, payload) => repairRegion(payload));
 ipcMain.handle("flow:upscale:info", () => ({ models: listUpscaleModels(readConfig()) }));
 ipcMain.handle("flow:repair-feet", async (_event, payload) => repairFeet(payload));
 

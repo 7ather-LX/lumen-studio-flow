@@ -897,6 +897,7 @@
             <div class="detail-image-tools">
               <button class="mini-button" id="imageDetailFav">☆ 收藏</button>
               <button class="mini-button" id="imageDetailUpscale">✨ 高清化</button>
+              <button class="mini-button" id="imageDetailRepair">🩹 局部修正</button>
               <button class="mini-button" id="imageDetailHide">隐藏此作品</button>
               <button class="mini-button" id="imageDetailDownload">↓ 下载</button>
             </div>
@@ -1009,5 +1010,44 @@
 
     <script src="./characters.js"></script>
     <script src="./app.js"></script>
+
+    <div class="modal-backdrop hidden" id="repairModal">
+      <div class="modal repair-modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">LOCAL FIX</span>
+            <h2>局部修正</h2>
+          </div>
+          <button class="icon-button" id="closeRepair">×</button>
+        </div>
+        <p class="hint">
+          在图上拖出矩形框选要处理的区域。修复＝重新生成该区域细节；擦除＝用邻近像素覆盖该区域（去多余人物/物体）。
+        </p>
+        <div class="repair-stage" id="repairStage">
+          <img id="repairImage" alt="repair target" />
+          <div class="repair-selection hidden" id="repairSelection"></div>
+        </div>
+        <div class="control-row">
+          <label class="control">
+            <span>模式</span>
+            <select id="repairMode" class="setting-select compact">
+              <option value="repair">修复细节</option>
+              <option value="erase">擦除对象</option>
+            </select>
+          </label>
+          <label class="control">
+            <span>强度</span>
+            <input type="range" id="repairDenoise" min="0.15" max="0.9" step="0.05" value="0.5" />
+            <b id="repairDenoiseValue">50%</b>
+          </label>
+          <label class="control grow">
+            <span>提示词（可选）</span>
+            <input type="text" id="repairPrompt" placeholder="留空则按模式自动填写" />
+          </label>
+          <button class="primary-button" id="runRepair">执行修正</button>
+          <span class="hint" id="repairStatus">先在图上框选区域</span>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

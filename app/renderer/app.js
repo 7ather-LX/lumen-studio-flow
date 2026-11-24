@@ -41,6 +41,8 @@
     hiddenMode: "visible",
     upscaleSource: null,
     upscaleResult: null,
+    repairTarget: null,
+    repairRect: null,
     currentImage: null,
     busy: false,
     progressUnsubscribe: null,
@@ -1120,6 +1122,131 @@ function setupUpscaleImport() {
       toast(error?.message || String(error));
     } finally {
       if (button) button.disabled = false;
+    }
+  }
+
+// ---------- 局部修正（框选修复 / 擦除） ----------
+  function repairUi() {
+    return {
+      modal: $("#repairModal"),
+      stage: $("#repairStage"),
+      img: $("#repairImage"),
+      sel: $("#repairSelection"),
+      status: $("#repairStatus"),
+      mode: $("#repairMode"),
+      denoise: $("#repairDenoise"),
+      denoiseValue: $("#repairDenoiseValue"),
+      prompt: $("#repairPrompt"),
+      run: $("#runRepair"),
+    };
+  }
+
+  function openRepair(image) {
+    const ui = repairUi();
+    if (!ui.modal || !image) return;
+    state.repairTarget = image;
+    state.repairRect = null;
+    ui.sel?.classList.add("hidden");
+    if (ui.img) ui.img.src = image.url;
+    if (ui.status) ui.status.textContent = "先在图上框选区域";
+    if (ui.mode) ui.mode.value = "repair";
+    if (ui.denoise) ui.denoise.value = "0.5";
+    if (ui.denoiseValue) ui.denoiseValue.textContent = "50%";
+    if (ui.prompt) ui.prompt.value = "";
+    ui.modal.classList.remove("hidden");
+  }
+
+  function setupRepairDrag() {
+    const ui = repairUi();
+    if (!ui.stage || !ui.img) return;
+    let drag = null;
+    const toNatural = (event) => {
+      const box = ui.img.getBoundingClientRect();
+      const scale = (ui.img.naturalWidth || box.width) / Math.max(1, box.width);
+      return {
+        x: Math.max(0, Math.min(box.width, event.clientX - box.left)) * scale,
+        y: Math.max(0, Math.min(box.height, event.clientY - box.top)) * scale,
+        box,
+        scale,
+      };
+    };
+
+    ui.stage.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      const p = toNatural(event);
+      drag = { startX: p.x, startY: p.y, ...p };
+      ui.sel.classList.remove("hidden");
+      ui.sel.style.left = "0px";
+      ui.sel.style.top = "0px";
+      ui.sel.style.width = "0px";
+      ui.sel.style.height = "0px";
+      ui.stage.setPointerCapture?.(event.pointerId);
+    });
+    ui.stage.addEventListener("pointermove", (event) => {
+      if (!drag) return;
+      const p = toNatural(event);
+      const x0 = Math.min(drag.startX, p.x);
+      const y0 = Math.min(drag.startY, p.y);
+      const x1 = Math.max(drag.startX, p.x);
+      const y1 = Math.max(drag.startY, p.y);
+      const left = x0 / p.scale;
+      const top = y0 / p.scale;
+      ui.sel.style.left = `${left}px`;
+      ui.sel.style.top = `${top}px`;
+      ui.sel.style.width = `${(x1 - x0) / p.scale}px`;
+      ui.sel.style.height = `${(y1 - y0) / p.scale}px`;
+      state.repairRect = { x: Math.round(x0), y: Math.round(y0), w: Math.round(x1 - x0), h: Math.round(y1 - y0) };
+      if (ui.status) {
+        ui.status.textContent = `已框选 ${state.repairRect.w} × ${state.repairRect.h}（原图像素）`;
+      }
+    });
+    const end = (event) => {
+      if (!drag) return;
+      drag = null;
+      ui.stage.releasePointerCapture?.(event.pointerId);
+      if (state.repairRect && (state.repairRect.w < 24 || state.repairRect.h < 24)) {
+        state.repairRect = null;
+        ui.sel.classList.add("hidden");
+        if (ui.status) ui.status.textContent = "选区太小，请重新框选";
+      }
+    };
+    ui.stage.addEventListener("pointerup", end);
+    ui.stage.addEventListener("pointercancel", end);
+  }
+
+  async function runRepair() {
+    const ui = repairUi();
+    const image = state.repairTarget;
+    if (!bridge || !image) return;
+    if (!state.repairRect) {
+      toast("请先在图上框选要修正的区域。");
+      return;
+    }
+    const mode = ui.mode?.value === "erase" ? "erase" : "repair";
+    const strength = Number(ui.denoise?.value || (mode === "erase" ? 0.15 : 0.5));
+    if (ui.run) ui.run.disabled = true;
+    if (ui.status) ui.status.textContent = mode === "erase" ? "正在擦除…" : "正在修复…";
+    try {
+      const res = await bridge.repairRegion({
+        name: image.name,
+        rect: state.repairRect,
+        mode,
+        prompt: String(ui.prompt?.value || ""),
+        denoise: strength,
+        blend: strength,
+      });
+      if (res?.ok) {
+        ui.modal.classList.add("hidden");
+        toast(`修正完成：${res.item?.name || "已保存"}`);
+        await loadGallery();
+      } else {
+        throw new Error("修正未返回结果");
+      }
+    } catch (error) {
+      if (ui.status) ui.status.textContent = "修正失败";
+      toast(error?.message || String(error));
+    } finally {
+      if (ui.run) ui.run.disabled = false;
     }
   }
 
@@ -2410,6 +2537,27 @@ function setupUpscaleImport() {
       toast(`开始批量高清化 ${names.length} 张${label}（原图保留）…`);
       await upscaleWorks(names);
     });
+    $("#imageDetailRepair")?.addEventListener("click", () => {
+      const image = state.detailImage;
+      if (!image) return;
+      $("#imageDetailModal").classList.add("hidden");
+      openRepair(image);
+    });
+    $("#closeRepair")?.addEventListener("click", () => $("#repairModal")?.classList.add("hidden"));
+    $("#repairModal")?.addEventListener("click", (event) => {
+      if (event.target.id === "repairModal") $("#repairModal").classList.add("hidden");
+    });
+    $("#repairMode")?.addEventListener("change", () => {
+      const erase = $("#repairMode").value === "erase";
+      $("#repairDenoise").value = erase ? "0.15" : "0.5";
+      $("#repairDenoiseValue").textContent = erase ? "15%" : "50%";
+    });
+    $("#repairDenoise")?.addEventListener("input", () => {
+      const value = Number($("#repairDenoise").value || 0);
+      $("#repairDenoiseValue").textContent = `${Math.round(value * 100)}%`;
+    });
+    $("#runRepair")?.addEventListener("click", () => void runRepair());
+    setupRepairDrag();
     $("#imageDetailUpscale")?.addEventListener("click", async () => {
       const image = state.detailImage;
       if (!image) return;

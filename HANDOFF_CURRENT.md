@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-24（20:50 发布 0.2.58）  
-当前版本：`0.2.58`  
+更新时间：2026-11-24（21:40 发布 0.2.59）  
+当前版本：`0.2.59`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.58
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.59
 
 ---
 
@@ -28,7 +28,7 @@ F:\DSH WORKSPACE
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md
 以及 F:\DSH WORKSPACE\lumen-flow\WORK_RULES.md（工作规范，必须遵守）。
-当前版本 0.2.58，先确认项目状态，再继续。
+当前版本 0.2.59，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -197,16 +197,16 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.58
-本机安装：0.2.58
-GitHub latest：v0.2.58
+源码：0.2.59
+本机安装：0.2.59
+GitHub latest：v0.2.59
 ```
 
-Release 附件（v0.2.58 共 11 个）：
+Release 附件（v0.2.59 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.58.exe
-Lumen-Studio-Flow-0.2.58.exe
+Lumen-Studio-Flow-Setup-0.2.59.exe
+Lumen-Studio-Flow-0.2.59.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
@@ -215,13 +215,13 @@ OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
 import_pose_gallery.py
 README.md
-RELEASE_NOTES_0.2.58.md
+RELEASE_NOTES_0.2.59.md
 ```
 
 说明：
 
 - `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
-- 旧版本已删除，只保留 v0.2.58
+- 旧版本已删除，只保留 v0.2.59
 - `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 / 0.2.37 未单独产出数据包**（角色数据无变化）
 
 ---
@@ -995,6 +995,54 @@ runUpscale 分流：dataUrl 走导入分支，否则按作品名
 
 ---
 
+### 4.24 0.2.59：局部修正（框选修复 / 擦除）+ 列表排序修正
+
+**列表排序**
+
+`listOutputs` 原来按文件名排序再反转，高清化/导入/修正产生的文件带后缀，会排到列表底部。
+改为按 `mtime` 倒序（mtime 相同再按名字），新文件永远在最上方。
+
+**局部修正**
+
+用户给了一张两格图：上半脚趾结构错乱、下半右下角多出一个多余小人，要求软件能修。
+
+结论：**两种问题需要两条不同链路**。
+
+```text
+修复（改内容）：裁剪 rect → 放大到 1024 → img2img（denoise 0.5）→ 缩回 → 羽化贴回
+擦除（删内容）：纯像素克隆填补 + 轻微融合，绝不交给扩散模型自由发挥
+```
+
+擦除为什么不能只用重绘：实测把「背景/头发」写成提示词、denoise 0.95 去重绘那块，
+模型直接**画了一只脚**出来（因为它看到周围都是脚）。改成先用邻近像素覆盖、再低幅度融合后，
+多余小人干净消失。
+
+实现：
+
+```text
+app/region-erase.py     克隆填补脚本
+  候选供体：正上 → 正下 → 左 → 右（可用第 7 参数指定方向）
+  供体做翻转避免明显重复纹理，高斯模糊 1.5，边界羽化 min(w,h)*0.12
+main.cjs repairRegion()
+  mode=erase  → 调 python 脚本 → 若 blend<=0 直接出成品；否则再走一次低 denoise 融合
+  mode=repair → 直接走 detailWorkflow（rect + prompt + denoise）
+  成品另存 <原名>-fix.png，元数据记 fixed / fixMode / fixRect / source
+渲染层
+  详情页「🩹 局部修正」→ 弹窗内拖框选 → 模式（修复/擦除）+ 强度 + 可选提示词
+  擦除默认强度 15%，修复默认 50%
+```
+
+实测数据：
+
+```text
+上半脚趾修复（denoise 0.52）：五个趾头分开、顺序正常
+下半擦除（blend 0.15）：多余小人完全消失，边缘自然过渡
+```
+
+证据图：`contact-repair.png`（脚趾前后）、`contact-erase-final.png`（擦除前后）。
+
+---
+
 ## 5. 画风定义
 
 ```text
@@ -1063,7 +1111,7 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.57 安装包与 blockmap
+- 旧版 0.1.x / 0.2.0–0.2.58 安装包与 blockmap
 - 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
@@ -1074,7 +1122,7 @@ _archive\old-release-notes-2026-11-22
 ```text
 character-data-v0.2.35.zip（最新；0.2.36 起未单独产出）
 loras-share-v0.2.6.zip
-release\ 当前版本（0.2.58 Setup / portable / blockmap + latest.yml + win-unpacked）
+release\ 当前版本（0.2.59 Setup / portable / blockmap + latest.yml + win-unpacked）
 current style verification images
 ```
 
@@ -1206,9 +1254,9 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.58`
+1. 当前版本？→ `0.2.59`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.58`
+3. 最新 Release？→ `v0.2.59`
 4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
 5. 2.5D 厚涂怎么复刻旧对话结果？→ 2.5D 厚涂 + 参考图 + 自定义档 32 步 / CFG4.5 / 0.88 / seed 1601600，关自动画风
 6. 脚趾怎么修？→ 局部精修（勾“自动修正足部/手部细节”），可选部位（脚/手/脚+手）与区域（下半/中部/上半/左/右）

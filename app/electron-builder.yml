@@ -45,5 +45,7 @@ extraResources:
     to: icon.ico
   - from: detect-pose.py
     to: detect-pose.py
+  - from: region-erase.py
+    to: region-erase.py
   - from: parsing
     to: parsing

@@ -1675,3 +1675,39 @@ html, body { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: aut
 .upscale-import.hidden {
   display: none;
 }
+
+
+/* 局部修正弹窗 */
+.repair-modal {
+  max-width: min(980px, 94vw);
+}
+.repair-stage {
+  position: relative;
+  margin: 12px 0 6px;
+  background: #0b0f0c;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: crosshair;
+  user-select: none;
+}
+.repair-stage img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+.repair-selection {
+  position: absolute;
+  border: 1px dashed rgba(216, 183, 106, 0.95);
+  background: rgba(216, 183, 106, 0.14);
+  pointer-events: none;
+}
+.repair-selection.hidden {
+  display: none;
+}
+.control-row .control.grow {
+  flex: 1 1 240px;
+}
+.control-row input[type="range"] {
+  width: 120px;
+}
