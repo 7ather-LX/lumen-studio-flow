@@ -1212,7 +1212,22 @@ async function runComfy(payload) {
   }
 
   // NSFW 关闭 + 成人关键词 → 逐张打码（按姿态定位胸/胯，失败则用中心带兜底）
-  if (!nsfwOn && images.length && ADULT_RE.test(String(payload.prompt || ""))) {
+  // 打码是附加环节：任何异常都不能影响已经生成好的图片
+  let nsfwOn = true;
+  try {
+    nsfwOn = payload.nsfwWorkflow !== undefined
+      ? Boolean(payload.nsfwWorkflow)
+      : (readConfig().nsfwWorkflow !== false);
+  } catch {
+    nsfwOn = true;
+  }
+  let needsCensor = false;
+  try {
+    needsCensor = !nsfwOn && images.length > 0 && ADULT_RE.test(String(payload.prompt || ""));
+  } catch {
+    needsCensor = false;
+  }
+  if (needsCensor) {
     const mode = CHEST_RE.test(String(payload.prompt || "")) ? "both" : "pelvis";
     for (const image of images) {
       try {
