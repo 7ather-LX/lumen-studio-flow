@@ -1518,6 +1518,7 @@ function setupUpscaleImport() {
         lora: STYLE_MODELS[state.style]?.lora || state.styleLoras?.[state.style] || style?.lora || "",
         loraStrength: Number($("#styleStrength")?.value ?? STYLE_MODELS[state.style]?.loraStrength ?? style?.loraStrength ?? 1),
         customWorkflow: state.customWorkflow,
+        nsfwWorkflow: $("#nsfwWorkflow") ? Boolean($("#nsfwWorkflow").checked) : true,
         autoUpscale: Boolean($("#autoUpscale")?.checked),
         upscaleFactor: Number($("#autoUpscaleFactor")?.value || 2),
         upscaleModel: (() => {
@@ -2515,17 +2516,117 @@ async function characterFactsByTag(tag) {
     return state.catalog;
   }
 
+// ---------- 成人标签面板 ----------
+  const nsfwTagState = { data: null, selected: new Set() };
+
+  async function loadNsfwTags() {
+    if (nsfwTagState.data) return nsfwTagState.data;
+    try {
+      const response = await fetch("nsfw-tags.json");
+      if (!response.ok) throw new Error(String(response.status));
+      nsfwTagState.data = await response.json();
+    } catch {
+      nsfwTagState.data = { groups: [] };
+    }
+    return nsfwTagState.data;
+  }
+
+  function appendTagsToPrompt(tag) {
+    const box = $("#prompt");
+    if (!box) return;
+    const current = box.value.trim();
+    const parts = current ? current.split(",").map((item) => item.trim()) : [];
+    const added = String(tag).split(",").map((item) => item.trim()).filter(Boolean);
+    for (const item of added) {
+      if (!parts.some((existing) => existing.toLowerCase() === item.toLowerCase())) parts.push(item);
+    }
+    box.value = parts.join(", ");
+    if (typeof updateAnimaPreview === "function") updateAnimaPreview();
+  }
+
+  async function renderNsfwTags() {
+    const host = $("#nsfwTagGroups");
+    if (!host) return;
+    const data = await loadNsfwTags();
+    const query = String($("#nsfwTagSearch")?.value || "").trim().toLowerCase();
+    host.innerHTML = (data.groups || []).map((group) => {
+      const items = (group.items || []).filter((item) => {
+        if (!query) return true;
+        return (item.zh + " " + item.tag).toLowerCase().includes(query);
+      });
+      if (!items.length) return "";
+      const chips = items.map((item) => {
+        const active = nsfwTagState.selected.has(item.tag) ? " active" : "";
+        return '<button class="nsfw-tag' + active + '" data-nsfw-tag="' + escapeHtml(item.tag) + '" title="' + escapeHtml(item.tag) + '">' + escapeHtml(item.zh) + "</button>";
+      }).join("");
+      return '<div class="nsfw-group"><h4>' + escapeHtml(group.name) + '</h4><div class="nsfw-chips">' + chips + "</div></div>";
+    }).join("") || '<p class="hint">没有匹配的标签。</p>';
+
+    host.querySelectorAll("[data-nsfw-tag]").forEach((node) => {
+      node.addEventListener("click", () => {
+        const tag = node.dataset.nsfwTag;
+        if (nsfwTagState.selected.has(tag)) {
+          nsfwTagState.selected.delete(tag);
+        } else {
+          nsfwTagState.selected.add(tag);
+          appendTagsToPrompt(tag);
+        }
+        const selectedHost = $("#nsfwTagSelected");
+        if (selectedHost) {
+          selectedHost.textContent = nsfwTagState.selected.size
+            ? "已选 " + nsfwTagState.selected.size + " 项（已写入提示词）"
+            : "";
+        }
+        node.classList.toggle("active", nsfwTagState.selected.has(tag));
+      });
+    });
+  }
+
+  function syncNsfwPanel() {
+    const box = $("#nsfwWorkflow");
+    const panel = $("#nsfwTagPanel");
+    if (!panel) return;
+    const on = box ? box.checked : true;
+    panel.classList.toggle("hidden", !on);
+    if (on) void renderNsfwTags();
+  }
+
   function renderCatalog() {
     const grid = $("#catalogGrid");
     if (!grid) return;
     const query = String($("#catalogSearch")?.value || "").trim().toLowerCase();
     const kind = $("#catalogKind")?.value || "";
-    const items = state.catalog.filter((entry) => {
+    const category = $("#catalogCategory")?.value || "";
+
+    // 分类下拉按当前 kind 动态填充
+    const categorySelect = $("#catalogCategory");
+    if (categorySelect) {
+      const pool = state.catalog.filter((entry) => !kind || entry.kind === kind);
+      const cats = [...new Set(pool.map((entry) => entry.category).filter(Boolean))].sort();
+      const current = categorySelect.value;
+      const wanted = ["", ...cats];
+      const have = [...categorySelect.options].map((option) => option.value);
+      if (wanted.length !== have.length || wanted.some((value, index) => value !== have[index])) {
+        categorySelect.innerHTML = [
+          '<option value="">全部分类</option>',
+          ...cats.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`),
+        ].join("");
+        if (wanted.includes(current)) categorySelect.value = current;
+      }
+    }
+
+    const filtered = state.catalog.filter((entry) => {
       if (kind && entry.kind !== kind) return false;
+      if (category && entry.category !== category) return false;
       if (!query) return true;
       return [entry.name, entry.category, entry.prompt, entry.keywords, ...(entry.tags || [])]
         .join(" ").toLowerCase().includes(query);
-    }).slice(0, 80);
+    });
+    const items = filtered
+      .slice()
+      .sort((a, b) => String(a.category || "").localeCompare(String(b.category || ""), "zh") ||
+        String(a.name || "").localeCompare(String(b.name || ""), "zh"))
+      .slice(0, 120);
     grid.innerHTML = items.length
       ? items.map((entry) => `<button class="catalog-card" data-catalog-id="${entry.id}">${entry.localThumb ? `<img src="file:///${entry.localThumb.replace(/\\/g, "/")}" alt="" />` : ""}<b>${escapeHtml(entry.name)}</b><small>${escapeHtml(entry.category)} · ${escapeHtml(entry.prompt)}</small></button>`).join("")
       : '<div class="gallery-empty">没有匹配结果。</div>';
@@ -2914,6 +3015,13 @@ async function characterFactsByTag(tag) {
       $("#negative").classList.toggle("hidden");
     });
     $("#performanceProfile").addEventListener("change", () => applyPerformanceProfile());
+    const nsfwBox = $("#nsfwWorkflow");
+    if (nsfwBox) {
+      nsfwBox.checked = state.config?.nsfwWorkflow !== false;
+      nsfwBox.addEventListener("change", () => {
+        void bridge.setConfig({ nsfwWorkflow: nsfwBox.checked });
+      });
+    }
     $("#generateButton").addEventListener("click", () => void generate());
     $("#refreshGallery").addEventListener("click", () => void loadGallery());
     $("#galleryModeVisible")?.addEventListener("click", () => applyGalleryMode("visible"));
@@ -3151,6 +3259,7 @@ async function characterFactsByTag(tag) {
     $("#catalogButton").addEventListener("click", () => void openCatalog());
     $("#closeCatalog").addEventListener("click", () => $("#catalogModal").classList.add("hidden"));
     $("#catalogSearch").addEventListener("input", renderCatalog);
+    $("#catalogCategory")?.addEventListener("change", renderCatalog);
     $("#catalogKind").addEventListener("change", renderCatalog);
     $("#settingsButton").addEventListener("click", openSettings);
     $("#closeSettings").addEventListener("click", () => $("#settingsModal").classList.add("hidden"));
@@ -3327,6 +3436,17 @@ async function characterFactsByTag(tag) {
     });
     $("#helpButton").addEventListener("click", () => $("#helpModal").classList.remove("hidden"));
     $("#closeHelp").addEventListener("click", () => $("#helpModal").classList.add("hidden"));
+    $("#openTutorial")?.addEventListener("click", () => { bridge.openTutorial().catch((error) => toast(error?.message || String(error))); });
+    $("#nsfwTagSearch")?.addEventListener("input", renderNsfwTags);
+    $("#nsfwTagClear")?.addEventListener("click", () => {
+      nsfwTagState.selected.clear();
+      const host = $("#nsfwTagSelected");
+      if (host) host.textContent = "";
+      void renderNsfwTags();
+    });
+    $("#nsfwWorkflow")?.addEventListener("change", syncNsfwPanel);
+    syncNsfwPanel();
+
     $("#revealButton").addEventListener("click", () => {
       if (state.currentImage) void bridge.reveal(state.currentImage.path);
     });

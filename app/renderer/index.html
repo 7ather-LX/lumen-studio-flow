@@ -124,6 +124,19 @@
                 <textarea id="negative" class="negative-input hidden" rows="3" spellcheck="false">worst quality, low quality, blurry, jpeg artifacts, text, watermark, bad anatomy, extra fingers</textarea>
               </div>
 
+              <div class="panel nsfw-tag-panel hidden" id="nsfwTagPanel">
+                <div class="panel-head">
+                  <div>
+                    <span class="eyebrow">TAG PALETTE</span>
+                    <h2>成人标签（点击追加）</h2>
+                  </div>
+                  <button class="text-button" id="nsfwTagClear">清空已选</button>
+                </div>
+                <input id="nsfwTagSearch" type="text" placeholder="搜索：猫耳、束缚、浴室、俯视…" />
+                <div id="nsfwTagGroups" class="nsfw-tag-groups"></div>
+                <div id="nsfwTagSelected" class="nsfw-tag-selected"></div>
+              </div>
+
               <div class="panel reference-panel">
                 <div class="panel-head">
                   <div>
@@ -421,6 +434,10 @@
                   </div>
                   <span class="hint" id="resultMeta">等待生成</span>
                 </div>
+                <label class="inline-check">
+                  <input type="checkbox" id="nsfwWorkflow" checked />
+                  <span>启用 NSFW 工作流（本地无限制；关闭则强制 safe）</span>
+                </label>
                 <label class="inline-check">
                   <input type="checkbox" id="autoUpscale" />
                   <span>自动高清化（生成后自动放大，低清图自动删除）</span>
@@ -780,6 +797,8 @@
           <button class="icon-button" id="closeHelp">×</button>
         </div>
         <div class="modal-body help-body">
+          <p class="hint">第一次用建议先看图文教程：从装好到调好每一个参数，全部配套实拍示例图。</p>
+          <p><button class="mini-button primary-mini" id="openTutorial">打开图文教程（含参数详解）</button></p>
           <h3>1. 安装与启动</h3>
           <ol>
             <li>安装包默认创建桌面快捷方式，安装目录可以自己选择，建议放在 F 盘。</li>
@@ -1009,6 +1028,9 @@
             <option value="costume">服装</option>
             <option value="portrait">人像</option>
           </select>
+        <select id="catalogCategory" class="setting-select">
+          <option value="">全部分类</option>
+        </select>
         </div>
         <div class="catalog-grid" id="catalogGrid"></div>
         <p class="modal-note">元数据来自 anhao/ai-pose-gallery-zh。图片不随安装包分发；本地缩略图仅在自行导入后显示。</p>

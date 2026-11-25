@@ -51,5 +51,9 @@ extraResources:
     to: crop-single.py
   - from: count-people.py
     to: count-people.py
+  - from: censor-mosaic.py
+    to: censor-mosaic.py
+  - from: ../docs/tutorial
+    to: tutorial
   - from: parsing
     to: parsing

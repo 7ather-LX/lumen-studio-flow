@@ -1,0 +1,163 @@
+{
+  "meta": {
+    "version": 1,
+    "note": "中文标签 → danbooru 英文标签。仅用于本地创作，NSFW 工作流开启时可用。"
+  },
+  "groups": [
+    {
+      "name": "人数与关系",
+      "items": [
+        { "zh": "单人女性", "tag": "1girl, solo" },
+        { "zh": "单人男性", "tag": "1boy, solo" },
+        { "zh": "男女", "tag": "1boy, 1girl" },
+        { "zh": "双女", "tag": "2girls" },
+        { "zh": "多女", "tag": "multiple girls" },
+        { "zh": "多人", "tag": "group sex" },
+        { "zh": "三人", "tag": "threesome" },
+        { "zh": "百合", "tag": "yuri" },
+        { "zh": "男同", "tag": "yaoi" },
+        { "zh": "扶他", "tag": "futanari" }
+      ]
+    },
+    {
+      "name": "体型与特征",
+      "items": [
+        { "zh": "巨乳", "tag": "huge breasts" },
+        { "zh": "贫乳", "tag": "flat chest" },
+        { "zh": "肉感", "tag": "thick thighs" },
+        { "zh": "腹肌", "tag": "toned" },
+        { "zh": "长发", "tag": "long hair" },
+        { "zh": "短发", "tag": "short hair" },
+        { "zh": "双马尾", "tag": "twintails" },
+        { "zh": "猫耳", "tag": "cat ears" },
+        { "zh": "兽耳", "tag": "animal ears" },
+        { "zh": "尾巴", "tag": "tail" },
+        { "zh": "兽娘", "tag": "kemonomimi" },
+        { "zh": "精灵耳", "tag": "pointy ears" },
+        { "zh": "纹身", "tag": "tattoo" },
+        { "zh": "穿孔", "tag": "piercing" }
+      ]
+    },
+    {
+      "name": "服装",
+      "items": [
+        { "zh": "裸体", "tag": "nude" },
+        { "zh": "全裸", "tag": "completely nude" },
+        { "zh": "半裸", "tag": "topless" },
+        { "zh": "内衣", "tag": "lingerie" },
+        { "zh": "胸罩", "tag": "bra" },
+        { "zh": "内裤", "tag": "panties" },
+        { "zh": "丁字裤", "tag": "thong" },
+        { "zh": "吊带袜", "tag": "garter belt, thighhighs" },
+        { "zh": "黑丝", "tag": "black pantyhose" },
+        { "zh": "白丝", "tag": "white thighhighs" },
+        { "zh": "过膝袜", "tag": "thighhighs" },
+        { "zh": "女仆装", "tag": "maid, maid headdress" },
+        { "zh": "兔女郎", "tag": "bunny girl, playboy bunny" },
+        { "zh": "护士", "tag": "nurse, nurse cap" },
+        { "zh": "泳装", "tag": "swimsuit" },
+        { "zh": "比基尼", "tag": "bikini" },
+        { "zh": "死库水", "tag": "school swimsuit" },
+        { "zh": "旗袍", "tag": "china dress" },
+        { "zh": "和服", "tag": "kimono" },
+        { "zh": "婚纱", "tag": "wedding dress" },
+        { "zh": "礼服", "tag": "evening gown" },
+        { "zh": "校服", "tag": "school uniform" },
+        { "zh": "水手服", "tag": "serafuku" },
+        { "zh": "OL", "tag": "office lady" },
+        { "zh": "皮衣", "tag": "leather" },
+        { "zh": "乳胶", "tag": "latex" },
+        { "zh": "束缚", "tag": "bondage" },
+        { "zh": "项圈", "tag": "collar" },
+        { "zh": "眼罩", "tag": "blindfold" },
+        { "zh": "丝袜", "tag": "pantyhose" }
+      ]
+    },
+    {
+      "name": "动作与姿势",
+      "items": [
+        { "zh": "站立", "tag": "standing" },
+        { "zh": "跪姿", "tag": "kneeling" },
+        { "zh": "趴姿", "tag": "on stomach" },
+        { "zh": "坐姿", "tag": "sitting" },
+        { "zh": "躺姿", "tag": "lying" },
+        { "zh": "张腿", "tag": "spread legs" },
+        { "zh": "抬腿", "tag": "leg up" },
+        { "zh": "M字开腿", "tag": "legs up" },
+        { "zh": "翘臀", "tag": "arched back, ass" },
+        { "zh": "骑乘", "tag": "girl on top" },
+        { "zh": "后入", "tag": "doggystyle" },
+        { "zh": "口交", "tag": "fellatio" },
+        { "zh": "深喉", "tag": "deepthroat" },
+        { "zh": "乳交", "tag": "paizuri" },
+        { "zh": "手交", "tag": "handjob" },
+        { "zh": "足交", "tag": "footjob" },
+        { "zh": "自慰", "tag": "masturbation" },
+        { "zh": "接吻", "tag": "kiss" },
+        { "zh": "舌吻", "tag": "french kiss" },
+        { "zh": "拥抱", "tag": "hug" },
+        { "zh": "抬起下巴", "tag": "chin grab" },
+        { "zh": "捆绑", "tag": "bound wrists" }
+      ]
+    },
+    {
+      "name": "表情与状态",
+      "items": [
+        { "zh": "脸红", "tag": "blush" },
+        { "zh": "害羞", "tag": "embarrassed" },
+        { "zh": "愉悦", "tag": "pleasure" },
+        { "zh": "高潮", "tag": "orgasm" },
+        { "zh": "阿黑颜", "tag": "ahegao" },
+        { "zh": "迷离", "tag": "half-closed eyes" },
+        { "zh": "流泪", "tag": "tears" },
+        { "zh": "喘气", "tag": "breathing heavily" },
+        { "zh": "咬唇", "tag": "biting lip" },
+        { "zh": "吐舌", "tag": "tongue out" },
+        { "zh": "失神", "tag": "empty eyes" },
+        { "zh": "汗", "tag": "sweat" },
+        { "zh": "唾液", "tag": "saliva" }
+      ]
+    },
+    {
+      "name": "场景与光线",
+      "items": [
+        { "zh": "卧室", "tag": "bedroom, bed" },
+        { "zh": "酒店", "tag": "hotel room" },
+        { "zh": "浴室", "tag": "bathroom, steam" },
+        { "zh": "淋浴", "tag": "shower" },
+        { "zh": "浴缸", "tag": "bathtub" },
+        { "zh": "浴室镜", "tag": "mirror" },
+        { "zh": "办公室", "tag": "office" },
+        { "zh": "教室", "tag": "classroom" },
+        { "zh": "车内", "tag": "car interior" },
+        { "zh": "户外", "tag": "outdoors" },
+        { "zh": "森林", "tag": "forest" },
+        { "zh": "海滩", "tag": "beach" },
+        { "zh": "天台", "tag": "rooftop" },
+        { "zh": "泳池", "tag": "pool" },
+        { "zh": "夜灯", "tag": "dim lighting, night" },
+        { "zh": "烛光", "tag": "candlelight" },
+        { "zh": "逆光", "tag": "backlighting" },
+        { "zh": "窗光", "tag": "window light" },
+        { "zh": "霓虹", "tag": "neon lights" }
+      ]
+    },
+    {
+      "name": "镜头与画质",
+      "items": [
+        { "zh": "全身", "tag": "full body" },
+        { "zh": "半身", "tag": "upper body" },
+        { "zh": "特写", "tag": "close-up" },
+        { "zh": "俯视", "tag": "from above" },
+        { "zh": "仰视", "tag": "from below" },
+        { "zh": "侧面", "tag": "from side" },
+        { "zh": "背面", "tag": "from behind" },
+        { "zh": "广角", "tag": "wide shot" },
+        { "zh": "景深", "tag": "depth of field" },
+        { "zh": "胶片颗粒", "tag": "film grain" },
+        { "zh": "柔光", "tag": "soft lighting" },
+        { "zh": "高细节皮肤", "tag": "detailed skin" }
+      ]
+    }
+  ]
+}

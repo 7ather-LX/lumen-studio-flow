@@ -67,6 +67,7 @@ const DEFAULT_CONFIG = {
   apiUrl: "https://api.openai.com/v1",
   apiModel: "gpt-image-1",
   apiKey: "",
+  nsfwWorkflow: true,
   llmMode: "local",
   llmModel: "F:\\novel\\DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic.Q4_K_M.gguf",
   llmBin: "F:\\novel\\llama-cpp\\llama-server.exe",
@@ -393,6 +394,39 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
   let negative = String(payload.negative || "worst quality, low quality, blurry, jpeg artifacts").trim();
   // 单人硬约束：声明 solo/1girl 时把「多人」负面前置
   // （负面太长会被编码器截断，放末尾等于没写）
+  // NSFW 工作流：默认开启。关闭时强制 safe 标签并压制裸露；开启时去掉 safe
+  const nsfwOn = payload.nsfwWorkflow !== undefined ? Boolean(payload.nsfwWorkflow) : (config.nsfwWorkflow !== false);
+  if (nsfwOn) {
+    prompt = prompt.replace(/(^|,\s*)safe(,|$)/gi, "$1$2").replace(/,\s*,/g, ",").replace(/^,\s*/, "").trim();
+  } else {
+    if (!/(^|,\s*)safe(,|$)/i.test(prompt)) prompt = `safe, ${prompt}`;
+    negative += ", nsfw, nude, explicit, nipples, genitals";
+  }
+
+  // 打码标签处理：开启时绝不出现任何打码词，关闭时主动要求打码
+  {
+    const stripCensor = (text) => {
+      let out = String(text || "");
+      for (const tag of CENSOR_TAGS) {
+        out = out.replace(new RegExp(`(^|,\\s*)${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(,|$)`, "gi"), "$1$2");
+      }
+      return out.replace(/,\s*,/g, ",").replace(/^,\s*/, "").replace(/,\s*$/, "").trim();
+    };
+    if (nsfwOn) {
+      prompt = stripCensor(prompt);
+      negative = stripCensor(negative);
+      // 开启时反向压制：模型有时会自己画马赛克条
+      if (ADULT_RE.test(prompt) && !/(^|,\s*)uncensored(,|$)/i.test(negative)) {
+        negative += ", censored, mosaic censoring, pixelated, censor bar";
+      }
+    } else if (ADULT_RE.test(prompt)) {
+      if (!/(^|,\s*)censored(,|$)/i.test(prompt)) prompt = `${prompt}, censored, mosaic censoring`;
+      negative += ", nude, nipples, genitals, explicit, uncensored";
+    }
+  }
+
+  // NSFW 工作流：默认开启。关闭时强制 safe 标签并压制裸露；开启时去掉 safe
+
   const soloRequested = /(^|,|\s)(solo|1girl|1boy)(,|\s|$)/i.test(prompt);
   if (soloRequested) {
     const crowdNegatives = [
@@ -811,6 +845,19 @@ async function readLlmStream(response) {
 }
 
 // ---------- 参考图单人裁切 ----------
+function tutorialPath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "tutorial", "index.html")
+    : path.join(__dirname, "..", "docs", "tutorial", "index.html");
+}
+
+async function openTutorial() {
+  const file = tutorialPath();
+  if (!fs.existsSync(file)) throw new Error("教程文件缺失，请重新安装应用");
+  await shell.openPath(file);
+  return { ok: true, file };
+}
+
 function cropSingleScript() {
   return app.isPackaged
     ? path.join(process.resourcesPath, "crop-single.py")
@@ -1164,6 +1211,30 @@ async function runComfy(payload) {
     }
   }
 
+  // NSFW 关闭 + 成人关键词 → 逐张打码（按姿态定位胸/胯，失败则用中心带兜底）
+  if (!nsfwOn && images.length && ADULT_RE.test(String(payload.prompt || ""))) {
+    const mode = CHEST_RE.test(String(payload.prompt || "")) ? "both" : "pelvis";
+    for (const image of images) {
+      try {
+        send("flow:progress", { stage: "NSFW 关闭：正在打码…", progress: 0.965 });
+        const result = censorImage(config, image.path, mode);
+        if (result.ok) {
+          image.censored = true;
+          const buffer = await fsp.readFile(image.path);
+          image.url = `data:image/png;base64,${buffer.toString("base64")}`;
+          const metaPath = image.path.replace(/\.png$/i, ".json");
+          try {
+            const meta = JSON.parse(await fsp.readFile(metaPath, "utf8"));
+            meta.censored = true;
+            meta.censorMode = result.mode;
+            meta.censorBoxes = result.boxes;
+            await fsp.writeFile(metaPath, JSON.stringify(meta, null, 2), "utf8");
+          } catch {}
+        }
+      } catch {}
+    }
+  }
+
   if (payload.faceDetail && images.length) {
     try {
       images[0] = await detailFace(
@@ -1242,6 +1313,38 @@ async function runComfy(payload) {
   }
   send("flow:progress", { stage: "Working...", progress: 1 });
   return { images, seed: built.seed, promptId, width: built.width, height: built.height };
+}
+
+// 成人内容关键词（中文 + 英文），用于「关闭 NSFW 时自动打码」
+const ADULT_RE = /(nude|naked|nipples?|genitals?|penis|vagina|pussy|sex\b|nsfw|explicit|uncensored|topless|lingerie|bondage|裸|全裸|半裸|乳头|阴部|阴道|性交|做爱|口交|自慰|射精|内射|情趣|露点|成人)/i;
+const CHEST_RE = /(breasts?|nipples?|乳|胸)/i;
+const CENSOR_TAGS = ["censored", "mosaic censoring", "bar censor", "pixelated", "pixelation", "censor bar", "mosaic"];
+
+function censorScript() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "censor-mosaic.py")
+    : path.join(__dirname, "censor-mosaic.py");
+}
+
+// 按姿态给敏感区域打马赛克（原地覆盖）
+function censorImage(config, imagePath, mode = "both") {
+  const script = censorScript();
+  if (!fs.existsSync(script)) return { ok: false, reason: "script missing" };
+  const python = resolvePythonForTools(config);
+  if (!python) return { ok: false, reason: "python missing" };
+  const tmp = path.join(writableTempDir(), `censor-${Date.now()}${path.extname(imagePath) || ".png"}`);
+  const result = spawnSync(python, [script, imagePath, tmp, mode], { encoding: "utf8", timeout: 120000, windowsHide: true });
+  if (!fs.existsSync(tmp)) {
+    return { ok: false, reason: String(result?.stderr || result?.stdout || "").slice(-160) };
+  }
+  try {
+    fs.copyFileSync(tmp, imagePath);
+  } finally {
+    try { fs.unlinkSync(tmp); } catch {}
+  }
+  let parsed = {};
+  try { parsed = JSON.parse(String(result.stdout || "").trim().split(/\r?\n/).pop() || "{}"); } catch {}
+  return { ok: true, mode: parsed.mode || "pose", boxes: parsed.boxes || [] };
 }
 
 function countPeopleScript() {
@@ -1730,6 +1833,7 @@ ipcMain.handle("flow:references:remove", (_event, payload) => {
 });
 ipcMain.handle("flow:references:open", () => shell.openPath(referenceLibraryRoot()));
 ipcMain.handle("flow:references:crop-single", (_event, payload) => cropReferenceToSingle(payload));
+ipcMain.handle("flow:tutorial:open", () => openTutorial());
 ipcMain.handle("flow:start", async () => startComfy());
 ipcMain.handle("flow:generate", async (_event, payload) => {
   const config = readConfig();
@@ -1985,6 +2089,7 @@ async function repairRegion(payload) {
     ...(await readOutputMeta(sourcePath)),
     name: outName,
     fixed: true,
+    nsfwWorkflow: readConfig().nsfwWorkflow !== false,
     fixMode: mode,
     fixRect: { x: rx, y: ry, w: rw, h: rh },
     fixDenoise: mode === "erase" ? blend : Math.max(0.15, Math.min(0.9, Number(payload?.denoise) || 0.5)),
@@ -1993,6 +2098,19 @@ async function repairRegion(payload) {
     height: size.height,
     createdAt: new Date().toISOString(),
   };
+  if (meta.nsfwWorkflow === false || readConfig().nsfwWorkflow === false) {
+    if (ADULT_RE.test(String(meta.prompt || ""))) {
+      try {
+        send("flow:progress", { stage: "NSFW 关闭：正在打码…", progress: 0.9 });
+        const censorResult = censorImage(config, outPath, CHEST_RE.test(String(meta.prompt || "")) ? "both" : "pelvis");
+        if (censorResult.ok) {
+          meta.censored = true;
+          meta.censorMode = censorResult.mode;
+          meta.censorBoxes = censorResult.boxes;
+        }
+      } catch {}
+    }
+  }
   await fsp.writeFile(outPath.replace(/\.[^.]+$/, ".json"), JSON.stringify(meta, null, 2), "utf8");
   tempFiles.forEach((file) => { try { fs.unlinkSync(file); } catch {} });
   return {

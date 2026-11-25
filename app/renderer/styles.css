@@ -1711,3 +1711,54 @@ html, body { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: aut
 .control-row input[type="range"] {
   width: 120px;
 }
+
+
+/* ---------- 成人标签面板 ---------- */
+.nsfw-tag-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.nsfw-group h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: .1em;
+  color: #8a8a92;
+  font-weight: 600;
+}
+.nsfw-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.nsfw-tag {
+  border: 1px solid #2c2c36;
+  background: #15151c;
+  color: #c9c9d0;
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .16s ease;
+}
+.nsfw-tag:hover {
+  border-color: #d8b76a;
+  color: #f0e2bd;
+}
+.nsfw-tag.active {
+  background: #2a2317;
+  border-color: #d8b76a;
+  color: #f2dca4;
+}
+.nsfw-tag-selected {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #8f8f98;
+}
+#nsfwTagSearch {
+  width: 100%;
+  margin-bottom: 12px;
+}
