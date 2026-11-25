@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld("flow", {
   installRuntime: (payload) => ipcRenderer.invoke("flow:runtime:install", payload),
   stopLlm: () => ipcRenderer.invoke("flow:llm:stop"),
   llmChat: (payload) => ipcRenderer.invoke("flow:llm:chat", payload),
+  llmResolveTag: (payload) => ipcRenderer.invoke("flow:llm:resolve-tag", payload),
   generate: (payload) => ipcRenderer.invoke("flow:generate", payload),
   chooseDir: () => ipcRenderer.invoke("flow:choose-dir"),
   listOutputs: (payload) => ipcRenderer.invoke("flow:list-outputs", payload),

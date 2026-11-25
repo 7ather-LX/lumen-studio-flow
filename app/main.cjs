@@ -799,6 +799,37 @@ async function readLlmStream(response) {
   return content;
 }
 
+// 角色名解析：让模型给出最可能的 canonical tag，再由本地库验证是否真实存在
+async function resolveCharacterTag(text) {
+  const config = readConfig();
+  if ((config.llmMode || "local") === "external") return "";
+  await startLlm();
+  try {
+    const response = await fetch(`http://127.0.0.1:${LLM_PORT}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "lumen-local",
+        messages: [
+          { role: "system", content: "从用户这句话里找出角色名，输出它对应的英文 danbooru 角色 tag。只输出 tag 本身，不要引号、不要解释。例：晓美焰→akemi homura (magical girl)；明日香→souryuu asuka langley；艾伦耶格尔→eren yeager；刻晴→keqing (genshin impact)。不确定就输出空字符串。" },
+          { role: "user", content: String(text || "").slice(0, 500) },
+        ],
+        temperature: 0.0,
+        max_tokens: 48,
+        stream: false,
+        chat_template_kwargs: { enable_thinking: false },
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!response.ok) return "";
+    const data = await response.json();
+    const raw = String(data?.choices?.[0]?.message?.content || "").trim();
+    return raw.replace(/^["'`]+|["'`]+$/g, "").replace(/\s+/g, " ").toLowerCase().slice(0, 80);
+  } catch {
+    return "";
+  }
+}
+
 async function chatLlm(payload) {
   const config = readConfig();
   const messages = Array.isArray(payload?.messages) ? payload.messages.slice(-12) : [];
@@ -1522,6 +1553,7 @@ ipcMain.handle("flow:llm:status", () => llmStatus());
 ipcMain.handle("flow:llm:start", () => startLlm());
 ipcMain.handle("flow:llm:stop", () => stopLlm());
 ipcMain.handle("flow:llm:chat", (_event, payload) => chatLlm(payload));
+ipcMain.handle("flow:llm:resolve-tag", (_event, payload) => resolveCharacterTag(payload?.text));
 
 // ---------- 隐藏作品 ----------
 function hiddenWorksPath() {

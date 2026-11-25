@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-25（12:30 发布 0.2.61）  
-当前版本：`0.2.61`  
+更新时间：2026-11-25（14:05 发布 0.2.62）  
+当前版本：`0.2.62`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.61
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.62
 
 ---
 
@@ -28,7 +28,7 @@ F:\DSH WORKSPACE
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md
 以及 F:\DSH WORKSPACE\lumen-flow\WORK_RULES.md（工作规范，必须遵守）。
-当前版本 0.2.61，先确认项目状态，再继续。
+当前版本 0.2.62，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -197,16 +197,16 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.61
-本机安装：0.2.61
-GitHub latest：v0.2.61
+源码：0.2.62
+本机安装：0.2.62
+GitHub latest：v0.2.62
 ```
 
-Release 附件（v0.2.61 共 11 个）：
+Release 附件（v0.2.62 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.61.exe
-Lumen-Studio-Flow-0.2.61.exe
+Lumen-Studio-Flow-Setup-0.2.62.exe
+Lumen-Studio-Flow-0.2.62.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
@@ -215,13 +215,13 @@ OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
 import_pose_gallery.py
 README.md
-RELEASE_NOTES_0.2.61.md
+RELEASE_NOTES_0.2.62.md
 ```
 
 说明：
 
 - `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
-- 旧版本已删除，只保留 v0.2.61
+- 旧版本已删除，只保留 v0.2.62
 - `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 / 0.2.37 未单独产出数据包**（角色数据无变化）
 
 ---
@@ -1091,6 +1091,47 @@ bootstrap_runtime.ps1 增加 pip install onnxruntime（自动区域依赖），�
 
 ---
 
+### 4.26 0.2.62：角色库 2450 → 15988 + 中文识别
+
+**扩充**
+
+```text
+数据源 danbooru 角色标签库（40,931 个），经 PowerShell 通道下载 CSV（node fetch 被墙）
+取热度 ≥100 的 13,538 个，与原有 2,450 条按 tag 去重合并 → 15,988
+新条目字段：canonical tag、work（从 "(work)" 后缀解析）、aliases、pop
+```
+
+**中文名（难点：日文音译）**
+
+用户提醒：很多角色英文名是日文音译，翻译困难。所以做了分层：
+
+```text
+第一层：原有 2450 条带人工中文名 → 直接命中
+第二层：新条目用本地模型翻中文，再做两道校验
+  ① 往返校验：中文再翻回英文 tag 与原 tag 比对（800 条通过）
+  ② 判断题：模型判断「『晓美焰』= akemi homura (magical girl) 吗？」（2331 条 true）
+  两道都过 + 全库唯一 → 776 条写入
+第三层：中文分词匹配
+  「惣流·明日香·兰格雷」拆成片段，用户只写「明日香」也能命中
+第四层：兜底解析（库里确实没有）
+  模型给候选 canonical tag → 回本地库验证存在 → 存在才采信
+  实测：晓美焰→akemi homura、明日香→souryuu asuka langley、艾伦耶格尔→eren yeager
+```
+
+**顺手修的两个 bug**
+
+```text
+1. 质量前缀把 1girl, solo 写死 → 皮卡丘也输出 1girl
+   改为前缀不含人数，人数由识别步骤决定，自检增加「非人形是否误写 1girl」
+2. LLM 解析的 system prompt 缺示例 → 明日香被解析成晓美焰
+   补 4 个示例（晓美焰/明日香/艾伦耶格尔/刻晴）后正确
+```
+
+**已知边界**：danbooru 以动画/游戏/漫画为主，真人影视覆盖有限；冷门角色的日文音译名仍可能识别不到，
+面板里已提示「建议用英文或罗马字」。
+
+---
+
 ## 5. 画风定义
 
 ```text
@@ -1159,7 +1200,7 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.60 安装包与 blockmap
+- 旧版 0.1.x / 0.2.0–0.2.61 安装包与 blockmap
 - 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
@@ -1170,7 +1211,7 @@ _archive\old-release-notes-2026-11-22
 ```text
 character-data-v0.2.35.zip（最新；0.2.36 起未单独产出）
 loras-share-v0.2.6.zip
-release\ 当前版本（0.2.61 Setup / portable / blockmap + latest.yml + win-unpacked）
+release\ 当前版本（0.2.62 Setup / portable / blockmap + latest.yml + win-unpacked）
 current style verification images
 ```
 
@@ -1302,9 +1343,9 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.61`
+1. 当前版本？→ `0.2.62`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.61`
+3. 最新 Release？→ `v0.2.62`
 4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
 5. 2.5D 厚涂怎么复刻旧对话结果？→ 2.5D 厚涂 + 参考图 + 自定义档 32 步 / CFG4.5 / 0.88 / seed 1601600，关自动画风
 6. 脚趾怎么修？→ 局部精修（勾“自动修正足部/手部细节”），可选部位（脚/手/脚+手）与区域（下半/中部/上半/左/右）

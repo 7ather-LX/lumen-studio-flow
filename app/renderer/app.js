@@ -1856,7 +1856,9 @@ function setupUpscaleImport() {
 12 画风（赛璐珞 / 2.5D / 萌系 / 厚涂，只能选一个主画风）
 
 【角色识别规则（最重要）】
-- 如果消息里出现 CHARACTER_FACTS，那是本地角色库的权威数据：发色、瞳色、发型、头饰、服装必须直接照抄其中的标签，一个字都不许改，也不许用你自己的记忆覆盖它。
+- 如果消息里出现 CHARACTER_FACTS，那是本地角色库的权威数据：
+  · 带 tags 的条目：发色、瞳色、发型、头饰、服装必须直接照抄那些标签，一个字都不许改，也不许用你自己的记忆覆盖。
+  · 标注 attributes: unknown 的条目（库里只有 canonical 名）：可以用官方设定补外观，但宁可少写也不要写错；不确定的特征写进 notes 的「未确认」。
 - 没有 CHARACTER_FACTS 时，用官方设定常识；仍不确定的特征不要写死，写进 notes 的「未确认」。
 - 猫耳头饰、锥形发髻绝不能写成 real cat ears / animal ears。
 - 绝不把一个角色的发色、瞳色、服装混到另一个角色身上。
@@ -1865,8 +1867,9 @@ function setupUpscaleImport() {
 【标签顺序（严格按这个顺序拼 prompt）】
 质量前缀 → 人数与角色 → 作品 → 外观（发色/发型/瞳色/头饰/耳尾） → 服装/配饰/状态 → 动作/姿势 → 镜头/构图 → 场景/环境 → 光线/氛围 → 画风/渲染 → 细节强化
 
-【质量前缀（固定开头）】
+【质量前缀（固定开头，不含人数）】
 masterpiece, best quality, score_7, safe, ultra detailed, very aesthetic,
+紧随其后才是人数与角色：人形角色写 1girl / 1boy / solo；非人形角色（宝可梦、动物、机械、物件）写 solo + 该对象，绝对不要写 1girl。
 
 【词汇规范】
 - 动作要具体：standing, hands on hips, akimbo, arms crossed, sitting, kneeling, leaning back, looking at viewer, gentle smile, blush
@@ -1909,6 +1912,7 @@ detailed eyes, detailed hair, detailed hands, detailed skin, clean soft lineart
 - 人数是否矛盾、是否混入第二个角色
 - 服装是否被换错
 - prompt 是否 ≥ 45 个标签、是否含动作+镜头+场景+光线+画风
+- 非人形角色是否被误写成 1girl
 - negative 是否 ≥ 20 个标签、是否含反向颜色
 
 【示例】
@@ -1919,15 +1923,43 @@ masterpiece, best quality, score_7, safe, ultra detailed, very aesthetic, 1girl,
 
   async function loadCharacterCatalog() {
     if (state.characterCatalog) return state.characterCatalog;
-    try {
-      const response = await fetch("./characters.json");
-      const data = await response.json();
-      const rows = Array.isArray(data?.characters) ? data.characters : (Array.isArray(data) ? data : []);
-      state.characterCatalog = rows;
-    } catch {
-      state.characterCatalog = [];
-    }
+    const read = async (file) => {
+      try {
+        const response = await fetch(file);
+        const data = await response.json();
+        const rows = Array.isArray(data?.characters) ? data.characters : (Array.isArray(data) ? data : []);
+        return rows;
+      } catch {
+        return [];
+      }
+    };
+    const [main, extra] = await Promise.all([read("./characters.json"), read("./characters-extra.json")]);
+    state.characterCatalog = [...main, ...extra];
     return state.characterCatalog;
+  }
+
+async function characterFactsByTag(tag) {
+    const rows = await loadCharacterCatalog();
+    const want = String(tag || "").toLowerCase().trim();
+    if (!want) return "";
+    const norm = (value) => String(value || "").toLowerCase().replace(/[_]/g, " ").replace(/\s+/g, " ").trim();
+    const target = norm(want);
+    let best = null;
+    for (const row of rows) {
+      const names = [row.tag, row.name, ...(row.aliases || [])].filter(Boolean).map(norm);
+      if (names.includes(target)) { best = row; break; }
+      if (!best && names.some((name) => name && (target.includes(name) || name.includes(target)))) best = row;
+    }
+    if (!best) return "";
+    const tags = Array.isArray(best.tags) ? best.tags.filter(Boolean) : [];
+    return [
+      `CANONICAL: ${best.tag}`,
+      `work: ${best.work || ""}`,
+      best.zh ? `zh: ${best.zh}` : "",
+      tags.length
+        ? `tags: ${tags.join(", ")}`
+        : "attributes: unknown（本库只有 canonical 名，发色/瞳色/服装请按官方设定，不确定就写进未确认）",
+    ].filter(Boolean).join(" | ");
   }
 
   async function characterFactsFor(text) {
@@ -1936,7 +1968,8 @@ masterpiece, best quality, score_7, safe, ultra detailed, very aesthetic, 1girl,
     if (!rows.length || !query) return "";
     const scored = [];
     for (const row of rows) {
-      const names = [row.zh, row.tag, row.name, ...(row.aliases || []), ...(row.pinyin || [])]
+      const zhParts = String(row.zh || "").split(/[·・,，/／\s]+/).filter((part) => part.length >= 2);
+      const names = [row.zh, ...zhParts, row.tag, row.name, ...(row.aliases || []), ...(row.pinyin || [])]
         .filter(Boolean)
         .map((item) => String(item).toLowerCase());
       let hit = 0;
@@ -1949,12 +1982,15 @@ masterpiece, best quality, score_7, safe, ultra detailed, very aesthetic, 1girl,
     if (!scored.length) return "";
     scored.sort((a, b) => b.hit - a.hit || b.pop - a.pop);
     return scored.slice(0, 2).map(({ row }) => {
+      const tags = Array.isArray(row.tags) ? row.tags.filter(Boolean) : [];
       const parts = [
         `CANONICAL: ${row.tag}`,
         `work: ${row.work || ""}`,
-        `zh: ${row.zh || ""}`,
-        `tags: ${(row.tags || []).join(", ")}`,
-      ];
+        row.zh ? `zh: ${row.zh}` : "",
+        tags.length
+          ? `tags: ${tags.join(", ")}`
+          : "attributes: unknown（本库只有 canonical 名，发色/瞳色/服装请按官方设定，不确定就写进未确认）",
+      ].filter(Boolean);
       return parts.join(" | ");
     }).join("\n");
   }
@@ -2224,7 +2260,14 @@ masterpiece, best quality, score_7, safe, ultra detailed, very aesthetic, 1girl,
     $("#aiChatStatus").textContent = "正在生成…";
     try {
       const referenceContext = await referenceContextFor(text);
-      const characterFacts = await characterFactsFor(text);
+      let characterFacts = await characterFactsFor(text);
+      if (!characterFacts) {
+        // 库里没匹配到：让模型给出候选 canonical tag，再回库验证（存在才采信）
+        try {
+          const guess = await bridge.llmResolveTag({ text });
+          if (guess) characterFacts = await characterFactsByTag(guess);
+        } catch {}
+      }
       const systemContent = [
         AI_SYSTEM_PROMPT,
         characterFacts ? `CHARACTER_FACTS (authoritative — copy hair/eyes/costume tags verbatim):\n${characterFacts}` : "",
