@@ -1866,6 +1866,10 @@ function setupUpscaleImport() {
 - 作品必须用真实存在的 canonical work tag（例：neon genesis evangelion、genshin impact），不确定就留空，禁止臆造（如 "eva: evangelion"）。
 - 不要往 prompt 里塞与主体无关的其他作品角色（例：画怪物猎人时不要出现 hunter (bloodborne)）。
 - 用户没指定角色时，不要自动补一个角色。
+- **中文名不要按字面具象化**：很多国漫 / 网文角色名取自招式、器物或俗称，字面意思往往不是外观。
+  例：「罗三炮」不是大炮，而是《斗罗大陆》里似狗似猪的淡紫色毛球武魂。
+  遇到库外的中文名，先判断它是生物 / 器物 / 功法，无法确定就只写用户给出的形态描述，
+  并在 notes 里写「未收录，形态未确认」，禁止凭名字字面臆造形态。
 
 【标签顺序（严格按这个顺序拼 prompt）】
 质量前缀 → 人数与角色 → 作品 → 外观（发色/发型/瞳色/头饰/耳尾） → 服装/配饰/状态 → 动作/姿势 → 镜头/构图 → 场景/环境 → 光线/氛围 → 画风/渲染 → 细节强化
@@ -1913,7 +1917,8 @@ detailed eyes, detailed hair, detailed hands, detailed skin, clean soft lineart
 - prompt：英文标签，逗号分隔，**至少 45 个标签**，必须包含动作、镜头、场景、光线、画风、细节强化；不要重复质量词
 - negative_prompt：按上面规则组合，**至少 20 个标签**
 - notes：中文，分点写「识别依据 / 防错点 / 未确认项 / 一致性检查」；
-  只写与本图相关的内容，不要套用固定模板句（例如人形角色不要写「非人形无需额外标签」）
+  只写与本图相关的内容，不要套用固定模板句（例如人形角色不要写「非人形无需额外标签」）；
+  角色不在本地库时必须写明「未收录」
 
 【输出前自检（不通过就重写）】
 - 角色名与作品名是否都在
@@ -2343,8 +2348,75 @@ async function characterFactsByTag(tag) {
       }
     }
 
+    // ⑥b 补进库里的标志性外观（最多 6 个，且不与 prompt 重复）
+    if (factsTags.length) {
+      const SKIP = new Set(["1girl", "1boy", "2girls", "2boys", "solo"]);
+      let addedFacts = 0;
+      for (const tag of factsTags) {
+        if (addedFacts >= 6) break;
+        const key = tag.toLowerCase();
+        if (SKIP.has(key)) continue;
+        if (has(promptTags, tag)) continue;
+        promptTags.push(tag);
+        addedFacts += 1;
+      }
+    }
+
+    // ⑦ 负面词改为确定性构建：基础缺陷 + 角色纠错 + 反向颜色 + 非人形排除
+    //    （模型经常吐几百个无关词，全部丢弃）
+    const BASE_NEG = [
+      "worst quality", "low quality", "blurry", "jpeg artifacts", "text", "watermark",
+      "bad anatomy", "bad hands", "extra fingers", "missing fingers", "fused fingers",
+      "bad feet", "extra toes", "missing toes", "deformed face", "asymmetrical eyes",
+    ];
+    const builtNeg = [...BASE_NEG];
+    const pushNeg = (tag) => {
+      const key = String(tag).toLowerCase().trim();
+      if (key && !builtNeg.some((item) => item.toLowerCase() === key)) builtNeg.push(tag);
+    };
+    if (factsTags.length) {
+      ["wrong character", "wrong hair color", "wrong eye color"].forEach(pushNeg);
+    }
+    if (humanSubject) {
+      const hairColors = factsTags.filter((t) => /hair/.test(t)).flatMap((t) => HAIR_COLORS.filter((c) => t.startsWith(c)));
+      const eyeColors = factsTags.filter((t) => /eyes?$/.test(t)).flatMap((t) => EYE_COLORS.filter((c) => t.startsWith(c)));
+      for (const color of HAIR_COLORS) {
+        if (!hairColors.length || hairColors.includes(color)) continue;
+        pushNeg(`${color} hair`);
+      }
+      for (const color of EYE_COLORS) {
+        if (!eyeColors.length || eyeColors.includes(color)) continue;
+        pushNeg(`${color} eyes`);
+      }
+      pushNeg("real cat ears"); pushNeg("animal ears"); pushNeg("hat"); pushNeg("sunglasses");
+    } else {
+      ["1girl", "1boy", "human", "humanoid", "human face", "long hair"].forEach(pushNeg);
+    }
+    // 保留模型提出的少量、且不与 prompt 冲突的补充负面（最多 6 个）
+    const negSet = new Set(builtNeg.map((t) => t.toLowerCase()));
+    let extra = 0;
+    for (const tag of negativeTags) {
+      if (extra >= 6) break;
+      const key = tag.toLowerCase().trim();
+      if (!key || negSet.has(key)) continue;
+      if (promptTags.some((item) => item.toLowerCase() === key)) continue;
+      if (STYLE_BLOCK_TAGS.includes(key)) continue;
+      builtNeg.push(tag);
+      negSet.add(key);
+      extra += 1;
+    }
+
     data.prompt = [...new Set(promptTags)].join(", ");
-    data.negative_prompt = [...new Set(negativeTags)].join(", ");
+    data.negative_prompt = builtNeg.join(", ");
+
+    // ⑧ 非人形时，notes 里不该出现猫耳/发髻/发色这类人类特征描述
+    if (!humanSubject && data.notes) {
+      data.notes = String(data.notes)
+        .split(/(?<=[。；;\n])/)
+        .filter((line) => !/(猫耳|发髻|双马尾|发色|瞳色|发饰|发梢)/.test(line))
+        .join("")
+        .trim();
+    }
     data.character = cleanTagValue(data.character);
     data.work = cleanTagValue(data.work);
     return JSON.stringify(data, null, 2);

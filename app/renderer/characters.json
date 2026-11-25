@@ -60788,6 +60788,40 @@
    "pinyin": [
     "asuka"
    ]
+  },
+  {
+   "tag": "luo san pao",
+   "name": "luo san pao",
+   "zh": "罗三炮",
+   "work": "douluo dalu",
+   "work_zh": "斗罗大陆",
+   "aliases": [
+    "罗三炮",
+    "罗3炮",
+    "luo san pao",
+    "luo san pao (douluo dalu)"
+   ],
+   "tags": [
+    "solo",
+    "creature",
+    "quadruped",
+    "small animal",
+    "pale purple fur",
+    "fluffy body",
+    "floppy ears",
+    "big dark blue eyes",
+    "pig nose",
+    "short stubby legs",
+    "bump on head",
+    "cute",
+    "chibi proportions"
+   ],
+   "pop": 5000,
+   "pinyin": [
+    "luo san pao"
+   ],
+   "source": "curated-cn",
+   "note": "玉小刚的变异武魂；似狗似猪，通体淡紫色毛发，深蓝大眼，猪鼻，短粗腿，头顶鼓包"
   }
  ]
 }
