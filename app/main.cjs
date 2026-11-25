@@ -841,13 +841,24 @@ async function cropReferenceToSingle(payload) {
     throw new Error(`裁切失败：${parsed?.reason || String(result.stderr || "").slice(-160)}`);
   }
 
-  // 备份原图后替换（保持文件名不变，library.json 不用改）
-  const backupDir = path.join(LUMEN_ARCHIVE_DIR(), "ref-orig");
-  await fsp.mkdir(backupDir, { recursive: true });
-  await fsp.copyFile(source, path.join(backupDir, `${Date.now()}-${item.file}`));
-  await fsp.copyFile(outPath, source);
+  // 不覆盖原图：另存为一条新的单人参考（原条目保持原样）
+  const root = referenceLibraryRoot();
+  const newId = `ref_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const newFile = `${newId}.png`;
+  await fsp.copyFile(outPath, path.join(root, newFile));
   try { await fsp.unlink(outPath); } catch {}
-  return { ok: true, people: parsed.people, file: item.file, bbox: parsed.bbox };
+  const nextItems = referenceLibraryIndex();
+  nextItems.unshift({
+    id: newId,
+    category: item.category,
+    categoryType: item.categoryType || "",
+    name: `${item.name || "reference"} · 单人`,
+    file: newFile,
+    note: `从 ${item.name || item.file} 裁出的单人版（${parsed.people} 人 → 1 人）`,
+    createdAt: new Date().toISOString(),
+  });
+  writeReferenceLibrary(nextItems);
+  return { ok: true, people: parsed.people, file: newFile, source: item.file, bbox: parsed.bbox };
 }
 
 function LUMEN_ARCHIVE_DIR() {

@@ -1,7 +1,7 @@
 {
   "name": "lumen-studio-flow",
   "productName": "Lumen Studio Flow",
-  "version": "0.2.66",
+  "version": "0.2.67",
   "description": "A focused anime image studio powered by a local ComfyUI + Anima workflow.",
   "main": "main.cjs",
   "scripts": {

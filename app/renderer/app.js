@@ -1695,7 +1695,7 @@ function setupUpscaleImport() {
       name.textContent = `${item.category} · ${item.name}`;
       const actions = document.createElement("div");
       actions.className = "ref-actions";
-      actions.innerHTML = `<button data-ref-use="composition" data-ref-id="${item.id}">构图</button><button data-ref-use="character" data-ref-id="${item.id}">角色</button><button data-ref-use="foot" data-ref-id="${item.id}">足部</button><button data-ref-use="fabric" data-ref-id="${item.id}">质感</button><button data-ref-use="crop-single" data-ref-id="${item.id}" title="检测多人并裁成单人（原图备份到 _archive）">裁单人</button><button data-ref-use="remove" data-ref-id="${item.id}">删除</button>`;
+      actions.innerHTML = `<button data-ref-use="composition" data-ref-id="${item.id}">构图</button><button data-ref-use="character" data-ref-id="${item.id}">角色</button><button data-ref-use="foot" data-ref-id="${item.id}">足部</button><button data-ref-use="fabric" data-ref-id="${item.id}">质感</button><button data-ref-use="crop-single" data-ref-id="${item.id}" title="检测多人并裁成单人：新增一条单人参考，原图不动">裁单人</button><button data-ref-use="remove" data-ref-id="${item.id}">删除</button>`;
       card.append(img, name, actions);
       grid.append(card);
     }
@@ -3294,7 +3294,7 @@ async function characterFactsByTag(tag) {
         try {
           const res = await bridge.cropReferenceSingle({ id });
           if (res?.ok) {
-            toast(`已裁成单人（检测到 ${res.people} 人），原图已备份。`);
+            toast(`已新增单人参考（检测到 ${res.people} 人），原图未改动。`);
             await loadReferenceLibrary();
           } else if (res?.reason === "single") {
             toast("这张已经是单人了，没有改动。");
