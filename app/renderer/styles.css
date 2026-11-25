@@ -1762,3 +1762,19 @@ html, body { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: aut
   width: 100%;
   margin-bottom: 12px;
 }
+
+
+/* ---------- NSFW 标签面板：折叠 ---------- */
+.nsfw-tag-panel .panel-head {
+  cursor: pointer;
+  user-select: none;
+}
+.nsfw-tag-panel.collapsed .nsfw-tag-body {
+  display: none;
+}
+.nsfw-tag-panel .panel-head h2 {
+  margin: 0;
+}
+#nsfwTagChevron {
+  white-space: nowrap;
+}

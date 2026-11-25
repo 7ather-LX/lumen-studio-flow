@@ -124,17 +124,19 @@
                 <textarea id="negative" class="negative-input hidden" rows="3" spellcheck="false">worst quality, low quality, blurry, jpeg artifacts, text, watermark, bad anatomy, extra fingers</textarea>
               </div>
 
-              <div class="panel nsfw-tag-panel hidden" id="nsfwTagPanel">
+              <div class="panel nsfw-tag-panel hidden collapsed" id="nsfwTagPanel">
                 <div class="panel-head">
                   <div>
-                    <span class="eyebrow">TAG PALETTE</span>
-                    <h2>成人标签（点击追加）</h2>
+                    <span class="eyebrow">NSFW TAGS</span>
+                    <h2>NSFW 标签设置</h2>
                   </div>
-                  <button class="text-button" id="nsfwTagClear">清空已选</button>
+                  <button class="text-button" id="nsfwTagChevron">▾ 展开</button>
                 </div>
-                <input id="nsfwTagSearch" type="text" placeholder="搜索：猫耳、束缚、浴室、俯视…" />
-                <div id="nsfwTagGroups" class="nsfw-tag-groups"></div>
-                <div id="nsfwTagSelected" class="nsfw-tag-selected"></div>
+                <div class="nsfw-tag-body" id="nsfwTagBody">
+                  <input id="nsfwTagSearch" type="text" placeholder="搜索：猫耳、束缚、浴室、俯视…" />
+                  <div id="nsfwTagGroups" class="nsfw-tag-groups"></div>
+                  <div id="nsfwTagSelected" class="nsfw-tag-selected"></div>
+                </div>
               </div>
 
               <div class="panel reference-panel">

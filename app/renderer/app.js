@@ -2486,6 +2486,7 @@ async function characterFactsByTag(tag) {
   }
 
   function fillAiPrompt() {
+    if (typeof scheduleNsfwSync === "function") setTimeout(scheduleNsfwSync, 40);
     let text = String(state.aiLastAnswer || "").trim();
     text = text.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
     const firstBrace = text.indexOf("{");
@@ -2517,7 +2518,8 @@ async function characterFactsByTag(tag) {
   }
 
 // ---------- 成人标签面板 ----------
-  const nsfwTagState = { data: null, selected: new Set() };
+  // ---------- NSFW 标签设置 ----------
+  const nsfwTagState = { data: null, collapsed: true, ready: false };
 
   async function loadNsfwTags() {
     if (nsfwTagState.data) return nsfwTagState.data;
@@ -2531,17 +2533,60 @@ async function characterFactsByTag(tag) {
     return nsfwTagState.data;
   }
 
-  function appendTagsToPrompt(tag) {
+  function promptTags() {
+    const box = $("#prompt");
+    const raw = box ? box.value : "";
+    return raw.split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
+  }
+
+  function tagParts(tag) {
+    return String(tag || "").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
+  }
+
+  function promptHasTag(tag) {
+    const have = new Set(promptTags());
+    const parts = tagParts(tag);
+    return parts.length > 0 && parts.every((part) => have.has(part));
+  }
+
+  function writePrompt(tags) {
     const box = $("#prompt");
     if (!box) return;
-    const current = box.value.trim();
-    const parts = current ? current.split(",").map((item) => item.trim()) : [];
-    const added = String(tag).split(",").map((item) => item.trim()).filter(Boolean);
-    for (const item of added) {
-      if (!parts.some((existing) => existing.toLowerCase() === item.toLowerCase())) parts.push(item);
+    const seen = new Set();
+    const out = [];
+    for (const item of tags) {
+      const key = item.toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(item);
     }
-    box.value = parts.join(", ");
+    box.value = out.join(", ");
     if (typeof updateAnimaPreview === "function") updateAnimaPreview();
+  }
+
+  function toggleTagInPrompt(tag) {
+    const box = $("#prompt");
+    if (!box) return;
+    const parts = tagParts(tag);
+    const current = box.value.split(",").map((item) => item.trim()).filter(Boolean);
+    if (promptHasTag(tag)) {
+      writePrompt(current.filter((item) => !parts.includes(item.toLowerCase())));
+    } else {
+      writePrompt([...current, ...tag.split(",").map((item) => item.trim()).filter(Boolean)]);
+    }
+  }
+
+  function updateNsfwSelectedHint() {
+    const host = $("#nsfwTagSelected");
+    if (!host || !nsfwTagState.data) return;
+    const all = [];
+    for (const group of nsfwTagState.data.groups || []) {
+      for (const item of group.items || []) all.push(item);
+    }
+    const active = all.filter((item) => promptHasTag(item.tag));
+    host.textContent = active.length
+      ? "提示词中已包含 " + active.length + " 个标签：" + active.map((item) => item.zh).join("、")
+      : "还没有命中标签，点一下就会写入提示词。";
   }
 
   async function renderNsfwTags() {
@@ -2556,7 +2601,7 @@ async function characterFactsByTag(tag) {
       });
       if (!items.length) return "";
       const chips = items.map((item) => {
-        const active = nsfwTagState.selected.has(item.tag) ? " active" : "";
+        const active = promptHasTag(item.tag) ? " active" : "";
         return '<button class="nsfw-tag' + active + '" data-nsfw-tag="' + escapeHtml(item.tag) + '" title="' + escapeHtml(item.tag) + '">' + escapeHtml(item.zh) + "</button>";
       }).join("");
       return '<div class="nsfw-group"><h4>' + escapeHtml(group.name) + '</h4><div class="nsfw-chips">' + chips + "</div></div>";
@@ -2564,22 +2609,36 @@ async function characterFactsByTag(tag) {
 
     host.querySelectorAll("[data-nsfw-tag]").forEach((node) => {
       node.addEventListener("click", () => {
-        const tag = node.dataset.nsfwTag;
-        if (nsfwTagState.selected.has(tag)) {
-          nsfwTagState.selected.delete(tag);
-        } else {
-          nsfwTagState.selected.add(tag);
-          appendTagsToPrompt(tag);
-        }
-        const selectedHost = $("#nsfwTagSelected");
-        if (selectedHost) {
-          selectedHost.textContent = nsfwTagState.selected.size
-            ? "已选 " + nsfwTagState.selected.size + " 项（已写入提示词）"
-            : "";
-        }
-        node.classList.toggle("active", nsfwTagState.selected.has(tag));
+        toggleTagInPrompt(node.dataset.nsfwTag);
+        void renderNsfwTags();
       });
     });
+    updateNsfwSelectedHint();
+  }
+
+  let nsfwSyncTimer = 0;
+  function scheduleNsfwSync() {
+    if (!nsfwTagState.data) return;
+    clearTimeout(nsfwSyncTimer);
+    nsfwSyncTimer = setTimeout(() => {
+      if ($("#nsfwTagPanel")?.classList.contains("hidden")) return;
+      void renderNsfwTags();
+    }, 260);
+  }
+
+  function applyNsfwCollapsed() {
+    const panel = $("#nsfwTagPanel");
+    if (!panel) return;
+    panel.classList.toggle("collapsed", nsfwTagState.collapsed);
+    const chevron = $("#nsfwTagChevron");
+    if (chevron) chevron.textContent = nsfwTagState.collapsed ? "▾ 展开" : "▴ 收起";
+  }
+
+  function toggleNsfwCollapsed() {
+    nsfwTagState.collapsed = !nsfwTagState.collapsed;
+    try { localStorage.setItem("lumen.nsfwTagsCollapsed", nsfwTagState.collapsed ? "1" : "0"); } catch {}
+    applyNsfwCollapsed();
+    if (!nsfwTagState.collapsed) void renderNsfwTags();
   }
 
   function syncNsfwPanel() {
@@ -2588,60 +2647,16 @@ async function characterFactsByTag(tag) {
     if (!panel) return;
     const on = box ? box.checked : true;
     panel.classList.toggle("hidden", !on);
-    if (on) void renderNsfwTags();
-  }
-
-  function renderCatalog() {
-    const grid = $("#catalogGrid");
-    if (!grid) return;
-    const query = String($("#catalogSearch")?.value || "").trim().toLowerCase();
-    const kind = $("#catalogKind")?.value || "";
-    const category = $("#catalogCategory")?.value || "";
-
-    // 分类下拉按当前 kind 动态填充
-    const categorySelect = $("#catalogCategory");
-    if (categorySelect) {
-      const pool = state.catalog.filter((entry) => !kind || entry.kind === kind);
-      const cats = [...new Set(pool.map((entry) => entry.category).filter(Boolean))].sort();
-      const current = categorySelect.value;
-      const wanted = ["", ...cats];
-      const have = [...categorySelect.options].map((option) => option.value);
-      if (wanted.length !== have.length || wanted.some((value, index) => value !== have[index])) {
-        categorySelect.innerHTML = [
-          '<option value="">全部分类</option>',
-          ...cats.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`),
-        ].join("");
-        if (wanted.includes(current)) categorySelect.value = current;
-      }
+    if (!on) return;
+    if (!nsfwTagState.ready) {
+      nsfwTagState.ready = true;
+      try {
+        const saved = localStorage.getItem("lumen.nsfwTagsCollapsed");
+        if (saved !== null) nsfwTagState.collapsed = saved === "1";
+      } catch {}
     }
-
-    const filtered = state.catalog.filter((entry) => {
-      if (kind && entry.kind !== kind) return false;
-      if (category && entry.category !== category) return false;
-      if (!query) return true;
-      return [entry.name, entry.category, entry.prompt, entry.keywords, ...(entry.tags || [])]
-        .join(" ").toLowerCase().includes(query);
-    });
-    const items = filtered
-      .slice()
-      .sort((a, b) => String(a.category || "").localeCompare(String(b.category || ""), "zh") ||
-        String(a.name || "").localeCompare(String(b.name || ""), "zh"))
-      .slice(0, 120);
-    grid.innerHTML = items.length
-      ? items.map((entry) => `<button class="catalog-card" data-catalog-id="${entry.id}">${entry.localThumb ? `<img src="file:///${entry.localThumb.replace(/\\/g, "/")}" alt="" />` : ""}<b>${escapeHtml(entry.name)}</b><small>${escapeHtml(entry.category)} · ${escapeHtml(entry.prompt)}</small></button>`).join("")
-      : '<div class="gallery-empty">没有匹配结果。</div>';
-    grid.querySelectorAll(".catalog-card").forEach((node) => {
-      node.addEventListener("click", () => {
-        const entry = state.catalog.find((item) => item.id === node.dataset.catalogId);
-        if (!entry) return;
-        const current = $("#prompt").value.trim();
-        const addition = entry.keywords || entry.prompt || entry.name;
-        $("#prompt").value = [current, addition].filter(Boolean).join(", ");
-        updateAnimaPreview();
-        $("#catalogModal").classList.add("hidden");
-        toast("参考标签已追加到提示词。");
-      });
-    });
+    applyNsfwCollapsed();
+    if (!nsfwTagState.collapsed) void renderNsfwTags();
   }
 
   async function openCatalog() {
@@ -3438,12 +3453,12 @@ async function characterFactsByTag(tag) {
     $("#closeHelp").addEventListener("click", () => $("#helpModal").classList.add("hidden"));
     $("#openTutorial")?.addEventListener("click", () => { bridge.openTutorial().catch((error) => toast(error?.message || String(error))); });
     $("#nsfwTagSearch")?.addEventListener("input", renderNsfwTags);
-    $("#nsfwTagClear")?.addEventListener("click", () => {
-      nsfwTagState.selected.clear();
-      const host = $("#nsfwTagSelected");
-      if (host) host.textContent = "";
-      void renderNsfwTags();
+    $("#nsfwTagChevron")?.addEventListener("click", () => toggleNsfwCollapsed());
+    $("#nsfwTagPanel")?.querySelector(".panel-head")?.addEventListener("click", (event) => {
+      if (event.target.closest("button")) return;
+      toggleNsfwCollapsed();
     });
+    $("#prompt")?.addEventListener("input", scheduleNsfwSync);
     $("#nsfwWorkflow")?.addEventListener("change", syncNsfwPanel);
     syncNsfwPanel();
 
