@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-25（14:05 发布 0.2.62）  
-当前版本：`0.2.62`  
+更新时间：2026-11-25（14:35 发布 0.2.63）  
+当前版本：`0.2.63`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.62
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.63
 
 ---
 
@@ -28,7 +28,7 @@ F:\DSH WORKSPACE
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md
 以及 F:\DSH WORKSPACE\lumen-flow\WORK_RULES.md（工作规范，必须遵守）。
-当前版本 0.2.62，先确认项目状态，再继续。
+当前版本 0.2.63，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -197,16 +197,16 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.62
-本机安装：0.2.62
-GitHub latest：v0.2.62
+源码：0.2.63
+本机安装：0.2.63
+GitHub latest：v0.2.63
 ```
 
-Release 附件（v0.2.62 共 11 个）：
+Release 附件（v0.2.63 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.62.exe
-Lumen-Studio-Flow-0.2.62.exe
+Lumen-Studio-Flow-Setup-0.2.63.exe
+Lumen-Studio-Flow-0.2.63.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
@@ -215,13 +215,13 @@ OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
 import_pose_gallery.py
 README.md
-RELEASE_NOTES_0.2.62.md
+RELEASE_NOTES_0.2.63.md
 ```
 
 说明：
 
 - `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
-- 旧版本已删除，只保留 v0.2.62
+- 旧版本已删除，只保留 v0.2.63
 - `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 / 0.2.37 未单独产出数据包**（角色数据无变化）
 
 ---
@@ -1132,6 +1132,45 @@ bootstrap_runtime.ps1 增加 pip install onnxruntime（自动区域依赖），�
 
 ---
 
+### 4.27 0.2.63：AI 输出七处修正 + 角色库数据修复
+
+用户三个用例逐条复现，问题分两类：模型乱写、库数据错。
+
+```text
+模型侧（提示词规则）
+ 1 画风一律 2.5D → 默认 anima base：style 留空，不堆 2.5D 词，只有用户指定才用画风块
+ 2 明日香两个角色 tag（souryuu + shikinami）→ 库内角色标签只留一个
+ 3 作品名臆造（eva: evangelion）→ 有库命中时 work 一律取库里的 canonical work
+ 4 负面封杀角色本人服装（plugsuit / red bodysuit）→ 库特征与负面冲突时删负面，bodysuit 类整体豁免
+ 5 prompt 与 negative 同词冲突（brown hair 两边都有）→ prompt 里出现负面词就删
+ 6 非人形主体写 1girl / detailed hair / detailed hands → 无人称主体自动剥离
+ 7 混入其他作品角色（怪物猎人 → hunter (bloodborne)）→ 匹配规则收紧：中文片段 ≥3 字才算
+```
+
+数据侧（characters.json / characters-extra.json）
+
+```text
+souryuu asuka langley
+  work 错写成 goddess of victory: nikke → neon genesis evangelion
+  去掉多余的 brown hair，补 red bodysuit / 中文名 / 别名
+新增 asuka langley shikinami（新剧场版），原来库里完全没有
+hunter (bloodborne)
+  zh 由「猎人」改为「血源猎人」，避免被「怪物猎人」误命中
+```
+
+三个用例最终结果：
+
+```text
+刻晴    44 标签 / style 空 / 紫发紫瞳 / 无冲突
+明日香  39 标签 / work=neon genesis evangelion / 橙发蓝瞳 / 负面无 plugsuit
+奇怪龙  42 标签 / solo 非人形 / 无血源猎人 / 无 1girl
+```
+
+验证方式：把 app.js 里的 `enforceCharacterFacts` 原样提取到 Node 里，注入真实角色库跑三用例，
+不是另写一份逻辑。
+
+---
+
 ## 5. 画风定义
 
 ```text
@@ -1200,7 +1239,7 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.61 安装包与 blockmap
+- 旧版 0.1.x / 0.2.0–0.2.62 安装包与 blockmap
 - 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
@@ -1211,7 +1250,7 @@ _archive\old-release-notes-2026-11-22
 ```text
 character-data-v0.2.35.zip（最新；0.2.36 起未单独产出）
 loras-share-v0.2.6.zip
-release\ 当前版本（0.2.62 Setup / portable / blockmap + latest.yml + win-unpacked）
+release\ 当前版本（0.2.63 Setup / portable / blockmap + latest.yml + win-unpacked）
 current style verification images
 ```
 
@@ -1343,9 +1382,9 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.62`
+1. 当前版本？→ `0.2.63`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.62`
+3. 最新 Release？→ `v0.2.63`
 4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
 5. 2.5D 厚涂怎么复刻旧对话结果？→ 2.5D 厚涂 + 参考图 + 自定义档 32 步 / CFG4.5 / 0.88 / seed 1601600，关自动画风
 6. 脚趾怎么修？→ 局部精修（勾“自动修正足部/手部细节”），可选部位（脚/手/脚+手）与区域（下半/中部/上半/左/右）

@@ -1862,6 +1862,9 @@ function setupUpscaleImport() {
 - 没有 CHARACTER_FACTS 时，用官方设定常识；仍不确定的特征不要写死，写进 notes 的「未确认」。
 - 猫耳头饰、锥形发髻绝不能写成 real cat ears / animal ears。
 - 绝不把一个角色的发色、瞳色、服装混到另一个角色身上。
+- **只能有一个角色 tag**：同一角色的不同版本（如 souryuu asuka langley 与 asuka langley shikinami）也算冲突，只能保留最贴合用户描述的那个。
+- 作品必须用真实存在的 canonical work tag（例：neon genesis evangelion、genshin impact），不确定就留空，禁止臆造（如 "eva: evangelion"）。
+- 不要往 prompt 里塞与主体无关的其他作品角色（例：画怪物猎人时不要出现 hunter (bloodborne)）。
 - 用户没指定角色时，不要自动补一个角色。
 
 【标签顺序（严格按这个顺序拼 prompt）】
@@ -1869,7 +1872,8 @@ function setupUpscaleImport() {
 
 【质量前缀（固定开头，不含人数）】
 masterpiece, best quality, score_7, safe, ultra detailed, very aesthetic,
-紧随其后才是人数与角色：人形角色写 1girl / 1boy / solo；非人形角色（宝可梦、动物、机械、物件）写 solo + 该对象，绝对不要写 1girl。
+紧随其后才是人数与角色：人形角色写 1girl / 1boy / solo；非人形角色（宝可梦、怪物、动物、机械、物件）只写 solo + 该对象，绝对不要写 1girl/1boy，
+  也不要写 detailed hair / detailed hands / hair between eyes 这类人类专属细节，负面里同样不要堆发色瞳色。
 
 【词汇规范】
 - 动作要具体：standing, hands on hips, akimbo, arms crossed, sitting, kneeling, leaning back, looking at viewer, gentle smile, blush
@@ -1877,9 +1881,11 @@ masterpiece, best quality, score_7, safe, ultra detailed, very aesthetic,
 - 场景要用可执行标签：under tree, tree shade, dappled sunlight, sunlight through leaves, indoor, window light, city street, night
 - 禁止「好看的构图」「优雅氛围」这类无法执行的描述，一律换成具体标签。
 
-【画风块（二选一，不要混）】
-2.5D：2.5D anime, semi-realistic anime, soft airbrushed shading, glossy skin, detailed eyes, detailed hair, clean soft lineart, cinematic lighting, subtle gradients
-赛璐珞：anime cel shading, flat colors, clean lineart, crisp shadow edges, limited palette
+【画风：默认 anima base】
+- 用户没有明确指定画风时：style 留空，prompt 里不要堆 2.5D / 赛璐珞 词，只保留必要的质量与细节词（anima base 本身就是主打画风）。
+- 用户明确要画风时才用对应词块，二选一不要混：
+  2.5D：2.5D anime, semi-realistic anime, soft airbrushed shading, glossy skin, detailed eyes, clean soft lineart, cinematic lighting, subtle gradients
+  赛璐珞：anime cel shading, flat colors, clean lineart, crisp shadow edges, limited palette
 
 【细节强化（默认带上）】
 detailed eyes, detailed hair, detailed hands, detailed skin, clean soft lineart
@@ -1890,7 +1896,10 @@ detailed eyes, detailed hair, detailed hands, detailed skin, clean soft lineart
 3 角色相关：wrong character, wrong hair color, wrong eye color
 4 「反向颜色」：把该角色【不正确】的发色/瞳色写进负面。例如紫发紫瞳，就写 blue hair, green hair, blonde hair, blue eyes, red eyes, green eyes
 5 兽耳/帽子：real cat ears, animal ears, cat tail, hat, cap, beret, sunglasses
-6 只在确实相关时才加，不要堆无关词。
+6 **禁止把角色的标志性服装/配饰写进负面**（例：明日香的 plugsuit / red bodysuit），
+  除非用户明确说要换装；否则等于禁止模型画出该角色本人。
+7 负面里出现的颜色，prompt 里绝不能同时出现（自相矛盾）。
+8 只在确实相关时才加，不要堆无关词。
 
 【输出格式（必须严格遵守）】
 只输出一个 JSON 对象，不要 Markdown、不要解释、不要代码块：
@@ -1903,7 +1912,8 @@ detailed eyes, detailed hair, detailed hands, detailed skin, clean soft lineart
 - artist：只有用户明确点名画师时才填
 - prompt：英文标签，逗号分隔，**至少 45 个标签**，必须包含动作、镜头、场景、光线、画风、细节强化；不要重复质量词
 - negative_prompt：按上面规则组合，**至少 20 个标签**
-- notes：中文，分点写「识别依据 / 防错点 / 未确认项 / 一致性检查」
+- notes：中文，分点写「识别依据 / 防错点 / 未确认项 / 一致性检查」；
+  只写与本图相关的内容，不要套用固定模板句（例如人形角色不要写「非人形无需额外标签」）
 
 【输出前自检（不通过就重写）】
 - 角色名与作品名是否都在
@@ -1913,6 +1923,9 @@ detailed eyes, detailed hair, detailed hands, detailed skin, clean soft lineart
 - 服装是否被换错
 - prompt 是否 ≥ 45 个标签、是否含动作+镜头+场景+光线+画风
 - 非人形角色是否被误写成 1girl
+- prompt 里是否出现了两个角色 tag（含同角色不同版本）
+- 负面里是否误封了该角色的标志性服装
+- prompt 与 negative 是否有同词冲突
 - negative 是否 ≥ 20 个标签、是否含反向颜色
 
 【示例】
@@ -1968,13 +1981,20 @@ async function characterFactsByTag(tag) {
     if (!rows.length || !query) return "";
     const scored = [];
     for (const row of rows) {
-      const zhParts = String(row.zh || "").split(/[·・,，/／\s]+/).filter((part) => part.length >= 2);
-      const names = [row.zh, ...zhParts, row.tag, row.name, ...(row.aliases || []), ...(row.pinyin || [])]
+      const zhFull = String(row.zh || "").toLowerCase();
+      const zhParts = String(row.zh || "")
+        .split(/[·・,，/／()（）\s]+/)
+        .filter((part) => part.length >= 3);   // 只有 >=3 字的片段才算（「猎人」这种 2 字通用词不算）
+      const names = [row.tag, row.name, ...(row.aliases || []), ...(row.pinyin || [])]
         .filter(Boolean)
         .map((item) => String(item).toLowerCase());
       let hit = 0;
+      if (zhFull.length >= 2 && query.includes(zhFull)) hit = Math.max(hit, zhFull.length * 4);
+      for (const part of zhParts) {
+        if (query.includes(part)) hit = Math.max(hit, part.length * 3);
+      }
       for (const name of names) {
-        if (name.length >= 2 && query.includes(name)) hit = Math.max(hit, name.length * 3);
+        if (name.length >= 3 && query.includes(name)) hit = Math.max(hit, name.length * 3);
       }
       if (!hit) continue;
       scored.push({ row, hit, pop: Number(row.pop) || 0 });
@@ -2195,8 +2215,27 @@ async function characterFactsByTag(tag) {
   const HAIR_COLORS = ["blonde", "brown", "black", "blue", "green", "red", "pink", "purple", "silver", "white", "orange", "grey", "aqua"];
   const EYE_COLORS = ["blue", "green", "red", "purple", "golden", "yellow", "pink", "orange", "grey", "aqua", "brown"];
 
-  function enforceCharacterFacts(text, factsText) {
-    if (!factsText) return text;
+  function splitTags(value) {
+    return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+  }
+
+  function cleanTagValue(value) {
+    return String(value || "")
+      .replace(/^[\s"'`]+|[\s"'`,;。、]+$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  const STYLE_BLOCK_TAGS = [
+    "2.5d anime", "semi-realistic anime", "soft airbrushed shading", "glossy skin",
+    "clean soft lineart", "cinematic lighting", "subtle gradients",
+    "anime cel shading", "flat colors", "crisp shadow edges", "limited palette",
+  ];
+
+  const HUMAN_DETAIL_TAGS = ["detailed hair", "detailed hands", "detailed skin", "hair between eyes"];
+
+  // 用角色库 + 规则做确定性清洗（模型不可靠的部分全部在后处理里纠正）
+  async function enforceCharacterFacts(text, factsText, userText) {
     let body = String(text || "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
     const first = body.indexOf("{");
     const last = body.lastIndexOf("}");
@@ -2204,35 +2243,99 @@ async function characterFactsByTag(tag) {
     let data;
     try { data = JSON.parse(body.slice(first, last + 1)); } catch { return text; }
 
-    const canonical = (factsText.match(/CANONICAL:\s*([^|\n]+)/) || [])[1]?.trim() || "";
-    const factsTags = ((factsText.match(/tags:\s*([^\n]+)/) || [])[1] || "")
-      .split(",").map((item) => item.trim()).filter(Boolean);
+    const canonical = cleanTagValue((factsText.match(/CANONICAL:\s*([^|\n]+)/) || [])[1] || "");
+    const factsTags = splitTags((factsText.match(/tags:\s*([^\n]+)/) || [])[1] || "");
+    const factsWork = cleanTagValue((factsText.match(/work:\s*([^|\n]+)/) || [])[1] || "");
 
-    const promptTags = String(data.prompt || "").split(",").map((item) => item.trim()).filter(Boolean);
-    const negativeTags = String(data.negative_prompt || "").split(",").map((item) => item.trim()).filter(Boolean);
-    const has = (list, tag) => list.some((item) => item.toLowerCase() === tag.toLowerCase());
+    let promptTags = splitTags(data.prompt);
+    const negativeTags = splitTags(data.negative_prompt);
+    const lower = (list) => list.map((item) => item.toLowerCase());
+    const has = (list, tag) => lower(list).includes(String(tag).toLowerCase());
 
-    if (canonical && !has(promptTags, canonical)) {
-      const soloIndex = promptTags.findIndex((item) => item.toLowerCase() === "solo");
-      promptTags.splice(soloIndex >= 0 ? soloIndex + 1 : promptTags.length, 0, canonical);
+    // ① 画风：用户没点名就不要 2.5D / 赛璐珞（默认 anima base）
+    const askedStyle = /2\.5d|赛璐璐|赛璐珞|厚涂|cel shading|thick paint|画风指定|用水墨|浮世绘|Q版|赛博朋克/i.test(String(userText || ""));
+    if (!askedStyle) {
+      data.style = "";
+      promptTags = promptTags.filter((tag) => !STYLE_BLOCK_TAGS.includes(tag.toLowerCase()));
     }
-    // 发色 / 瞳色标签必须原样出现
+
+    // ② 角色 canonical + 作品必须来自库（不许臆造作品名）
+    data.character = cleanTagValue(data.character) || canonical;
+    if (canonical) data.character = canonical;
+    data.work = factsWork || cleanTagValue(data.work);
+
+    // ③ 单调性：prompt 里不允许出现负面词（自相矛盾）
+    const negativeSet = new Set(lower(negativeTags));
+    promptTags = promptTags.filter((tag) => !negativeSet.has(tag.toLowerCase()));
+
+    // ③b 负面不许封角色本人的服装/特征（库里给的 tags 与负面冲突时，删负面）
+    if (factsTags.length) {
+      const factsSet = new Set(factsTags.map((t) => t.toLowerCase().replace(/_/g, " ").trim()));
+      for (let i = negativeTags.length - 1; i >= 0; i -= 1) {
+        const key = negativeTags[i].toLowerCase().replace(/_/g, " ").trim();
+        if (factsSet.has(key)) negativeTags.splice(i, 1);
+      }
+      // 服装类同义：facts 里有 bodysuit/plugsuit 时，负面里的 plugsuit / bodysuit 一律去掉
+      if (factsTags.some((t) => /bodysuit|plugsuit/i.test(t))) {
+        for (let i = negativeTags.length - 1; i >= 0; i -= 1) {
+          if (/plugsuit|bodysuit/i.test(negativeTags[i])) negativeTags.splice(i, 1);
+        }
+      }
+    }
+
+    // ④ 只能有一个角色 tag：库里认得出来的角色标签，只保留 canonical（无 facts 时保留模型给的主角色）
+    {
+      const rows = await loadCharacterCatalog();
+      const known = new Set();
+      for (const row of rows) {
+        for (const name of [row.tag, row.name, ...(row.aliases || [])].filter(Boolean)) {
+          known.add(String(name).toLowerCase().replace(/_/g, " ").trim());
+        }
+      }
+      const primary = (canonical || cleanTagValue(data.character)).toLowerCase().replace(/_/g, " ").trim();
+      promptTags = promptTags.filter((tag) => {
+        const key = tag.toLowerCase().replace(/_/g, " ").trim();
+        return !known.has(key) || key === primary;
+      });
+      // canonical 存在时，去掉同角色的变体 tag（如 asuka langley (neon genesis evangelion)）
+      if (canonical) {
+        const tokens = canonical.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
+        promptTags = promptTags.filter((tag) => {
+          if (tag.toLowerCase().replace(/_/g, " ").trim() === canonical.toLowerCase()) return true;
+          const lower = tag.toLowerCase();
+          const hits = tokens.filter((w) => lower.includes(w)).length;
+          return !(tokens.length >= 2 && hits >= 2);
+        });
+      }
+      if (canonical && !has(promptTags, canonical)) {
+        const soloIndex = promptTags.findIndex((item) => item.toLowerCase() === "solo");
+        promptTags.splice(soloIndex >= 0 ? soloIndex + 1 : promptTags.length, 0, canonical);
+      }
+    }
+
+    // ⑤ 非人形：去掉人类专属细节与人数词
+    const humanSubject = /(^|,|\s)(1girl|1boy|2girls|2boys)(,|\s|$)/i.test(promptTags.join(", "));
+    if (!humanSubject) {
+      promptTags = promptTags.filter((tag) => !HUMAN_DETAIL_TAGS.includes(tag.toLowerCase()));
+      promptTags = promptTags.filter((tag) => !/^detailed (hair|hands)$/i.test(tag));
+    }
+
+    // ⑥ 发色 / 瞳色必须原样出现，并补反向颜色负面
     for (const tag of factsTags) {
-      const isHair = /hair/.test(tag) && !/hair ornament|hair bun|hairband|hair ribbon|hairclip|hair intakes|hair between eyes|braid|twintails|ponytail|bun/.test(tag);
-      const isEye = /eyes?$/.test(tag);
-      if ((isHair || isEye) && !has(promptTags, tag)) promptTags.push(tag);
+      const isHairColor = /^(blonde|brown|black|blue|green|red|pink|purple|silver|white|orange|grey|aqua|lavender)\s+hair$/i.test(tag);
+      const isEyeColor = /^(blue|green|red|purple|golden|yellow|pink|orange|grey|aqua|brown|lavender)\s+eyes$/i.test(tag);
+      if ((isHairColor || isEyeColor) && humanSubject && !has(promptTags, tag)) promptTags.push(tag);
     }
-    // 反向颜色：把角色没有的颜色写进负面
     const hairColors = factsTags.filter((t) => /hair/.test(t)).flatMap((t) => HAIR_COLORS.filter((c) => t.startsWith(c)));
     const eyeColors = factsTags.filter((t) => /eyes?$/.test(t)).flatMap((t) => EYE_COLORS.filter((c) => t.startsWith(c)));
-    if (hairColors.length) {
+    if (humanSubject && hairColors.length) {
       for (const color of HAIR_COLORS) {
         if (hairColors.includes(color)) continue;
         const tag = `${color} hair`;
         if (!has(negativeTags, tag)) negativeTags.push(tag);
       }
     }
-    if (eyeColors.length) {
+    if (humanSubject && eyeColors.length) {
       for (const color of EYE_COLORS) {
         if (eyeColors.includes(color)) continue;
         const tag = `${color} eyes`;
@@ -2240,9 +2343,10 @@ async function characterFactsByTag(tag) {
       }
     }
 
-    data.prompt = promptTags.join(", ");
-    data.negative_prompt = negativeTags.join(", ");
-    if (canonical && !String(data.character || "").trim()) data.character = canonical;
+    data.prompt = [...new Set(promptTags)].join(", ");
+    data.negative_prompt = [...new Set(negativeTags)].join(", ");
+    data.character = cleanTagValue(data.character);
+    data.work = cleanTagValue(data.work);
     return JSON.stringify(data, null, 2);
   }
 
@@ -2282,13 +2386,13 @@ async function characterFactsByTag(tag) {
       ].slice(-14);
       let res = await bridge.llmChat({ messages: buildMessages(null) });
       let finalText = res?.content || state.aiDraft || "没有返回内容。";
-      finalText = enforceCharacterFacts(finalText, characterFacts);
+      finalText = await enforceCharacterFacts(finalText, characterFacts, text);
       if (isDegenerateAnswer(finalText)) {
         $("#aiChatStatus").textContent = "输出为空字段，重试一次…";
         res = await bridge.llmChat({
           messages: buildMessages({ role: "user", content: "上一次输出所有字段都是空的。请按 JSON 结构重新完整填写，不要留空字段、不要解释。" }),
         });
-        if (res?.content) finalText = enforceCharacterFacts(res.content, characterFacts);
+        if (res?.content) finalText = await enforceCharacterFacts(res.content, characterFacts, text);
       }
       state.aiLastAnswer = finalText;
       const last = state.aiMessages[state.aiMessages.length - 1];
