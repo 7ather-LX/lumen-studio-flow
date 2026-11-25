@@ -2519,7 +2519,7 @@ async function characterFactsByTag(tag) {
 
 // ---------- 成人标签面板 ----------
   // ---------- NSFW 标签设置 ----------
-  const nsfwTagState = { data: null, collapsed: true, ready: false };
+  const nsfwTagState = { data: null, collapsed: false, ready: false };
 
   async function loadNsfwTags() {
     if (nsfwTagState.data) return nsfwTagState.data;
@@ -2646,8 +2646,12 @@ async function characterFactsByTag(tag) {
     const panel = $("#nsfwTagPanel");
     if (!panel) return;
     const on = box ? box.checked : true;
-    panel.classList.toggle("hidden", !on);
-    if (!on) return;
+    panel.classList.remove("hidden");
+    panel.classList.toggle("nsfw-off", !on);
+    const status = $("#nsfwTagStatus");
+    if (status) status.textContent = on ? "NSFW：开" : "NSFW：关（生成会自动打码）";
+    const toggleBtn = $("#nsfwTagToggleWorkflow");
+    if (toggleBtn) toggleBtn.textContent = on ? "关闭" : "开启";
     if (!nsfwTagState.ready) {
       nsfwTagState.ready = true;
       try {
@@ -2657,6 +2661,14 @@ async function characterFactsByTag(tag) {
     }
     applyNsfwCollapsed();
     if (!nsfwTagState.collapsed) void renderNsfwTags();
+  }
+
+  function setNsfwWorkflow(on) {
+    const box = $("#nsfwWorkflow");
+    if (box) box.checked = on;
+    void bridge.setConfig({ nsfwWorkflow: on });
+    syncNsfwPanel();
+    toast(on ? "已开启 NSFW 工作流（不再打码）" : "已关闭 NSFW 工作流（生成会自动打码）");
   }
 
   async function openCatalog() {
@@ -3454,6 +3466,10 @@ async function characterFactsByTag(tag) {
     $("#openTutorial")?.addEventListener("click", () => { bridge.openTutorial().catch((error) => toast(error?.message || String(error))); });
     $("#nsfwTagSearch")?.addEventListener("input", renderNsfwTags);
     $("#nsfwTagChevron")?.addEventListener("click", () => toggleNsfwCollapsed());
+    $("#nsfwTagToggleWorkflow")?.addEventListener("click", () => {
+      const box = $("#nsfwWorkflow");
+      setNsfwWorkflow(!(box ? box.checked : true));
+    });
     $("#nsfwTagPanel")?.querySelector(".panel-head")?.addEventListener("click", (event) => {
       if (event.target.closest("button")) return;
       toggleNsfwCollapsed();

@@ -1778,3 +1778,22 @@ html, body { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: aut
 #nsfwTagChevron {
   white-space: nowrap;
 }
+
+
+/* ---------- NSFW 标签面板头部动作 ---------- */
+.nsfw-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.nsfw-status {
+  font-size: 12px;
+  color: #9fd39f;
+  white-space: nowrap;
+}
+.nsfw-tag-panel.nsfw-off .nsfw-status {
+  color: #e0a76a;
+}
+.nsfw-tag-panel.nsfw-off .nsfw-tag-body {
+  opacity: .55;
+}
