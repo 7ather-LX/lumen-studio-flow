@@ -2642,16 +2642,16 @@ async function characterFactsByTag(tag) {
   }
 
   function syncNsfwPanel() {
-    const box = $("#nsfwWorkflow");
+    const hidden = $("#nsfwWorkflow");
+    const panelSwitch = $("#nsfwTagSwitch");
     const panel = $("#nsfwTagPanel");
     if (!panel) return;
-    const on = box ? box.checked : true;
+    const on = panelSwitch ? panelSwitch.checked : (hidden ? hidden.checked : true);
+    if (hidden) hidden.checked = on;
     panel.classList.remove("hidden");
     panel.classList.toggle("nsfw-off", !on);
     const status = $("#nsfwTagStatus");
-    if (status) status.textContent = on ? "NSFW：开" : "NSFW：关（生成会自动打码）";
-    const toggleBtn = $("#nsfwTagToggleWorkflow");
-    if (toggleBtn) toggleBtn.textContent = on ? "关闭" : "开启";
+    if (status) status.textContent = on ? "开" : "关（自动打码）";
     if (!nsfwTagState.ready) {
       nsfwTagState.ready = true;
       try {
@@ -2664,11 +2664,13 @@ async function characterFactsByTag(tag) {
   }
 
   function setNsfwWorkflow(on) {
-    const box = $("#nsfwWorkflow");
-    if (box) box.checked = on;
+    const hidden = $("#nsfwWorkflow");
+    const panelSwitch = $("#nsfwTagSwitch");
+    if (hidden) hidden.checked = on;
+    if (panelSwitch) panelSwitch.checked = on;
     void bridge.setConfig({ nsfwWorkflow: on });
     syncNsfwPanel();
-    toast(on ? "已开启 NSFW 工作流（不再打码）" : "已关闭 NSFW 工作流（生成会自动打码）");
+    toast(on ? "已开启 NSFW 工作流（不再打码）" : "已关闭 NSFW 工作流（生成后自动打码）");
   }
 
   async function openCatalog() {
@@ -3043,10 +3045,13 @@ async function characterFactsByTag(tag) {
     });
     $("#performanceProfile").addEventListener("change", () => applyPerformanceProfile());
     const nsfwBox = $("#nsfwWorkflow");
-    if (nsfwBox) {
-      nsfwBox.checked = state.config?.nsfwWorkflow !== false;
-      nsfwBox.addEventListener("change", () => {
-        void bridge.setConfig({ nsfwWorkflow: nsfwBox.checked });
+    const nsfwSwitch = $("#nsfwTagSwitch");
+    const nsfwOn = state.config?.nsfwWorkflow !== false;
+    if (nsfwBox) nsfwBox.checked = nsfwOn;
+    if (nsfwSwitch) {
+      nsfwSwitch.checked = nsfwOn;
+      nsfwSwitch.addEventListener("change", () => {
+        setNsfwWorkflow(Boolean(nsfwSwitch.checked));
       });
     }
     $("#generateButton").addEventListener("click", () => void generate());
@@ -3466,12 +3471,12 @@ async function characterFactsByTag(tag) {
     $("#openTutorial")?.addEventListener("click", () => { bridge.openTutorial().catch((error) => toast(error?.message || String(error))); });
     $("#nsfwTagSearch")?.addEventListener("input", renderNsfwTags);
     $("#nsfwTagChevron")?.addEventListener("click", () => toggleNsfwCollapsed());
-    $("#nsfwTagToggleWorkflow")?.addEventListener("click", () => {
-      const box = $("#nsfwWorkflow");
-      setNsfwWorkflow(!(box ? box.checked : true));
+    $("#nsfwTagSwitch")?.addEventListener("change", () => {
+      const panelSwitch = $("#nsfwTagSwitch");
+      setNsfwWorkflow(Boolean(panelSwitch?.checked));
     });
     $("#nsfwTagPanel")?.querySelector(".panel-head")?.addEventListener("click", (event) => {
-      if (event.target.closest("button")) return;
+      if (event.target.closest("button, input, label")) return;
       toggleNsfwCollapsed();
     });
     $("#prompt")?.addEventListener("input", scheduleNsfwSync);
@@ -3592,4 +3597,64 @@ async function characterFactsByTag(tag) {
     renderReferenceCategories();
     void refreshRuntimeState();
   });
+
+  function renderCatalog() {
+    const grid = $("#catalogGrid");
+    if (!grid) return;
+    const query = String($("#catalogSearch")?.value || "").trim().toLowerCase();
+    const kind = $("#catalogKind")?.value || "";
+    const category = $("#catalogCategory")?.value || "";
+
+    const categorySelect = $("#catalogCategory");
+    if (categorySelect) {
+      const pool = (state.catalog || []).filter((entry) => !kind || entry.kind === kind);
+      const cats = [...new Set(pool.map((entry) => entry.category).filter(Boolean))].sort();
+      const current = categorySelect.value;
+      const wanted = ["", ...cats];
+      const have = [...categorySelect.options].map((option) => option.value);
+      if (wanted.length !== have.length || wanted.some((value, index) => value !== have[index])) {
+        categorySelect.innerHTML = ['<option value="">全部分类</option>']
+          .concat(cats.map((name) => '<option value="' + escapeHtml(name) + '">' + escapeHtml(name) + "</option>"))
+          .join("");
+        if (wanted.includes(current)) categorySelect.value = current;
+      }
+    }
+
+    const filtered = (state.catalog || []).filter((entry) => {
+      if (kind && entry.kind !== kind) return false;
+      if (category && entry.category !== category) return false;
+      if (!query) return true;
+      return [entry.name, entry.category, entry.prompt, entry.keywords, ...(entry.tags || [])]
+        .join(" ").toLowerCase().includes(query);
+    });
+
+    const items = filtered
+      .slice()
+      .sort((a, b) => String(a.category || "").localeCompare(String(b.category || ""), "zh") ||
+        String(a.name || "").localeCompare(String(b.name || ""), "zh"))
+      .slice(0, 120);
+
+    grid.innerHTML = items.length
+      ? items.map((entry) => '<button class="catalog-card" data-catalog-id="' + escapeHtml(entry.id) + '">' +
+          (entry.localThumb ? '<img src="file:///' + String(entry.localThumb).replace(/\\/g, "/") + '" alt="" />' : "") +
+          "<b>" + escapeHtml(entry.name) + "</b>" +
+          "<small>" + escapeHtml(entry.category) + " · " + escapeHtml(entry.prompt) + "</small>" +
+          "</button>").join("")
+      : '<div class="gallery-empty">没有匹配结果。</div>';
+
+    grid.querySelectorAll(".catalog-card").forEach((node) => {
+      node.addEventListener("click", () => {
+        const entry = (state.catalog || []).find((item) => item.id === node.dataset.catalogId);
+        if (!entry) return;
+        const currentPrompt = $("#prompt").value.trim();
+        const addition = entry.keywords || entry.prompt || entry.name;
+        $("#prompt").value = [currentPrompt, addition].filter(Boolean).join(", ");
+        updateAnimaPreview();
+        if (typeof scheduleNsfwSync === "function") scheduleNsfwSync();
+        $("#catalogModal").classList.add("hidden");
+        toast("参考标签已追加到提示词。");
+      });
+    });
+  }
+
 })();
