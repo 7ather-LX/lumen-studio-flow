@@ -391,16 +391,16 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
     : Math.floor(Math.random() * 2 ** 31);
   let prompt = String(payload.prompt || "").trim();
   let negative = String(payload.negative || "worst quality, low quality, blurry, jpeg artifacts").trim();
-  // 单人硬约束：提示词声明 solo / 1girl / 1boy 时，强制压制多人与群像
-  // （参考图若含多人、或模型自带群像倾向，只靠模糊的「2 girls」压不住）
-  if (/(^|,|\s)(solo|1girl|1boy)(,|\s|$)/i.test(prompt)) {
+  // 单人硬约束：声明 solo/1girl 时把「多人」负面前置
+  // （负面太长会被编码器截断，放末尾等于没写）
+  const soloRequested = /(^|,|\s)(solo|1girl|1boy)(,|\s|$)/i.test(prompt);
+  if (soloRequested) {
     const crowdNegatives = [
-      "2girls", "2boys", "multiple girls", "multiple boys", "crowd", "group",
-      "character sheet", "multiple views", "duplicate", "extra person", "background characters",
+      "2girls", "multiple girls", "crowd", "group", "character sheet",
+      "multiple views", "duplicate", "extra person", "background characters", "audience",
     ];
-    for (const tag of crowdNegatives) {
-      if (!new RegExp(`(^|,\\s*)${tag}(,|$)`, "i").test(negative)) negative += `, ${tag}`;
-    }
+    const missing = crowdNegatives.filter((tag) => !new RegExp(`(^|,\\s*)${tag}(,|$)`, "i").test(negative));
+    if (missing.length) negative = `${missing.join(", ")}, ${negative}`;
   }
   if (/feet|foot|toes|barefoot|footwear|足|脚|丝袜|裸足/i.test(prompt)) {
     prompt += ", detailed toes, five toes per foot, accurate toe count, clean foot anatomy, detailed soles";
@@ -984,6 +984,19 @@ async function runComfy(payload) {
   if (payload.initImage) {
     send("flow:progress", { stage: "Uploading reference...", progress: 0.01 });
     initImageName = await uploadDataUrl(config, payload.initImage);
+    try {
+      const tempRef = path.join(writableTempDir(), `ref-check-${Date.now()}.png`);
+      const base64 = String(payload.initImage).split(",").pop() || "";
+      await fsp.writeFile(tempRef, Buffer.from(base64, "base64"));
+      const refPeople = countPeople(config, tempRef);
+      try { await fsp.unlink(tempRef); } catch {}
+      if (refPeople > 1 && /(^|,|\s)(solo|1girl|1boy)(,|\s|$)/i.test(String(payload.prompt || ""))) {
+        send("flow:progress", {
+          stage: `注意：参考图检测到 ${refPeople} 人，会带到结果里。建议先在参考库点「裁单人」。`,
+          progress: 0.015,
+        });
+      }
+    } catch {}
   }
   let characterImageName = "";
   if (payload.characterImage) {
@@ -1076,6 +1089,81 @@ async function runComfy(payload) {
       });
     }
   }
+  // 单人校验：声明 solo/1girl 时逐张数人，多于 1 人自动重跑（最多 2 次）
+  const soloWanted = /(^|,|\s)(solo|1girl|1boy)(,|\s|$)/i.test(String(payload.prompt || ""));
+  if (soloWanted && images.length && String(payload.engine || config.engine || "local") !== "api") {
+    const boost = "2girls, multiple girls, crowd, group, character sheet, duplicate, extra person, background characters, audience";
+    for (let index = 0; index < images.length; index += 1) {
+      let people = countPeople(config, images[index].path);
+      let attempt = 0;
+      while (people > 1 && attempt < 2) {
+        attempt += 1;
+        send("flow:progress", {
+          stage: `Single-subject check: ${people} people, retrying (${attempt}/2)...`,
+          progress: 0.96,
+        });
+        try {
+          let retryPrompt = String(payload.prompt || "");
+          if (attempt >= 2) {
+            retryPrompt = retryPrompt
+              .replace(/,?\s*(japanese\s+)?anime\s+key\s+visual/gi, "")
+              .replace(/,?\s*key\s+visual/gi, "")
+              .replace(/,?\s*(ensemble|cast|poster|group shot)/gi, "")
+              .trim();
+            if (!/simple background|single character/i.test(retryPrompt)) {
+              retryPrompt += ", single character focus, simple background";
+            }
+          }
+          const retryPayload = {
+            ...payload,
+            prompt: retryPrompt,
+            batch: 1,
+            seed: Math.floor(Math.random() * 2 ** 31),
+            negative: `${boost}, key visual, ensemble cast, ${payload.negative || ""}`,
+          };
+          const retryBuilt = buildWorkflow(config, retryPayload, initImageName, characterImageName, textureImageName);
+          const files = await runWorkflowRaw(config, retryBuilt.workflow);
+          if (files.length) {
+            await fsp.writeFile(images[index].path, files[0].buffer);
+            images[index].url = `data:image/png;base64,${files[0].buffer.toString("base64")}`;
+            images[index].seed = retryBuilt.seed;
+            images[index].singleRetry = attempt;
+            await fsp.writeFile(
+              images[index].path.replace(/\.png$/i, ".json"),
+              JSON.stringify({
+                name: images[index].name,
+                prompt: String(payload.prompt || ""),
+                negativePrompt: String(retryPayload.negative || ""),
+                seed: retryBuilt.seed,
+                steps: retryBuilt.steps,
+                cfg: retryBuilt.cfg,
+                width: retryBuilt.width,
+                height: retryBuilt.height,
+                model: payload.unet || config.unet,
+                singleRetry: attempt,
+                createdAt: new Date().toISOString(),
+              }, null, 2),
+              "utf8",
+            );
+            people = countPeople(config, images[index].path);
+          }
+        } catch (error) {
+          send("flow:progress", {
+            stage: `Single-subject retry failed: ${error?.message || error}`,
+            progress: 0.97,
+          });
+          break;
+        }
+      }
+      if (people > 1) {
+        send("flow:progress", {
+          stage: `Still ${people} people after retries (kept)`,
+          progress: 0.98,
+        });
+      }
+    }
+  }
+
   if (payload.faceDetail && images.length) {
     try {
       images[0] = await detailFace(
@@ -1154,6 +1242,27 @@ async function runComfy(payload) {
   }
   send("flow:progress", { stage: "Working...", progress: 1 });
   return { images, seed: built.seed, promptId, width: built.width, height: built.height };
+}
+
+function countPeopleScript() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "count-people.py")
+    : path.join(__dirname, "count-people.py");
+}
+
+function countPeople(config, imagePath) {
+  const script = countPeopleScript();
+  if (!fs.existsSync(script)) return -1;
+  const python = resolvePythonForTools(config);
+  if (!python) return -1;
+  try {
+    const result = spawnSync(python, [script, imagePath], { encoding: "utf8", timeout: 60000, windowsHide: true });
+    const line = String(result.stdout || "").trim().split(/\r?\n/).pop() || "";
+    const parsed = JSON.parse(line);
+    return Number.isFinite(parsed?.people) ? parsed.people : -1;
+  } catch {
+    return -1;
+  }
 }
 
 async function uploadComfyImage(config, filePath) {

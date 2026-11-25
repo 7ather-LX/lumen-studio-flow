@@ -49,5 +49,7 @@ extraResources:
     to: region-erase.py
   - from: crop-single.py
     to: crop-single.py
+  - from: count-people.py
+    to: count-people.py
   - from: parsing
     to: parsing
