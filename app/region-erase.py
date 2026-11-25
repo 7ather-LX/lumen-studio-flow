@@ -70,7 +70,18 @@ def main() -> int:
 
     out = im.copy()
     out.paste(donor.filter(ImageFilter.GaussianBlur(1.5)), (x, y), mask)
-    out.save(out_path)
+    from pathlib import Path as _Path
+    _Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    try:
+        out.save(out_path)
+    except PermissionError as exc:
+        import json as _json
+        print(_json.dumps({"ok": False, "reason": f"no write permission: {out_path}"}, ensure_ascii=False))
+        return 3
+    except Exception as exc:  # noqa: BLE001
+        import json as _json
+        print(_json.dumps({"ok": False, "reason": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False))
+        return 4
     print(f'{{"ok": true, "donor": "{candidates[0][0]}", "rect": [{x}, {y}, {w}, {h}], "saved": "{out_path}"}}')
     return 0
 

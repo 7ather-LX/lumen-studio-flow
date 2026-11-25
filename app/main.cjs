@@ -799,6 +799,28 @@ async function readLlmStream(response) {
   return content;
 }
 
+// 运行时探测真正可写的临时目录（Electron 的 temp 与 python 的 TEMP 可能不一致）
+function writableTempDir() {
+  const candidates = [
+    path.join(outputDir(), "_tmp"),   // 与作品同盘，python 一定有写权限（实测 C 盘 temp 不可写）
+    outputDir(),
+    path.join(dataRoot(), "tmp"),
+    app.getPath("temp"),
+    os.tmpdir(),
+  ];
+  for (const dir of candidates) {
+    if (!dir) continue;
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      const probe = path.join(dir, `.lumen-write-probe-${process.pid}-${Date.now()}`);
+      fs.writeFileSync(probe, "ok");
+      fs.unlinkSync(probe);
+      return dir;
+    } catch {}
+  }
+  return os.tmpdir();
+}
+
 // 角色名解析：让模型给出最可能的 canonical tag，再由本地库验证是否真实存在
 async function resolveCharacterTag(text) {
   const config = readConfig();
@@ -1704,17 +1726,32 @@ async function repairRegion(payload) {
     if (!fs.existsSync(script)) throw new Error("擦除脚本缺失，请重新安装应用");
     const python = resolvePythonForTools(config);
     if (!python) throw new Error("找不到 Python，无法执行擦除");
-    const outPath = path.join(app.getPath("temp"), `lumen-erase-${Date.now()}.png`);
-    const result = spawnSync(
+    const outPath = path.join(writableTempDir(), `lumen-erase-${Date.now()}.png`);
+    const runErase = (target) => spawnSync(
       python,
-      [script, sourcePath, outPath, String(rx), String(ry), String(rw), String(rh), String(payload?.donor || "auto")],
+      [script, sourcePath, target, String(rx), String(ry), String(rw), String(rh), String(payload?.donor || "auto")],
       { encoding: "utf8", timeout: 120000, windowsHide: true },
     );
+    let result = runErase(outPath);
     if (!fs.existsSync(outPath)) {
-      throw new Error(`擦除失败：${String(result?.stderr || result?.stdout || "").slice(-200)}`);
+      const detail = String(result?.stderr || result?.stdout || "");
+      if (/Permission|Errno 13|no write permission/i.test(detail)) {
+        // 权限兜底：直接写到输出目录根下（与作品同权限）
+        const fallback = path.join(outputDir(), `.lumen-erase-${Date.now()}.png`);
+        result = runErase(fallback);
+        if (fs.existsSync(fallback)) {
+          workingPath = fallback;
+          tempFiles.push(fallback);
+        } else {
+          throw new Error(`擦除失败（无写权限，已尝试 ${path.dirname(outPath)} 与 ${outputDir()}）：${detail.slice(-160)}`);
+        }
+      } else {
+        throw new Error(`擦除失败：${detail.slice(-200)}`);
+      }
+    } else {
+      workingPath = outPath;
+      tempFiles.push(outPath);
     }
-    workingPath = outPath;
-    tempFiles.push(outPath);
   }
 
   const uploadName = await uploadComfyImage(config, workingPath);
@@ -1896,7 +1933,7 @@ async function runWorkflowRaw(config, workflow) {
     if (Date.now() - started > 10 * 60 * 1000) throw new Error("ComfyUI request failed");
   }
   if (!entry) throw new Error("ComfyUI request failed");
-  const outDir = path.join(app.getPath("temp"), `lumen-raw-${Date.now()}`);
+  const outDir = path.join(writableTempDir(), `lumen-raw-${Date.now()}`);
   await fsp.mkdir(outDir, { recursive: true });
   const files = [];
   for (const output of Object.values(entry.outputs || {})) {
@@ -1928,7 +1965,7 @@ async function upscaleImage(config, options) {
     const safeStem = rawName
       ? rawName.replace(/\.[^.]+$/, "").replace(/[\\/:*?"<>|\s]+/g, "-").slice(0, 60)
       : `imported-${Date.now()}`;
-    sourcePath = path.join(app.getPath("temp"), `${safeStem}.${ext}`);
+    sourcePath = path.join(writableTempDir(), `${safeStem}.${ext}`);
     await fsp.writeFile(sourcePath, Buffer.from(match[2], "base64"));
   }
   if (!sourcePath || !fs.existsSync(sourcePath)) throw new Error("找不到要高清化的图片");
@@ -1938,7 +1975,7 @@ async function upscaleImage(config, options) {
   const size = readImageSize(buffer);
   if (!size?.width || !size?.height) throw new Error("无法读取图片尺寸");
 
-  const tmpIn = path.join(app.getPath("temp"), `lumen-hd-in-${Date.now()}${path.extname(sourcePath)}`);
+  const tmpIn = path.join(writableTempDir(), `lumen-hd-in-${Date.now()}${path.extname(sourcePath)}`);
   await fsp.writeFile(tmpIn, buffer);
   const imageName = await uploadComfyImage(config, tmpIn);
   const prefix = `LumenHD${Date.now()}`;
@@ -1995,7 +2032,10 @@ ipcMain.handle("flow:list-outputs", async (_event, payload) => {
   const mode = payload?.mode === "hidden" ? "hidden" : "visible";
   const hiddenSet = readHiddenWorks();
   // 按修改时间倒序（新建/高清化/修正的作品才会出现在最上方）
-  const allNames = (await fsp.readdir(outputDir())).filter((name) => /\.(png|jpe?g|webp)$/i.test(name));
+  const allNames = (await fsp.readdir(outputDir(), { withFileTypes: true }))
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((name) => /\.(png|jpe?g|webp)$/i.test(name) && !name.startsWith("."));
   const withTime = [];
   for (const name of allNames) {
     if (mode === "hidden" ? !hiddenSet.has(name) : hiddenSet.has(name)) continue;
