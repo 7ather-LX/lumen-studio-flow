@@ -1695,7 +1695,7 @@ function setupUpscaleImport() {
       name.textContent = `${item.category} · ${item.name}`;
       const actions = document.createElement("div");
       actions.className = "ref-actions";
-      actions.innerHTML = `<button data-ref-use="composition" data-ref-id="${item.id}">构图</button><button data-ref-use="character" data-ref-id="${item.id}">角色</button><button data-ref-use="foot" data-ref-id="${item.id}">足部</button><button data-ref-use="fabric" data-ref-id="${item.id}">质感</button><button data-ref-use="remove" data-ref-id="${item.id}">删除</button>`;
+      actions.innerHTML = `<button data-ref-use="composition" data-ref-id="${item.id}">构图</button><button data-ref-use="character" data-ref-id="${item.id}">角色</button><button data-ref-use="foot" data-ref-id="${item.id}">足部</button><button data-ref-use="fabric" data-ref-id="${item.id}">质感</button><button data-ref-use="crop-single" data-ref-id="${item.id}" title="检测多人并裁成单人（原图备份到 _archive）">裁单人</button><button data-ref-use="remove" data-ref-id="${item.id}">删除</button>`;
       card.append(img, name, actions);
       grid.append(card);
     }
@@ -3287,6 +3287,25 @@ async function characterFactsByTag(tag) {
       if (button.dataset.refUse === "remove") {
         await bridge.removeReference({ id });
         await loadReferenceLibrary();
+        return;
+      }
+      if (button.dataset.refUse === "crop-single") {
+        button.disabled = true;
+        try {
+          const res = await bridge.cropReferenceSingle({ id });
+          if (res?.ok) {
+            toast(`已裁成单人（检测到 ${res.people} 人），原图已备份。`);
+            await loadReferenceLibrary();
+          } else if (res?.reason === "single") {
+            toast("这张已经是单人了，没有改动。");
+          } else {
+            toast("未裁切。");
+          }
+        } catch (error) {
+          toast(error?.message || String(error));
+        } finally {
+          button.disabled = false;
+        }
         return;
       }
       await useReferenceItem(id, button.dataset.refUse);

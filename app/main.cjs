@@ -391,6 +391,17 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
     : Math.floor(Math.random() * 2 ** 31);
   let prompt = String(payload.prompt || "").trim();
   let negative = String(payload.negative || "worst quality, low quality, blurry, jpeg artifacts").trim();
+  // 单人硬约束：提示词声明 solo / 1girl / 1boy 时，强制压制多人与群像
+  // （参考图若含多人、或模型自带群像倾向，只靠模糊的「2 girls」压不住）
+  if (/(^|,|\s)(solo|1girl|1boy)(,|\s|$)/i.test(prompt)) {
+    const crowdNegatives = [
+      "2girls", "2boys", "multiple girls", "multiple boys", "crowd", "group",
+      "character sheet", "multiple views", "duplicate", "extra person", "background characters",
+    ];
+    for (const tag of crowdNegatives) {
+      if (!new RegExp(`(^|,\\s*)${tag}(,|$)`, "i").test(negative)) negative += `, ${tag}`;
+    }
+  }
   if (/feet|foot|toes|barefoot|footwear|足|脚|丝袜|裸足/i.test(prompt)) {
     prompt += ", detailed toes, five toes per foot, accurate toe count, clean foot anatomy, detailed soles";
     negative += ", missing toes, extra toes, fused toes, deformed feet, bad feet";
@@ -797,6 +808,50 @@ async function readLlmStream(response) {
     }
   }
   return content;
+}
+
+// ---------- 参考图单人裁切 ----------
+function cropSingleScript() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "crop-single.py")
+    : path.join(__dirname, "crop-single.py");
+}
+
+async function cropReferenceToSingle(payload) {
+  const config = readConfig();
+  const id = String(payload?.id || "");
+  const items = listReferences();
+  const item = items.find((entry) => entry.id === id) || items.find((entry) => entry.file === payload?.file);
+  if (!item) throw new Error("找不到这张参考图");
+
+  const script = cropSingleScript();
+  if (!fs.existsSync(script)) throw new Error("裁切脚本缺失，请重新安装应用");
+  const python = resolvePythonForTools(config);
+  if (!python) throw new Error("找不到 Python，无法裁切");
+
+  const source = path.join(referenceLibraryRoot(), item.file);
+  if (!fs.existsSync(source)) throw new Error("参考图文件不存在");
+  const outPath = path.join(writableTempDir(), `ref-single-${Date.now()}${path.extname(item.file) || ".png"}`);
+  const result = spawnSync(python, [script, source, outPath], { encoding: "utf8", timeout: 120000, windowsHide: true });
+  const line = String(result.stdout || "").trim().split(/\r?\n/).pop() || "";
+  let parsed = {};
+  try { parsed = JSON.parse(line); } catch {}
+  if (!parsed?.ok) {
+    if (parsed?.reason === "single") return { ok: false, reason: "single", people: parsed.people || 1 };
+    throw new Error(`裁切失败：${parsed?.reason || String(result.stderr || "").slice(-160)}`);
+  }
+
+  // 备份原图后替换（保持文件名不变，library.json 不用改）
+  const backupDir = path.join(LUMEN_ARCHIVE_DIR(), "ref-orig");
+  await fsp.mkdir(backupDir, { recursive: true });
+  await fsp.copyFile(source, path.join(backupDir, `${Date.now()}-${item.file}`));
+  await fsp.copyFile(outPath, source);
+  try { await fsp.unlink(outPath); } catch {}
+  return { ok: true, people: parsed.people, file: item.file, bbox: parsed.bbox };
+}
+
+function LUMEN_ARCHIVE_DIR() {
+  return path.join(path.dirname(app.getAppPath()), "_archive");
 }
 
 // 运行时探测真正可写的临时目录（Electron 的 temp 与 python 的 TEMP 可能不一致）
@@ -1554,6 +1609,7 @@ ipcMain.handle("flow:references:remove", (_event, payload) => {
   return listReferences();
 });
 ipcMain.handle("flow:references:open", () => shell.openPath(referenceLibraryRoot()));
+ipcMain.handle("flow:references:crop-single", (_event, payload) => cropReferenceToSingle(payload));
 ipcMain.handle("flow:start", async () => startComfy());
 ipcMain.handle("flow:generate", async (_event, payload) => {
   const config = readConfig();

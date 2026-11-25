@@ -47,5 +47,7 @@ extraResources:
     to: detect-pose.py
   - from: region-erase.py
     to: region-erase.py
+  - from: crop-single.py
+    to: crop-single.py
   - from: parsing
     to: parsing

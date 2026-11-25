@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld("flow", {
   removeReference: (payload) => ipcRenderer.invoke("flow:references:remove", payload),
   setReferenceCategory: (payload) => ipcRenderer.invoke("flow:references:set-category", payload),
   openReferences: () => ipcRenderer.invoke("flow:references:open"),
+  cropReferenceSingle: (payload) => ipcRenderer.invoke("flow:references:crop-single", payload),
   start: () => ipcRenderer.invoke("flow:start"),
   llmStatus: () => ipcRenderer.invoke("flow:llm:status"),
   startLlm: () => ipcRenderer.invoke("flow:llm:start"),
