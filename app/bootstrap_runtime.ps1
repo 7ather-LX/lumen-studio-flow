@@ -34,6 +34,13 @@ Download "https://hf-mirror.com/circlestone-labs/Anima/resolve/main/split_files/
 Download "https://hf-mirror.com/circlestone-labs/Anima/resolve/main/split_files/text_encoders/qwen_3_06b_base.safetensors" (Join-Path $modelRoot "text_encoders\qwen_3_06b_base.safetensors")
 Download "https://hf-mirror.com/circlestone-labs/Anima/resolve/main/split_files/vae/qwen_image_vae.safetensors" (Join-Path $modelRoot "vae\qwen_image_vae.safetensors")
 
+# 自动检测（自动部位区域）需要 onnxruntime；失败不影响主流程
+try {
+  & $python -m pip install --disable-pip-version-check --quiet onnxruntime 2>$null
+} catch {
+  Write-Host "onnxruntime install skipped (auto part detection will fall back to presets)"
+}
+
 if ($Plugins -and (Test-Path $Plugins)) {
   $nodes = Join-Path $comfy "custom_nodes"
   New-Item -ItemType Directory -Force $nodes | Out-Null

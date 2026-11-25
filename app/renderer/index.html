@@ -530,6 +530,11 @@
             <button class="primary-button" id="runUpscale">开始高清化</button>
             <span class="hint" id="upscaleStatus">选择下方任意一张作品，或导入本机图片</span>
           </div>
+          <div class="hint" id="upscaleModelHint" style="display:none">
+            未检测到 AI 放大模型（当前只能用 Lanczos 纯插值）。
+            <button class="text-button" id="installUpscaleModels">安装放大模型（约 145MB）</button>
+            <button class="text-button" id="openUpscaleDir">打开模型目录</button>
+          </div>
           <div class="upscale-import hidden" id="upscaleImportBox">
             <div class="detail-section-head">
               <h3>本机图片</h3>

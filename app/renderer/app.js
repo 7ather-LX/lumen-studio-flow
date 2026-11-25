@@ -43,6 +43,7 @@
     upscaleResult: null,
     repairTarget: null,
     repairRect: null,
+    characterCatalog: null,
     currentImage: null,
     busy: false,
     progressUnsubscribe: null,
@@ -990,6 +991,8 @@ let upscaleEngineFilled = false;
     try {
       const info = await bridge.upscaleInfo();
       fillUpscaleEngines(info);
+      const hint = $("#upscaleModelHint");
+      if (hint) hint.style.display = info?.models?.length ? "none" : "block";
       const images = await bridge.listOutputs({ mode: "visible" });
       const grid = $("#upscaleSources");
       if (!grid) return;
@@ -1836,18 +1839,125 @@ function setupUpscaleImport() {
     toast("提示词已套用。");
   }
 
-  const AI_SYSTEM_PROMPT = `你是 Lumen 关键词助手，一个严格的提示词编译器。
-只输出一个 JSON 对象，不要 Markdown，不要解释：
-{"character":"","work":"","style":"","artist":"","prompt":"英文提示词","negative_prompt":"英文负面提示词","notes":"一句中文说明"}
+  const AI_SYSTEM_PROMPT = `你是 Anima 提示词编译器，不是聊天助手。用户用一句简单中文描述画面，你把它编译成 Anima / 2.5D 动漫模型可直接使用的高质量英文提示词。
 
-规则：
-1. 用户没有明确指定的角色、作品、画风、画师，对应字段必须为空字符串，不要猜，不要随机补。
-2. 角色必须使用 canonical tag，并保留发色、瞳色、兽耳/头饰、服装。
-3. 不认识的设定写入 notes，不要编造。
-4. prompt 用英文逗号分隔的标签，不要重复质量词。
-5. negative_prompt 包含基础质量、解剖、文字水印问题。
-6. style 只在用户明确描述画风时填写，否则留空。
-7. 只负责写提示词，不负责画图。`;
+【第一步：逐项识别（缺失就留空，绝不编造）】
+1 人数（1girl / 1boy / 2girls）
+2 角色名
+3 作品名
+4 发色、发型（长度、发髻、辫子）
+5 瞳色
+6 耳 / 尾 / 头饰：必须区分「真兽耳」「猫耳头饰」「发髻」「发饰」
+7 服装、鞋袜、配饰
+8 动作、姿势、手势
+9 镜头、构图、视角
+10 场景、环境
+11 光线、氛围
+12 画风（赛璐珞 / 2.5D / 萌系 / 厚涂，只能选一个主画风）
+
+【角色识别规则（最重要）】
+- 如果消息里出现 CHARACTER_FACTS，那是本地角色库的权威数据：发色、瞳色、发型、头饰、服装必须直接照抄其中的标签，一个字都不许改，也不许用你自己的记忆覆盖它。
+- 没有 CHARACTER_FACTS 时，用官方设定常识；仍不确定的特征不要写死，写进 notes 的「未确认」。
+- 猫耳头饰、锥形发髻绝不能写成 real cat ears / animal ears。
+- 绝不把一个角色的发色、瞳色、服装混到另一个角色身上。
+- 用户没指定角色时，不要自动补一个角色。
+
+【标签顺序（严格按这个顺序拼 prompt）】
+质量前缀 → 人数与角色 → 作品 → 外观（发色/发型/瞳色/头饰/耳尾） → 服装/配饰/状态 → 动作/姿势 → 镜头/构图 → 场景/环境 → 光线/氛围 → 画风/渲染 → 细节强化
+
+【质量前缀（固定开头）】
+masterpiece, best quality, score_7, safe, ultra detailed, very aesthetic,
+
+【词汇规范】
+- 动作要具体：standing, hands on hips, akimbo, arms crossed, sitting, kneeling, leaning back, looking at viewer, gentle smile, blush
+- 镜头要具体：full body, upper body, close-up, medium shot, wide shot, vertical composition, from above, from below, from front, from side
+- 场景要用可执行标签：under tree, tree shade, dappled sunlight, sunlight through leaves, indoor, window light, city street, night
+- 禁止「好看的构图」「优雅氛围」这类无法执行的描述，一律换成具体标签。
+
+【画风块（二选一，不要混）】
+2.5D：2.5D anime, semi-realistic anime, soft airbrushed shading, glossy skin, detailed eyes, detailed hair, clean soft lineart, cinematic lighting, subtle gradients
+赛璐珞：anime cel shading, flat colors, clean lineart, crisp shadow edges, limited palette
+
+【细节强化（默认带上）】
+detailed eyes, detailed hair, detailed hands, detailed skin, clean soft lineart
+
+【负面词规则】
+1 固定前缀：worst quality, low quality, blurry, jpeg artifacts, text, watermark
+2 结构：bad anatomy, bad hands, extra fingers, missing fingers, fused fingers, bad feet, extra toes, missing toes, deformed face, asymmetrical eyes
+3 角色相关：wrong character, wrong hair color, wrong eye color
+4 「反向颜色」：把该角色【不正确】的发色/瞳色写进负面。例如紫发紫瞳，就写 blue hair, green hair, blonde hair, blue eyes, red eyes, green eyes
+5 兽耳/帽子：real cat ears, animal ears, cat tail, hat, cap, beret, sunglasses
+6 只在确实相关时才加，不要堆无关词。
+
+【输出格式（必须严格遵守）】
+只输出一个 JSON 对象，不要 Markdown、不要解释、不要代码块：
+{"character":"","work":"","style":"","artist":"","prompt":"","negative_prompt":"","notes":""}
+
+字段要求：
+- character：canonical 角色 tag（如 keqing (genshin impact)），识别不到就空字符串
+- work：作品 tag（如 genshin impact），识别不到就空
+- style：用户明确要画风时填（2.5D / anime cel shading 等），否则空
+- artist：只有用户明确点名画师时才填
+- prompt：英文标签，逗号分隔，**至少 45 个标签**，必须包含动作、镜头、场景、光线、画风、细节强化；不要重复质量词
+- negative_prompt：按上面规则组合，**至少 20 个标签**
+- notes：中文，分点写「识别依据 / 防错点 / 未确认项 / 一致性检查」
+
+【输出前自检（不通过就重写）】
+- 角色名与作品名是否都在
+- 发色、瞳色是否与 CHARACTER_FACTS 完全一致（这是最常错的一项）
+- 猫耳/发髻是否被误写成真兽耳
+- 人数是否矛盾、是否混入第二个角色
+- 服装是否被换错
+- prompt 是否 ≥ 45 个标签、是否含动作+镜头+场景+光线+画风
+- negative 是否 ≥ 20 个标签、是否含反向颜色
+
+【示例】
+用户：我想画原神里的刻晴，站立叉腰，站在树下
+CHARACTER_FACTS 给了：purple eyes, purple hair, cone hair bun, long hair, twintails, hair ornament
+输出 prompt 示范：
+masterpiece, best quality, score_7, safe, ultra detailed, very aesthetic, 1girl, solo, keqing (genshin impact), genshin impact, purple hair, long hair, twintails, cone hair bun, hair ornament, purple eyes, purple dress, high collar, detached sleeves, gold trim, purple thighhighs, electro vision, standing, hands on hips, akimbo, straight posture, confident expression, looking at viewer, full body, vertical composition, from front, under tree, tree trunk, leaves, tree shade, dappled sunlight, sunlight through leaves, natural sunlight, soft shadows, warm ambient light, 2.5D anime, semi-realistic anime, soft airbrushed shading, glossy skin, detailed eyes, detailed hair, detailed hands, clean soft lineart, cinematic lighting, subtle gradients`;
+
+  async function loadCharacterCatalog() {
+    if (state.characterCatalog) return state.characterCatalog;
+    try {
+      const response = await fetch("./characters.json");
+      const data = await response.json();
+      const rows = Array.isArray(data?.characters) ? data.characters : (Array.isArray(data) ? data : []);
+      state.characterCatalog = rows;
+    } catch {
+      state.characterCatalog = [];
+    }
+    return state.characterCatalog;
+  }
+
+  async function characterFactsFor(text) {
+    const rows = await loadCharacterCatalog();
+    const query = String(text || "").toLowerCase();
+    if (!rows.length || !query) return "";
+    const scored = [];
+    for (const row of rows) {
+      const names = [row.zh, row.tag, row.name, ...(row.aliases || []), ...(row.pinyin || [])]
+        .filter(Boolean)
+        .map((item) => String(item).toLowerCase());
+      let hit = 0;
+      for (const name of names) {
+        if (name.length >= 2 && query.includes(name)) hit = Math.max(hit, name.length * 3);
+      }
+      if (!hit) continue;
+      scored.push({ row, hit, pop: Number(row.pop) || 0 });
+    }
+    if (!scored.length) return "";
+    scored.sort((a, b) => b.hit - a.hit || b.pop - a.pop);
+    return scored.slice(0, 2).map(({ row }) => {
+      const parts = [
+        `CANONICAL: ${row.tag}`,
+        `work: ${row.work || ""}`,
+        `zh: ${row.zh || ""}`,
+        `tags: ${(row.tags || []).join(", ")}`,
+      ];
+      return parts.join(" | ");
+    }).join("\n");
+  }
 
   function renderAiMessages() {
     const box = $("#aiChatMessages");
@@ -2045,6 +2155,61 @@ function setupUpscaleImport() {
     }
   }
 
+// 用角色库事实做确定性兜底：补 canonical tag、补发色/瞳色、注入反向颜色负面
+  const HAIR_COLORS = ["blonde", "brown", "black", "blue", "green", "red", "pink", "purple", "silver", "white", "orange", "grey", "aqua"];
+  const EYE_COLORS = ["blue", "green", "red", "purple", "golden", "yellow", "pink", "orange", "grey", "aqua", "brown"];
+
+  function enforceCharacterFacts(text, factsText) {
+    if (!factsText) return text;
+    let body = String(text || "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+    const first = body.indexOf("{");
+    const last = body.lastIndexOf("}");
+    if (first < 0 || last <= first) return text;
+    let data;
+    try { data = JSON.parse(body.slice(first, last + 1)); } catch { return text; }
+
+    const canonical = (factsText.match(/CANONICAL:\s*([^|\n]+)/) || [])[1]?.trim() || "";
+    const factsTags = ((factsText.match(/tags:\s*([^\n]+)/) || [])[1] || "")
+      .split(",").map((item) => item.trim()).filter(Boolean);
+
+    const promptTags = String(data.prompt || "").split(",").map((item) => item.trim()).filter(Boolean);
+    const negativeTags = String(data.negative_prompt || "").split(",").map((item) => item.trim()).filter(Boolean);
+    const has = (list, tag) => list.some((item) => item.toLowerCase() === tag.toLowerCase());
+
+    if (canonical && !has(promptTags, canonical)) {
+      const soloIndex = promptTags.findIndex((item) => item.toLowerCase() === "solo");
+      promptTags.splice(soloIndex >= 0 ? soloIndex + 1 : promptTags.length, 0, canonical);
+    }
+    // 发色 / 瞳色标签必须原样出现
+    for (const tag of factsTags) {
+      const isHair = /hair/.test(tag) && !/hair ornament|hair bun|hairband|hair ribbon|hairclip|hair intakes|hair between eyes|braid|twintails|ponytail|bun/.test(tag);
+      const isEye = /eyes?$/.test(tag);
+      if ((isHair || isEye) && !has(promptTags, tag)) promptTags.push(tag);
+    }
+    // 反向颜色：把角色没有的颜色写进负面
+    const hairColors = factsTags.filter((t) => /hair/.test(t)).flatMap((t) => HAIR_COLORS.filter((c) => t.startsWith(c)));
+    const eyeColors = factsTags.filter((t) => /eyes?$/.test(t)).flatMap((t) => EYE_COLORS.filter((c) => t.startsWith(c)));
+    if (hairColors.length) {
+      for (const color of HAIR_COLORS) {
+        if (hairColors.includes(color)) continue;
+        const tag = `${color} hair`;
+        if (!has(negativeTags, tag)) negativeTags.push(tag);
+      }
+    }
+    if (eyeColors.length) {
+      for (const color of EYE_COLORS) {
+        if (eyeColors.includes(color)) continue;
+        const tag = `${color} eyes`;
+        if (!has(negativeTags, tag)) negativeTags.push(tag);
+      }
+    }
+
+    data.prompt = promptTags.join(", ");
+    data.negative_prompt = negativeTags.join(", ");
+    if (canonical && !String(data.character || "").trim()) data.character = canonical;
+    return JSON.stringify(data, null, 2);
+  }
+
   async function sendAiChat() {
     const input = $("#aiChatInput");
     const text = input.value.trim();
@@ -2059,9 +2224,12 @@ function setupUpscaleImport() {
     $("#aiChatStatus").textContent = "正在生成…";
     try {
       const referenceContext = await referenceContextFor(text);
-      const systemContent = referenceContext
-        ? `${AI_SYSTEM_PROMPT}\n\nREFERENCE_LIBRARY (use these exact tags when relevant):\n${referenceContext}`
-        : AI_SYSTEM_PROMPT;
+      const characterFacts = await characterFactsFor(text);
+      const systemContent = [
+        AI_SYSTEM_PROMPT,
+        characterFacts ? `CHARACTER_FACTS (authoritative — copy hair/eyes/costume tags verbatim):\n${characterFacts}` : "",
+        referenceContext ? `REFERENCE_LIBRARY (use these exact tags when relevant):\n${referenceContext}` : "",
+      ].filter(Boolean).join("\n\n");
       // 只发送有内容的轮次：末尾的空 assistant 占位会被模型当成续写起点，导致字段被挖空
       const history = state.aiMessages.filter((msg) => String(msg.content || "").trim());
       const buildMessages = (extra) => [
@@ -2071,12 +2239,13 @@ function setupUpscaleImport() {
       ].slice(-14);
       let res = await bridge.llmChat({ messages: buildMessages(null) });
       let finalText = res?.content || state.aiDraft || "没有返回内容。";
+      finalText = enforceCharacterFacts(finalText, characterFacts);
       if (isDegenerateAnswer(finalText)) {
         $("#aiChatStatus").textContent = "输出为空字段，重试一次…";
         res = await bridge.llmChat({
           messages: buildMessages({ role: "user", content: "上一次输出所有字段都是空的。请按 JSON 结构重新完整填写，不要留空字段、不要解释。" }),
         });
-        if (res?.content) finalText = res.content;
+        if (res?.content) finalText = enforceCharacterFacts(res.content, characterFacts);
       }
       state.aiLastAnswer = finalText;
       const last = state.aiMessages[state.aiMessages.length - 1];
@@ -2582,6 +2751,24 @@ function setupUpscaleImport() {
       await setHiddenFor([image.name], hidden);
     });
     $("#refreshUpscaleSources")?.addEventListener("click", () => void loadUpscaleSources());
+    $("#installUpscaleModels")?.addEventListener("click", async () => {
+      const button = $("#installUpscaleModels");
+      if (button) button.disabled = true;
+      try {
+        const res = await bridge.upscaleInstallModels();
+        if (res?.failed?.length) {
+          toast(`有 ${res.failed.length} 个模型下载失败，可从 ${res.dir} 手动放入。`);
+        } else {
+          toast(`已安装 ${res?.installed?.length || 0} 个放大模型。`);
+        }
+        await loadUpscaleSources();
+      } catch (error) {
+        toast(error?.message || String(error));
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+    $("#openUpscaleDir")?.addEventListener("click", () => void bridge.upscaleOpenDir());
     $("#runUpscale")?.addEventListener("click", () => void runUpscale());
     setupUpscaleImport();
     $("#gallerySelectAll").addEventListener("click", () => {

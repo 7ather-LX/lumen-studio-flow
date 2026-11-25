@@ -833,12 +833,12 @@ async function chatLlm(payload) {
     body: JSON.stringify({
       model: "lumen-local",
       messages,
-      temperature: 0.55,
+      temperature: 0.4,
       top_p: 0.9,
-      max_tokens: 1600,
+      max_tokens: 2600,
       stream: true,
-      repeat_penalty: 1.12,
-      repeat_last_n: 256,
+      repeat_penalty: 1.08,
+      repeat_last_n: 512,
       chat_template_kwargs: { enable_thinking: false },
       response_format: LLM_RESPONSE_FORMAT,
     }),
@@ -1557,6 +1557,85 @@ async function setHiddenWorks(payload) {
   return { hidden: [...hidden] };
 }
 
+// ---------- 放大模型安装（其他设备首次使用时补齐） ----------
+const UPSCALE_MODEL_SOURCES = [
+  {
+    name: "RealESRGAN_x4plus_anime_6B.pth",
+    urls: [
+      "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth",
+    ],
+    minBytes: 10 * 1024 * 1024,
+  },
+  {
+    name: "RealESRGAN_x4plus.pth",
+    urls: [
+      "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth",
+    ],
+    minBytes: 40 * 1024 * 1024,
+  },
+  {
+    name: "RealESRGAN_x2plus.pth",
+    urls: [
+      "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth",
+    ],
+    minBytes: 40 * 1024 * 1024,
+  },
+];
+
+async function downloadTo(url, dest, minBytes = 1024 * 1024, tries = 3) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= tries; attempt += 1) {
+    try {
+      const response = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(20 * 60 * 1000) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const buffer = Buffer.from(await response.arrayBuffer());
+      if (buffer.length < minBytes) throw new Error(`文件过小（${buffer.length} 字节）`);
+      await fsp.writeFile(dest, buffer);
+      return buffer.length;
+    } catch (error) {
+      lastError = error;
+      if (attempt < tries) await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
+    }
+  }
+  throw lastError || new Error("下载失败");
+}
+
+async function installUpscaleModels() {
+  const config = readConfig();
+  const dir = upscaleModelDir(config);
+  await fsp.mkdir(dir, { recursive: true });
+  const existing = listUpscaleModels(config);
+  const installed = [];
+  const failed = [];
+  for (let index = 0; index < UPSCALE_MODEL_SOURCES.length; index += 1) {
+    const item = UPSCALE_MODEL_SOURCES[index];
+    if (existing.includes(item.name)) {
+      installed.push(item.name);
+      continue;
+    }
+    send("flow:progress", {
+      stage: `下载放大模型 ${index + 1}/${UPSCALE_MODEL_SOURCES.length}：${item.name}`,
+      progress: (index + 1) / (UPSCALE_MODEL_SOURCES.length + 1),
+    });
+    let done = false;
+    for (const url of item.urls) {
+      try {
+        await downloadTo(url, path.join(dir, item.name), item.minBytes || 1024 * 1024);
+        installed.push(item.name);
+        done = true;
+        break;
+      } catch (error) {
+        send("flow:progress", {
+          stage: `下载失败（换下一个源）：${item.name}`,
+          progress: (index + 1) / (UPSCALE_MODEL_SOURCES.length + 1),
+        });
+      }
+    }
+    if (!done) failed.push(item.name);
+  }
+  return { installed, failed, dir };
+}
+
 // ---------- 局部修正（框选：修复 / 擦除） ----------
 function regionEraseScript() {
   return app.isPackaged
@@ -1934,6 +2013,13 @@ ipcMain.handle("flow:hidden:set", (_event, payload) => setHiddenWorks(payload));
 ipcMain.handle("flow:upscale", async (_event, payload) => upscaleImage(readConfig(), payload));
 ipcMain.handle("flow:repair-region", async (_event, payload) => repairRegion(payload));
 ipcMain.handle("flow:upscale:info", () => ({ models: listUpscaleModels(readConfig()) }));
+ipcMain.handle("flow:upscale:install", () => installUpscaleModels());
+ipcMain.handle("flow:upscale:open-dir", async () => {
+  const dir = upscaleModelDir(readConfig());
+  await fsp.mkdir(dir, { recursive: true });
+  await shell.openPath(dir);
+  return { dir };
+});
 ipcMain.handle("flow:repair-feet", async (_event, payload) => repairFeet(payload));
 
 ipcMain.handle("flow:reveal", async (_event, target) => {

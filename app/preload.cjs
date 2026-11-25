@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld("flow", {
   upscale: (payload) => ipcRenderer.invoke("flow:upscale", payload),
   repairRegion: (payload) => ipcRenderer.invoke("flow:repair-region", payload),
   upscaleInfo: () => ipcRenderer.invoke("flow:upscale:info"),
+  upscaleInstallModels: () => ipcRenderer.invoke("flow:upscale:install"),
+  upscaleOpenDir: () => ipcRenderer.invoke("flow:upscale:open-dir"),
   deleteOutput: (payload) => ipcRenderer.invoke("flow:delete-output", payload),
   repairFeet: (payload) => ipcRenderer.invoke("flow:repair-feet", payload),
   reveal: (target) => ipcRenderer.invoke("flow:reveal", target),

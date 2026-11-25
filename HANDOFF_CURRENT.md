@@ -1,13 +1,13 @@
 # Lumen Studio Flow 交接包
 
-更新时间：2026-11-24（21:40 发布 0.2.59）  
-当前版本：`0.2.59`  
+更新时间：2026-11-25（12:30 发布 0.2.61）  
+当前版本：`0.2.61`  
 项目目录：`F:\DSH WORKSPACE\lumen-flow`  
 工作区：`F:\DSH WORKSPACE`  
 主进程：`app/main.cjs`  
 渲染层：`app/renderer/app.js`、`index.html`、`styles.css`  
 GitHub：https://github.com/7ather-LX/lumen-studio-flow  
-最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.59
+最新 Release：https://github.com/7ather-LX/lumen-studio-flow/releases/tag/v0.2.61
 
 ---
 
@@ -28,7 +28,7 @@ F:\DSH WORKSPACE
 先读取 F:\DSH WORKSPACE\lumen-flow\HANDOFF_CURRENT.md
 和 F:\DSH WORKSPACE\lumen-flow\WORKSPACE_MAP.md
 以及 F:\DSH WORKSPACE\lumen-flow\WORK_RULES.md（工作规范，必须遵守）。
-当前版本 0.2.59，先确认项目状态，再继续。
+当前版本 0.2.61，先确认项目状态，再继续。
 ```
 
 ### 0.3 不要依赖 Hindsight
@@ -197,16 +197,16 @@ training\references\mejiro-ardan-ref.jpg
 ## 3. 当前版本与发布
 
 ```text
-源码：0.2.59
-本机安装：0.2.59
-GitHub latest：v0.2.59
+源码：0.2.61
+本机安装：0.2.61
+GitHub latest：v0.2.61
 ```
 
-Release 附件（v0.2.59 共 11 个）：
+Release 附件（v0.2.61 共 11 个）：
 
 ```text
-Lumen-Studio-Flow-Setup-0.2.59.exe
-Lumen-Studio-Flow-0.2.59.exe
+Lumen-Studio-Flow-Setup-0.2.61.exe
+Lumen-Studio-Flow-0.2.61.exe
 character-data-v0.2.35.zip
 loras-share-v0.2.6.zip
 bootstrap_models.ps1
@@ -215,13 +215,13 @@ OFFLINE_BUNDLE.md
 REFERENCE_IMPORT.md
 import_pose_gallery.py
 README.md
-RELEASE_NOTES_0.2.59.md
+RELEASE_NOTES_0.2.61.md
 ```
 
 说明：
 
 - `latest.yml` 与 `blockmap` 只留在本地 `release\`，不随 Release 上传（沿用 v0.2.35 惯例；应用内无 autoUpdater）
-- 旧版本已删除，只保留 v0.2.59
+- 旧版本已删除，只保留 v0.2.61
 - `character-data` 最新产出仍是 `v0.2.35`，**0.2.36 / 0.2.37 未单独产出数据包**（角色数据无变化）
 
 ---
@@ -1043,6 +1043,54 @@ main.cjs repairRegion()
 
 ---
 
+### 4.25 0.2.60 / 0.2.61：AI 编译器重写 + 跨设备可用性
+
+**问题**：AI 关键词输出又短又错（刻晴写成青发绿眼），远不如市面免费产品。
+
+定位三点原因：
+
+```text
+1. 系统提示词只有 7 条规则，没要求标签数量/顺序/自检
+2. 9B 本地模型对角色设定记忆不可靠，自由发挥必然出错
+3. 输出没有任何确定性校验，模型写错就一路错下去
+```
+
+改造：
+
+```text
+A 提示词重写（app.js AI_SYSTEM_PROMPT）
+  12 项识别清单 + 标签顺序 + 质量前缀 + 画风块 + 负面规则
+  硬性要求 prompt ≥45 标签、negative ≥20 标签、输出前自检
+B 角色库注入（characterFactsFor）
+  characters.json 2450 条 → 按 中文/别名/拼音 匹配 → 注入 CHARACTER_FACTS
+  明确要求「照抄，不许用记忆覆盖」
+C 确定性兜底（enforceCharacterFacts）
+  补 canonical tag、补发色/瞳色标签、negative 追加反向颜色
+```
+
+实测（刻晴，叉腰，树下）：
+
+```text
+旧：14 标签，青发绿眼（错）
+新：50 标签，purple hair / purple eyes，含动作/镜头/场景/光线/画风，负面 26 标签
+```
+
+参数：temperature 0.40，max_tokens 2600。
+
+**跨设备可用性**
+
+```text
+放大模型安装器（0.2.61 修好源与重试）
+  原先 hf-mirror 路径 404、github 偶发失败 → 改为 GitHub releases + 3 次重试 + 体积校验
+  实测三文件：17.1MB / 63.9MB / 64.0MB 全部成功
+  失败仍有 Lanczos 兜底，并可打开模型目录手动放入
+bootstrap_runtime.ps1 增加 pip install onnxruntime（自动区域依赖），失败静默回退
+```
+
+**已知限制**：本地模型纯文本，不支持读图（需要另配 VLM）。
+
+---
+
 ## 5. 画风定义
 
 ```text
@@ -1111,7 +1159,7 @@ _archive\old-release-notes-2026-11-22
 
 已删除：
 
-- 旧版 0.1.x / 0.2.0–0.2.58 安装包与 blockmap
+- 旧版 0.1.x / 0.2.0–0.2.60 安装包与 blockmap
 - 旧版 character-data 0.2.6–0.2.34
 - 旧 loras-share 0.2.4 / 0.2.5
 - 旧日志与 0 字节临时文件
@@ -1122,7 +1170,7 @@ _archive\old-release-notes-2026-11-22
 ```text
 character-data-v0.2.35.zip（最新；0.2.36 起未单独产出）
 loras-share-v0.2.6.zip
-release\ 当前版本（0.2.59 Setup / portable / blockmap + latest.yml + win-unpacked）
+release\ 当前版本（0.2.61 Setup / portable / blockmap + latest.yml + win-unpacked）
 current style verification images
 ```
 
@@ -1254,9 +1302,9 @@ Set-Location 'F:\DSH WORKSPACE'
 
 新对话应能回答：
 
-1. 当前版本？→ `0.2.59`
+1. 当前版本？→ `0.2.61`
 2. 项目路径？→ `F:\DSH WORKSPACE\lumen-flow`
-3. 最新 Release？→ `v0.2.59`
+3. 最新 Release？→ `v0.2.61`
 4. 用户参考库多少张？→ 191（已清理 29 条僵尸元数据），自定义“小穴”29
 5. 2.5D 厚涂怎么复刻旧对话结果？→ 2.5D 厚涂 + 参考图 + 自定义档 32 步 / CFG4.5 / 0.88 / seed 1601600，关自动画风
 6. 脚趾怎么修？→ 局部精修（勾“自动修正足部/手部细节”），可选部位（脚/手/脚+手）与区域（下半/中部/上半/左/右）
