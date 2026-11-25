@@ -1518,7 +1518,6 @@ function setupUpscaleImport() {
         lora: STYLE_MODELS[state.style]?.lora || state.styleLoras?.[state.style] || style?.lora || "",
         loraStrength: Number($("#styleStrength")?.value ?? STYLE_MODELS[state.style]?.loraStrength ?? style?.loraStrength ?? 1),
         customWorkflow: state.customWorkflow,
-        nsfwWorkflow: $("#nsfwWorkflow") ? Boolean($("#nsfwWorkflow").checked) : true,
         autoUpscale: Boolean($("#autoUpscale")?.checked),
         upscaleFactor: Number($("#autoUpscaleFactor")?.value || 2),
         upscaleModel: (() => {
@@ -2642,16 +2641,9 @@ async function characterFactsByTag(tag) {
   }
 
   function syncNsfwPanel() {
-    const hidden = $("#nsfwWorkflow");
-    const panelSwitch = $("#nsfwTagSwitch");
     const panel = $("#nsfwTagPanel");
     if (!panel) return;
-    const on = panelSwitch ? panelSwitch.checked : (hidden ? hidden.checked : true);
-    if (hidden) hidden.checked = on;
-    panel.classList.remove("hidden");
-    panel.classList.toggle("nsfw-off", !on);
-    const status = $("#nsfwTagStatus");
-    if (status) status.textContent = on ? "开" : "关（自动打码）";
+    panel.classList.remove("hidden", "nsfw-off");
     if (!nsfwTagState.ready) {
       nsfwTagState.ready = true;
       try {
@@ -2661,16 +2653,6 @@ async function characterFactsByTag(tag) {
     }
     applyNsfwCollapsed();
     if (!nsfwTagState.collapsed) void renderNsfwTags();
-  }
-
-  function setNsfwWorkflow(on) {
-    const hidden = $("#nsfwWorkflow");
-    const panelSwitch = $("#nsfwTagSwitch");
-    if (hidden) hidden.checked = on;
-    if (panelSwitch) panelSwitch.checked = on;
-    void bridge.setConfig({ nsfwWorkflow: on });
-    syncNsfwPanel();
-    toast(on ? "已开启 NSFW 工作流（不再打码）" : "已关闭 NSFW 工作流（生成后自动打码）");
   }
 
   async function openCatalog() {
@@ -3044,16 +3026,7 @@ async function characterFactsByTag(tag) {
       $("#negative").classList.toggle("hidden");
     });
     $("#performanceProfile").addEventListener("change", () => applyPerformanceProfile());
-    const nsfwBox = $("#nsfwWorkflow");
-    const nsfwSwitch = $("#nsfwTagSwitch");
-    const nsfwOn = state.config?.nsfwWorkflow !== false;
-    if (nsfwBox) nsfwBox.checked = nsfwOn;
-    if (nsfwSwitch) {
-      nsfwSwitch.checked = nsfwOn;
-      nsfwSwitch.addEventListener("change", () => {
-        setNsfwWorkflow(Boolean(nsfwSwitch.checked));
-      });
-    }
+    syncNsfwPanel();
     $("#generateButton").addEventListener("click", () => void generate());
     $("#refreshGallery").addEventListener("click", () => void loadGallery());
     $("#galleryModeVisible")?.addEventListener("click", () => applyGalleryMode("visible"));
@@ -3471,16 +3444,11 @@ async function characterFactsByTag(tag) {
     $("#openTutorial")?.addEventListener("click", () => { bridge.openTutorial().catch((error) => toast(error?.message || String(error))); });
     $("#nsfwTagSearch")?.addEventListener("input", renderNsfwTags);
     $("#nsfwTagChevron")?.addEventListener("click", () => toggleNsfwCollapsed());
-    $("#nsfwTagSwitch")?.addEventListener("change", () => {
-      const panelSwitch = $("#nsfwTagSwitch");
-      setNsfwWorkflow(Boolean(panelSwitch?.checked));
-    });
     $("#nsfwTagPanel")?.querySelector(".panel-head")?.addEventListener("click", (event) => {
       if (event.target.closest("button, input, label")) return;
       toggleNsfwCollapsed();
     });
     $("#prompt")?.addEventListener("input", scheduleNsfwSync);
-    $("#nsfwWorkflow")?.addEventListener("change", syncNsfwPanel);
     syncNsfwPanel();
 
     $("#revealButton").addEventListener("click", () => {

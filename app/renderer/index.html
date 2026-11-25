@@ -131,11 +131,7 @@
                     <h2>NSFW 标签设置</h2>
                   </div>
                   <div class="nsfw-panel-actions">
-                    <label class="nsfw-switch" title="开启后本地无内容限制；关闭则强制 safe 并在出图后自动打码">
-                      <input type="checkbox" id="nsfwTagSwitch" checked />
-                      <span>NSFW 工作流</span>
-                    </label>
-                    <span class="nsfw-status" id="nsfwTagStatus">开</span>
+                    <span class="nsfw-status nsfw-status-always">始终开启 · 不打码</span>
                     <button class="text-button" id="nsfwTagChevron">▾ 展开</button>
                   </div>
                 </div>
@@ -443,7 +439,6 @@
                   </div>
                   <span class="hint" id="resultMeta">等待生成</span>
                 </div>
-                <input type="checkbox" id="nsfwWorkflow" checked class="hidden" />
                 <label class="inline-check">
                   <input type="checkbox" id="autoUpscale" />
                   <span>自动高清化（生成后自动放大，低清图自动删除）</span>
