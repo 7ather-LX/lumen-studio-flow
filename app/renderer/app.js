@@ -2160,7 +2160,7 @@ async function characterFactsByTag(tag) {
         row.zh ? `zh: ${row.zh}` : "",
         tags.length
           ? `tags: ${tags.join(", ")}`
-          : "attributes: unknown（本库只有 canonical 名，发色/瞳色/服装请按官方设定，不确定就写进未确认）",
+          : "MISSING_ATTRIBUTES（本库没有该角色的外观标签：禁止编造发色/瞳色/服装，只写通用描述，并在未确认项注明）",
       ].filter(Boolean).join(" | ");
     });
     if (works.length) {
@@ -2726,6 +2726,9 @@ async function characterFactsByTag(tag) {
       const referenceContext = await referenceContextFor(text);
       let characterFacts = await characterFactsFor(text);
       state.lastCharacterFacts = characterFacts || "";
+      if (/MISSING_ATTRIBUTES/.test(characterFacts)) {
+        toast("注意：该角色的外观未收录在本地库，生成结果可能与其官方设定有偏差；建议上传角色参考图。");
+      }
       // 多角色场景：库里没覆盖到的名字，用本地模型解析成 canonical tag 再回库校验
       try {
         const segments = splitCharacterMentions(text);
