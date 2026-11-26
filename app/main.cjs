@@ -995,6 +995,16 @@ async function resolveCharacterTag(text) {
   }
 }
 
+// Qwen3 系模型默认会「先思考再回答」，白烧一半 token；本地场景直接关掉
+function withNoThink(messages, modelPath) {
+  if (!/qwen/i.test(String(modelPath || ""))) return messages;
+  return messages.map((msg, index) => (
+    index === 0 && msg.role === "system"
+      ? { ...msg, content: `${msg.content}\n\n/no_think` }
+      : msg
+  ));
+}
+
 async function chatLlm(payload) {
   const config = readConfig();
   const messages = Array.isArray(payload?.messages) ? payload.messages.slice(-12) : [];
@@ -1009,7 +1019,7 @@ async function chatLlm(payload) {
       },
       body: JSON.stringify({
         model: config.llmApiModel || "gpt-4o-mini",
-        messages,
+        messages: withNoThink(messages, config.llmModel || LLM_MODEL),
         temperature: 0.55,
         max_tokens: 1200,
         stream: true,
@@ -1028,7 +1038,7 @@ async function chatLlm(payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "lumen-local",
-      messages,
+      messages: withNoThink(messages, config.llmModel || LLM_MODEL),
       temperature: 0.4,
       top_p: 0.9,
       max_tokens: 2600,
