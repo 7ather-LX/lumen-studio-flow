@@ -72,6 +72,7 @@ const DEFAULT_CONFIG = {
   llmModel: "F:\\novel\\DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic.Q4_K_M.gguf",
   llmBin: "F:\\novel\\llama-cpp\\llama-server.exe",
   llmDevice: "gpu",
+  llmCtxSize: 8192,
   llmApiUrl: "https://api.openai.com/v1",
   llmApiKey: "",
   llmApiModel: "gpt-4o-mini",
@@ -720,13 +721,38 @@ async function stopComfyForLlm() {
   await new Promise((resolve) => setTimeout(resolve, 1500));
 }
 
+// 本地模型自动发现：设置里的路径不存在时，回到 models\llm 下找任意 gguf
+function resolveLlmModelPath(config) {
+  const configured = String(config.llmModel || "").trim();
+  if (configured && fs.existsSync(configured)) return configured;
+  const candidates = [
+    configured,
+    LLM_MODEL,
+    path.join(app.getPath("userData"), "models", "llm"),
+    path.join(process.resourcesPath || "", "models", "llm"),
+    path.join(app.getAppPath(), "..", "models", "llm"),
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      if (!fs.existsSync(candidate)) continue;
+      const stat = fs.statSync(candidate);
+      if (stat.isFile() && /\.gguf$/i.test(candidate)) return candidate;
+      if (stat.isDirectory()) {
+        const found = fs.readdirSync(candidate).filter((name) => /\.gguf$/i.test(name)).sort();
+        if (found.length) return path.join(candidate, found[0]);
+      }
+    } catch {}
+  }
+  return configured || LLM_MODEL;
+}
+
 async function startLlm() {
   const config = readConfig();
   if ((config.llmMode || "local") === "external") return llmStatus();
   if (await llmHealthy()) return llmStatus();
   if (llmStartPromise) return llmStartPromise;
   const bin = config.llmBin || LLM_BIN;
-  const model = config.llmModel || LLM_MODEL;
+  const model = resolveLlmModelPath(config);
   if (!fs.existsSync(bin)) throw new Error("本地 AI 运行时不存在，请在设置中配置 llama-server 路径");
   if (!fs.existsSync(model)) throw new Error("本地 AI 模型不存在，请在设置中配置 GGUF 路径");
   llmStartPromise = (async () => {
@@ -734,15 +760,21 @@ async function startLlm() {
     const useGpu = (config.llmDevice || "gpu") === "gpu";
     if (useGpu) await stopComfyForLlm();
     const cores = Math.max(4, Math.min(16, (os.cpus()?.length || 8) - 2));
-    llmProcess = spawn(bin, [
+    // 上下文长度：默认 8192（4096 在带角色事实/多轮对话时容易截断）；可在设置里调大到 32768
+    const rawCtx = Number(config.llmCtxSize) || 8192;
+    const ctxSize = Math.max(2048, Math.min(32768, Math.round(rawCtx / 512) * 512));
+    const args = [
       "--model", model,
       "--host", "127.0.0.1",
       "--port", String(LLM_PORT),
-      "--ctx-size", "4096",
+      "--ctx-size", String(ctxSize),
       "--n-gpu-layers", useGpu ? "99" : "0",
       "--threads", String(cores),
       "--no-webui",
-    ], { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+    ];
+    // 显卡模式下开 flash attention：同样显存能容纳更长上下文
+    if (useGpu) args.push("--flash-attn", "on");
+    llmProcess = spawn(bin, args, { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
     llmProcess.stdout?.on("data", () => {});
     llmProcess.stderr?.on("data", () => {});
     for (let i = 0; i < 240; i += 1) {
@@ -1039,7 +1071,7 @@ async function chatLlm(payload) {
       },
       body: JSON.stringify({
         model: config.llmApiModel || "gpt-4o-mini",
-        messages: withNoThink(messages, config.llmModel || LLM_MODEL),
+        messages: withNoThink(messages, resolveLlmModelPath(config)),
         temperature: 0.55,
         max_tokens: 1200,
         stream: true,
@@ -1058,7 +1090,7 @@ async function chatLlm(payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "lumen-local",
-      messages: withNoThink(messages, config.llmModel || LLM_MODEL),
+      messages: withNoThink(messages, resolveLlmModelPath(config)),
       temperature: 0.4,
       top_p: 0.9,
       max_tokens: 2600,
