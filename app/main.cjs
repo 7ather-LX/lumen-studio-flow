@@ -2071,14 +2071,6 @@ async function repairRegion(payload) {
   const outName = `${baseName}-fix.png`;
   const outPath = path.join(outputDir(), outName);
   await fsp.copyFile(files[0].path, outPath);
-  // 放大后强化线条与细节（可被 payload.sharpen === false 关闭）
-  let sharpened = false;
-  if (options?.sharpen !== false) {
-    try {
-      const result = enhanceDetail(config, outPath, Number(options?.sharpenStrength) || 1.0);
-      sharpened = Boolean(result?.ok);
-    } catch {}
-  }
   const meta = {
     ...(await readOutputMeta(sourcePath)),
     name: outName,
@@ -2262,6 +2254,14 @@ async function upscaleImage(config, options) {
   const outName = `${baseName}-hd${factor}x.png`;
   const outPath = path.join(outputDir(), outName);
   await fsp.copyFile(files[0].path, outPath);
+  // 放大后强化线条与细节（可由 options.sharpen = false 关闭）
+  let sharpened = false;
+  if (options?.sharpen !== false) {
+    try {
+      const result = enhanceDetail(config, outPath, Number(options?.sharpenStrength) || 1.0);
+      sharpened = Boolean(result?.ok);
+    } catch {}
+  }
   // 继承原图元数据（提示词 / 步数 / CFG / 种子 / 模型等），再叠加放大信息
   let sourceMeta = {};
   try {
