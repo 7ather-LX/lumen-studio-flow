@@ -374,6 +374,72 @@ async function startComfy() {
   throw new Error("ComfyUI request failed");
 }
 
+// ---------- 角色特征禁用（主进程兜底，手写提示词也生效） ----------
+let traitCatalogCache = null;
+function loadTraitCatalog() {
+  if (traitCatalogCache) return traitCatalogCache;
+  const rows = [];
+  for (const name of ["characters.json", "characters-extra.json"]) {
+    try {
+      const file = path.join(__dirname, "renderer", name);
+      const data = JSON.parse(fs.readFileSync(file, "utf8"));
+      if (Array.isArray(data?.characters)) rows.push(...data.characters);
+    } catch {}
+  }
+  traitCatalogCache = rows;
+  return rows;
+}
+
+const TRAIT_TAGS = [
+  "animal ears", "cat ears", "fox ears", "wolf ears", "horse ears", "rabbit ears",
+  "cat tail", "tail", "kemonomimi", "horns", "heterochromia", "elf ears", "pointy ears",
+];
+
+function containsToken(text, needle) {
+  const haystack = String(text || "").toLowerCase();
+  const word = String(needle || "").toLowerCase().trim();
+  if (!word) return false;
+  if (/[\u4e00-\u9fa5]/.test(word)) return word.length >= 2 && haystack.includes(word);
+  if (word.length < 4) return false;
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`).test(haystack);
+}
+
+// 返回：命中的角色行 + 该角色不该出现的特征
+function analyzeCharacterTraits(prompt) {
+  const rows = loadTraitCatalog();
+  if (!rows.length) return { rows: [], forbidden: [] };
+  const matched = [];
+  for (const row of rows) {
+    const names = [row.tag, row.name, row.zh, ...(row.aliases || [])].filter(Boolean);
+    if (names.some((name) => containsToken(prompt, name))) matched.push(row);
+    if (matched.length >= 3) break;
+  }
+  if (!matched.length) return { rows: [], forbidden: [] };
+  // 用「类别」判断，兼容 fake animal ears / horse ears / cat tail 等写法
+  const present = {
+    ears: false,
+    tail: false,
+    horns: false,
+    heterochromia: false,
+  };
+  for (const row of matched) {
+    for (const tag of Array.isArray(row.tags) ? row.tags : []) {
+      const low = String(tag).toLowerCase();
+      if (/\b(animal|cat|fox|wolf|horse|rabbit|fake|elf|pointy)\b.*\bears?\b|\bkemonomimi\b/.test(low)) present.ears = true;
+      if (/\btail\b/.test(low)) present.tail = true;
+      if (/\bhorns?\b/.test(low)) present.horns = true;
+      if (/heterochromia/.test(low)) present.heterochromia = true;
+    }
+  }
+  const forbidden = [];
+  if (!present.ears) forbidden.push("animal ears", "cat ears", "fox ears", "wolf ears", "horse ears", "kemonomimi");
+  if (!present.tail) forbidden.push("cat tail", "tail");
+  if (!present.horns) forbidden.push("horns");
+  if (!present.heterochromia) forbidden.push("heterochromia");
+  return { rows: matched, forbidden, present };
+}
+
 function buildWorkflow(config, payload, initImageName = "", characterImageName = "", textureImageName = "") {
   const width = Math.max(256, Math.min(2048, Number(payload.width) || 1024));
   const height = Math.max(256, Math.min(2048, Number(payload.height) || 1024));
@@ -429,9 +495,16 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
   }
   // 角色设定禁止的特征（兽耳/尾巴/异瞳…）：从正向删掉，写进负面
   {
-    const forbidden = Array.isArray(payload.forbiddenTags)
+    const fromPayload = Array.isArray(payload.forbiddenTags)
       ? payload.forbiddenTags.map((tag) => String(tag || "").trim().toLowerCase()).filter(Boolean)
       : [];
+    let fromCatalog = [];
+    try {
+      fromCatalog = analyzeCharacterTraits(prompt).forbidden;
+    } catch {
+      fromCatalog = [];
+    }
+    const forbidden = [...new Set([...fromPayload, ...fromCatalog])];
     if (forbidden.length) {
       let cleaned = prompt;
       for (const tag of forbidden) {
