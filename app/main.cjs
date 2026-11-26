@@ -427,6 +427,23 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
       .replace(/(^|,\s*)(2girls|2boys|multiple girls|multiple boys|crowd|duplicate)(,|$)/gi, "$1$2")
       .replace(/,\s*,/g, ",").replace(/^,\s*/, "").replace(/,\s*$/, "").trim();
   }
+  // 角色设定禁止的特征（兽耳/尾巴/异瞳…）：从正向删掉，写进负面
+  {
+    const forbidden = Array.isArray(payload.forbiddenTags)
+      ? payload.forbiddenTags.map((tag) => String(tag || "").trim().toLowerCase()).filter(Boolean)
+      : [];
+    if (forbidden.length) {
+      let cleaned = prompt;
+      for (const tag of forbidden) {
+        const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        cleaned = cleaned.replace(new RegExp(`(^|,\\s*)${escaped}(,|$)`, "gi"), "$1$2");
+      }
+      prompt = cleaned.replace(/,\s*,/g, ",").replace(/^,\s*/, "").replace(/,\s*$/, "").trim();
+      const missing = forbidden.filter((tag) => !new RegExp(`(^|,\\s*)${tag}(,|$)`, "i").test(negative));
+      if (missing.length) negative = `${missing.join(", ")}, ${negative}`;
+    }
+  }
+
   const soloRequested = !multiRequested && /(^|,|\s)(solo|1girl|1boy)(,|\s|$)/i.test(prompt);
   if (soloRequested) {
     const crowdNegatives = [
@@ -1297,10 +1314,26 @@ async function runComfy(payload) {
         }
       }
       if (people > 1) {
-        send("flow:progress", {
-          stage: `Still ${people} people after retries (kept)`,
-          progress: 0.98,
-        });
+        send("flow:progress", { stage: `仍检测到 ${people} 人，正在裁到主体…`, progress: 0.98 });
+        try {
+          const crop = cropToPrimarySubject(config, images[index].path);
+          if (crop.ok) {
+            const buffer = await fsp.readFile(images[index].path);
+            images[index].url = `data:image/png;base64,${buffer.toString("base64")}`;
+            images[index].croppedToSubject = true;
+            const metaPath = images[index].path.replace(/\.png$/i, ".json");
+            try {
+              const meta = JSON.parse(await fsp.readFile(metaPath, "utf8"));
+              meta.croppedToSubject = true;
+              meta.cropBox = crop.box;
+              await fsp.writeFile(metaPath, JSON.stringify(meta, null, 2), "utf8");
+            } catch {}
+            people = countPeople(config, images[index].path);
+          }
+        } catch {}
+        if (people > 1) {
+          send("flow:progress", { stage: `仍有 ${people} 人（已尽力）`, progress: 0.985 });
+        }
       }
     }
   }
@@ -1408,6 +1441,27 @@ function enhanceDetail(config, imagePath, strength = 1.0) {
     try { fs.unlinkSync(tmp); } catch {}
   }
   return { ok: true };
+}
+
+// 仍然检测到多人时，裁到画面主体（只留一个人），保证单人请求不出多余角色
+function cropToPrimarySubject(config, imagePath) {
+  const script = cropSingleScript();
+  if (!fs.existsSync(script)) return { ok: false, reason: "script missing" };
+  const python = resolvePythonForTools(config);
+  if (!python) return { ok: false, reason: "python missing" };
+  const tmp = path.join(writableTempDir(), `crop-${Date.now()}${path.extname(imagePath) || ".png"}`);
+  const result = spawnSync(python, [script, imagePath, tmp], { encoding: "utf8", timeout: 120000, windowsHide: true });
+  if (!fs.existsSync(tmp)) {
+    return { ok: false, reason: String(result?.stderr || result?.stdout || "").slice(-140) };
+  }
+  try {
+    fs.copyFileSync(tmp, imagePath);
+  } finally {
+    try { fs.unlinkSync(tmp); } catch {}
+  }
+  let parsed = {};
+  try { parsed = JSON.parse(String(result.stdout || "").trim().split(/\r?\n/).pop() || "{}"); } catch {}
+  return { ok: Boolean(parsed?.ok), people: parsed?.people || 0, box: parsed?.bbox };
 }
 
 function countPeopleScript() {

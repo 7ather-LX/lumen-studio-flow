@@ -1368,6 +1368,7 @@ function setupUpscaleImport() {
     const seedValue = Number($("#seed").value);
     return {
       prompt,
+      forbiddenTags: Array.isArray(state.forbiddenTags) ? state.forbiddenTags : [],
       negative: [$("#negative").value.trim(), style?.negative || ""].filter(Boolean).join(", "),
       width: aspect.width,
       height: aspect.height,
@@ -2724,6 +2725,7 @@ async function characterFactsByTag(tag) {
     try {
       const referenceContext = await referenceContextFor(text);
       let characterFacts = await characterFactsFor(text);
+      state.lastCharacterFacts = characterFacts || "";
       // 多角色场景：库里没覆盖到的名字，用本地模型解析成 canonical tag 再回库校验
       try {
         const segments = splitCharacterMentions(text);
@@ -2797,6 +2799,13 @@ async function characterFactsByTag(tag) {
       const data = JSON.parse(text);
       if (data.prompt) $("#prompt").value = data.prompt;
       if (data.negative_prompt) $("#negative").value = data.negative_prompt;
+      // 依据角色事实禁用角色没有的特征（兽耳 / 尾巴 / 异瞳）
+      try {
+        const factsLower = String(state.lastCharacterFacts || "").toLowerCase();
+        const TRAITS = ["animal ears", "cat ears", "fox ears", "wolf ears", "horse ears", "cat tail", "tail", "kemonomimi", "horns", "heterochromia"];
+        const textAll = [$("#prompt").value, $("#negative").value].join(" ").toLowerCase();
+        state.forbiddenTags = TRAITS.filter((tag) => !factsLower.includes(tag) && !textAll.includes(tag));
+      } catch { state.forbiddenTags = []; }
       updateAnimaPreview();
       $("#aiPromptModal").classList.add("hidden");
       toast("已填入创作区。");
@@ -2956,7 +2965,12 @@ async function characterFactsByTag(tag) {
 
     host.querySelectorAll("[data-nsfw-tag]").forEach((node) => {
       node.addEventListener("click", () => {
-        toggleTagInPrompt(node.dataset.nsfwTag);
+        const tag = node.dataset.nsfwTag;
+        const forbidden = Array.isArray(state.forbiddenTags) ? state.forbiddenTags : [];
+        if (forbidden.some((item) => String(item).toLowerCase() === String(tag).toLowerCase())) {
+          toast("这个特征与该角色设定不符（角色库无此特征），已照你所点写入，建议确认。");
+        }
+        toggleTagInPrompt(tag);
         void renderNsfwTags();
       });
     });
