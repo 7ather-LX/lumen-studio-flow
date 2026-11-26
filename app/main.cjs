@@ -426,6 +426,17 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
     prompt += ", detailed toes, five toes per foot, accurate toe count, clean foot anatomy, detailed soles";
     negative += ", missing toes, extra toes, fused toes, deformed feet, bad feet";
   }
+  // 默认画面风格：线条明朗 + 画面丰富（用户可自行删掉，已存在则不重复追加）
+  {
+    const DEFAULT_STYLE = [
+      "film still", "detailed background", "anamorphic", "anime cel shading",
+      "flat colors", "bold clean lineart", "limited palette", "2D animation key visual",
+    ];
+    const lowerPrompt = `, ${prompt.toLowerCase()}, `;
+    const missing = DEFAULT_STYLE.filter((tag) => !lowerPrompt.includes(`, ${tag}, `));
+    if (missing.length) prompt = `${prompt}, ${missing.join(", ")}`;
+  }
+
   if (!prompt) throw new Error("Prompt is empty");
 
   const workflow = {};

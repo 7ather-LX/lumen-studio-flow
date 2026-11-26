@@ -1885,6 +1885,11 @@ masterpiece, best quality, score_7, safe, ultra detailed, very aesthetic,
 - 场景要用可执行标签：under tree, tree shade, dappled sunlight, sunlight through leaves, indoor, window light, city street, night
 - 禁止「好看的构图」「优雅氛围」这类无法执行的描述，一律换成具体标签。
 
+【默认画面风格（每张都带，除非用户明确反对）】
+film still, detailed background, anamorphic, anime cel shading, flat colors, bold clean lineart, limited palette, 2D animation key visual
+—— 这组词保证「线条明朗、画面丰富、纹理细节足够」，用户偏好这种质感；
+   如果用户明确要别的风格（比如厚涂 2.5D），再替换成对应词块。
+
 【画风：默认 anima base】
 - 用户没有明确指定画风时：style 留空，prompt 里不要堆 2.5D / 赛璐珞 词，只保留必要的质量与细节词（anima base 本身就是主打画风）。
 - 用户明确要画风时才用对应词块，二选一不要混：
@@ -1980,44 +1985,123 @@ async function characterFactsByTag(tag) {
     ].filter(Boolean).join(" | ");
   }
 
+  // 作品名（中文）→ canonical work 的映射，来自角色库的 work_zh 字段
+  let workAliasCache = null;
+  async function loadWorkAliases() {
+    if (workAliasCache) return workAliasCache;
+    const rows = await loadCharacterCatalog();
+    const map = new Map();
+    for (const row of rows) {
+      const work = String(row.work || "").trim();
+      if (!work) continue;
+      const zh = String(row.work_zh || "").trim();
+      if (zh && zh.length >= 2 && !map.has(zh.toLowerCase())) map.set(zh.toLowerCase(), work);
+      const lower = work.toLowerCase();
+      if (!map.has(lower)) map.set(lower, work);
+    }
+    workAliasCache = map;
+    return map;
+  }
+
+  async function detectWorksInText(text) {
+    const query = String(text || "").toLowerCase();
+    if (!query) return [];
+    const map = await loadWorkAliases();
+    const found = [];
+    for (const [alias, work] of map) {
+      if (alias.length < 2) continue;
+      if (query.includes(alias) && !found.includes(work)) found.push(work);
+    }
+    return found;
+  }
+
+  // 把「芭芭拉和琴」这类并列拆成多个候选名
+  function splitCharacterMentions(text) {
+    return String(text || "")
+      .replace(/原神|崩坏|星穹铁道|明日方舟|碧蓝航线|蔚蓝档案|胜利女神|妮姬|斗罗大陆|火影|海贼|死神/g, " ")
+      .split(/[和与跟、,，/／+]|以及|还有|plus/i)
+      .map((part) => part.replace(/[里的之\s]/g, "").trim())
+      // 允许单字中文名（琴、绫、樱…），但只有整段完全相等时才会命中
+      .filter((part) => part.length >= 2 || (/^[\u4e00-\u9fa5]$/.test(part)));
+  }
+
   async function characterFactsFor(text) {
     const rows = await loadCharacterCatalog();
     const query = String(text || "").toLowerCase();
     if (!rows.length || !query) return "";
-    const scored = [];
-    for (const row of rows) {
-      const zhFull = String(row.zh || "").toLowerCase();
+    const segments = splitCharacterMentions(text);
+
+    const scoreRow = (row, haystack, exact) => {
+      const zhFull = String(row.zh || "").toLowerCase().trim();
       const zhParts = String(row.zh || "")
         .split(/[·・,，/／()（）\s]+/)
-        .filter((part) => part.length >= 3);   // 只有 >=3 字的片段才算（「猎人」这种 2 字通用词不算）
+        .filter((part) => part.length >= 3);
       const names = [row.tag, row.name, ...(row.aliases || []), ...(row.pinyin || [])]
-        .filter(Boolean)
-        .map((item) => String(item).toLowerCase());
+        .filter(Boolean).map((item) => String(item).toLowerCase().trim());
       let hit = 0;
-      if (zhFull.length >= 2 && query.includes(zhFull)) hit = Math.max(hit, zhFull.length * 4);
-      for (const part of zhParts) {
-        if (query.includes(part)) hit = Math.max(hit, part.length * 3);
+      // 单字中文名（如「琴」「绫」）：只有「当前片段」与该名字完全相等才算，避免误命中
+      if (exact) {
+        if (zhFull && zhFull === exact) hit = Math.max(hit, 70);
+        if (names.some((name) => name === exact)) hit = Math.max(hit, 65);
       }
-      for (const name of names) {
-        if (name.length >= 3 && query.includes(name)) hit = Math.max(hit, name.length * 3);
+      if (zhFull.length >= 2 && haystack.includes(zhFull)) hit = Math.max(hit, zhFull.length * 4);
+      for (const part of zhParts) if (haystack.includes(part)) hit = Math.max(hit, part.length * 3);
+      for (const name of names) if (name.length >= 3 && haystack.includes(name)) hit = Math.max(hit, name.length * 3);
+      return hit;
+    };
+
+    const picked = [];
+    const pickBest = (haystack, exact) => {
+      let best = null;
+      for (const row of rows) {
+        const hit = scoreRow(row, haystack, exact);
+        if (!hit) continue;
+        if (!best) {
+          best = { row, hit };
+          continue;
+        }
+        const better =
+          hit > best.hit ||
+          (hit === best.hit && String(row.tag || "").length < String(best.row.tag || "").length) ||
+          (hit === best.hit && String(row.tag || "").length === String(best.row.tag || "").length &&
+            (Number(row.pop) || 0) > (Number(best.row.pop) || 0));
+        if (better) best = { row, hit };
       }
-      if (!hit) continue;
-      scored.push({ row, hit, pop: Number(row.pop) || 0 });
+      if (best && !picked.some((entry) => entry.row.tag === best.row.tag)) picked.push(best);
+    };
+
+    if (segments.length > 1) {
+      for (const segment of segments) pickBest(segment.toLowerCase(), segment.toLowerCase());
     }
-    if (!scored.length) return "";
-    scored.sort((a, b) => b.hit - a.hit || b.pop - a.pop);
-    return scored.slice(0, 2).map(({ row }) => {
+    pickBest(query, null);
+
+    const works = await detectWorksInText(text);
+
+    // 变体收敛：xxx (装扮) (作品) 若库里存在 xxx (作品) 的基础条目，优先用基础条目
+    const collapseToBase = (row) => {
+      const m = String(row.tag || "").match(/^(.+?)\s*\(([^)]+)\)\s*\(([^)]+)\)$/);
+      if (!m) return row;
+      const candidate = `${m[1]} (${m[3]})`;
+      const baseRow = rows.find((item) => String(item.tag) === candidate);
+      return baseRow || row;
+    };
+
+    const lines = picked.slice(0, 3).map((pickedEntry) => {
+      const row = collapseToBase(pickedEntry.row);
       const tags = Array.isArray(row.tags) ? row.tags.filter(Boolean) : [];
-      const parts = [
+      return [
         `CANONICAL: ${row.tag}`,
         `work: ${row.work || ""}`,
         row.zh ? `zh: ${row.zh}` : "",
         tags.length
           ? `tags: ${tags.join(", ")}`
           : "attributes: unknown（本库只有 canonical 名，发色/瞳色/服装请按官方设定，不确定就写进未确认）",
-      ].filter(Boolean);
-      return parts.join(" | ");
-    }).join("\n");
+      ].filter(Boolean).join(" | ");
+    });
+    if (works.length) {
+      lines.push(`WORK_HINT: ${works.join(" | ")}（用户明确提到的作品，work 字段必须填这个，禁止改成别的作品）`);
+    }
+    return lines.join("\n");
   }
 
   function renderAiMessages() {
@@ -2248,9 +2332,17 @@ async function characterFactsByTag(tag) {
     let data;
     try { data = JSON.parse(body.slice(first, last + 1)); } catch { return text; }
 
-    const canonical = cleanTagValue((factsText.match(/CANONICAL:\s*([^|\n]+)/) || [])[1] || "");
+    const canonicalLines = [...String(factsText || "").matchAll(/CANONICAL:\s*([^|\n]+)/g)]
+      .map((m) => cleanTagValue(m[1]))
+      .filter(Boolean);
+    const canonical = canonicalLines[0] || "";
+    const multiCharacters = canonicalLines.length >= 2 ? canonicalLines.slice(0, 3) : [];
     const factsTags = splitTags((factsText.match(/tags:\s*([^\n]+)/) || [])[1] || "");
     const factsWork = cleanTagValue((factsText.match(/work:\s*([^|\n]+)/) || [])[1] || "");
+    const workHint = cleanTagValue((factsText.match(/WORK_HINT:\s*([^（(\n]+)/) || [])[1] || "").split("|")[0];
+    const wantedWorks = [...new Set(
+      [workHint, ...canonicalLines.map(() => factsWork)].map((item) => String(item || "").trim()).filter(Boolean)
+    )];
 
     let promptTags = splitTags(data.prompt);
     const negativeTags = splitTags(data.negative_prompt);
@@ -2266,8 +2358,14 @@ async function characterFactsByTag(tag) {
 
     // ② 角色 canonical + 作品必须来自库（不许臆造作品名）
     data.character = cleanTagValue(data.character) || canonical;
-    if (canonical) data.character = canonical;
-    data.work = factsWork || cleanTagValue(data.work);
+    if (canonical) {
+      data.character = multiCharacters.length ? multiCharacters.join(", ") : canonical;
+    }
+    data.work = workHint || factsWork || cleanTagValue(data.work);
+
+    // ②b 作品兜底：用户提到的作品一定优先于模型猜的作品（例如「原神」被写成「胜利女神尼姬」）
+    const userWorks = await detectWorksInText(String(userText || ""));
+    if (userWorks.length) data.work = userWorks[0];
 
     // ③ 单调性：prompt 里不允许出现负面词（自相矛盾）
     const negativeSet = new Set(lower(negativeTags));
@@ -2297,13 +2395,18 @@ async function characterFactsByTag(tag) {
           known.add(String(name).toLowerCase().replace(/_/g, " ").trim());
         }
       }
-      const primary = (canonical || cleanTagValue(data.character)).toLowerCase().replace(/_/g, " ").trim();
+      const allowed = new Set(
+        (multiCharacters.length ? multiCharacters : [canonical || cleanTagValue(data.character)])
+          .map((item) => String(item).toLowerCase().replace(/_/g, " ").trim())
+          .filter(Boolean)
+      );
+      const primary = [...allowed][0] || "";
       promptTags = promptTags.filter((tag) => {
         const key = tag.toLowerCase().replace(/_/g, " ").trim();
-        return !known.has(key) || key === primary;
+        return !known.has(key) || allowed.has(key);
       });
-      // canonical 存在时，去掉同角色的变体 tag（如 asuka langley (neon genesis evangelion)）
-      if (canonical) {
+      // canonical 存在时，去掉同角色的变体 tag（多角色场景跳过）
+      if (canonical && !multiCharacters.length) {
         const tokens = canonical.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
         promptTags = promptTags.filter((tag) => {
           if (tag.toLowerCase().replace(/_/g, " ").trim() === canonical.toLowerCase()) return true;
@@ -2437,6 +2540,21 @@ async function characterFactsByTag(tag) {
     try {
       const referenceContext = await referenceContextFor(text);
       let characterFacts = await characterFactsFor(text);
+      // 多角色场景：库里没覆盖到的名字，用本地模型解析成 canonical tag 再回库校验
+      try {
+        const segments = splitCharacterMentions(text);
+        const covered = (segment) => String(characterFacts || "").toLowerCase().includes(segment.toLowerCase());
+        const extras = [];
+        for (const segment of segments.slice(0, 3)) {
+          if (segment.length < 2 || covered(segment)) continue;
+          if (!/[\u4e00-\u9fa5]/.test(segment)) continue;
+          const guess = await bridge.llmResolveTag({ text: segment });
+          if (!guess) continue;
+          const block = await characterFactsByTag(guess);
+          if (block && !String(characterFacts || "").includes(block)) extras.push(block);
+        }
+        if (extras.length) characterFacts = [characterFacts, ...extras].filter(Boolean).join("\n");
+      } catch {}
       if (!characterFacts) {
         // 库里没匹配到：让模型给出候选 canonical tag，再回库验证（存在才采信）
         try {
@@ -2548,6 +2666,30 @@ async function characterFactsByTag(tag) {
     return parts.length > 0 && parts.every((part) => have.has(part));
   }
 
+  const QUALITY_PREFIX = [
+    "masterpiece", "best quality", "score_7", "safe", "ultra detailed", "very aesthetic",
+    "highres", "absurdres", "best quality:1.2",
+  ];
+
+  // 把新标签插到「正向提示词」前部：跳过开头的质量/人数前缀，避免追加到文本末尾
+  function insertPositiveTags(existingTags, newTags) {
+    const isQuality = (tag) => QUALITY_PREFIX.includes(String(tag).toLowerCase());
+    let cut = 0;
+    while (cut < existingTags.length && isQuality(existingTags[cut])) cut += 1;
+    // 再跨过 1girl / solo 这类人数词
+    while (cut < existingTags.length && /^(\d+girls?|\d+boys?|solo|multiple girls|multiple boys)$/i.test(existingTags[cut])) cut += 1;
+    const head = existingTags.slice(0, cut);
+    const tail = existingTags.slice(cut);
+    const merged = [...head];
+    for (const tag of newTags) {
+      if (!merged.some((item) => item.toLowerCase() === tag.toLowerCase()) &&
+          !tail.some((item) => item.toLowerCase() === tag.toLowerCase())) {
+        merged.push(tag);
+      }
+    }
+    return [...merged, ...tail];
+  }
+
   function writePrompt(tags) {
     const box = $("#prompt");
     if (!box) return;
@@ -2571,7 +2713,8 @@ async function characterFactsByTag(tag) {
     if (promptHasTag(tag)) {
       writePrompt(current.filter((item) => !parts.includes(item.toLowerCase())));
     } else {
-      writePrompt([...current, ...tag.split(",").map((item) => item.trim()).filter(Boolean)]);
+      const additions = tag.split(",").map((item) => item.trim()).filter(Boolean);
+      writePrompt(insertPositiveTags(current, additions));
     }
   }
 
@@ -3614,9 +3757,10 @@ async function characterFactsByTag(tag) {
       node.addEventListener("click", () => {
         const entry = (state.catalog || []).find((item) => item.id === node.dataset.catalogId);
         if (!entry) return;
-        const currentPrompt = $("#prompt").value.trim();
+        const currentTags = $("#prompt").value.split(",").map((item) => item.trim()).filter(Boolean);
         const addition = entry.keywords || entry.prompt || entry.name;
-        $("#prompt").value = [currentPrompt, addition].filter(Boolean).join(", ");
+        const additions = String(addition).split(",").map((item) => item.trim()).filter(Boolean);
+        $("#prompt").value = insertPositiveTags(currentTags, additions).join(", ");
         updateAnimaPreview();
         if (typeof scheduleNsfwSync === "function") scheduleNsfwSync();
         $("#catalogModal").classList.add("hidden");
