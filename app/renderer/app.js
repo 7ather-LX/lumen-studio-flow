@@ -1866,6 +1866,12 @@ function setupUpscaleImport() {
 - 作品必须用真实存在的 canonical work tag（例：neon genesis evangelion、genshin impact），不确定就留空，禁止臆造（如 "eva: evangelion"）。
 - 不要往 prompt 里塞与主体无关的其他作品角色（例：画怪物猎人时不要出现 hunter (bloodborne)）。
 - 用户没指定角色时，不要自动补一个角色。
+- **只能使用用户明确提到的角色**：禁止补充用户没提过的角色（哪怕同一作品里的常见角色），
+  character 字段只写用户提到的角色；多角色用逗号分隔。
+- **角色数量必须与用户一致**：用户说「两个 / 2girl / 两个相同角色」时写 2girls 并**不要写 solo**；
+  说「一个」时写 1girl, solo。人数词与 solo 不允许同时出现。
+- **场景元素必须来自用户描述**：用户说卧室/床上，就不要写 dappled sunlight / tree shade / outdoors
+  这类户外光景；用户没提的场景不要自己加。
 - **中文名不要按字面具象化**：很多国漫 / 网文角色名取自招式、器物或俗称，字面意思往往不是外观。
   例：「罗三炮」不是大炮，而是《斗罗大陆》里似狗似猪的淡紫色毛球武魂。
   遇到库外的中文名，先判断它是生物 / 器物 / 功法，无法确定就只写用户给出的形态描述，
@@ -1943,6 +1949,9 @@ detailed eyes, detailed hair, detailed hands, detailed skin, clean soft lineart
 - prompt 里是否出现了两个角色 tag（含同角色不同版本）
 - 负面里是否误封了该角色的标志性服装
 - prompt 与 negative 是否有同词冲突
+- character 字段里是否混入了用户没提到的角色
+- 人数词与 solo 是否同时出现
+- 场景是否与用户描述冲突（室内写了户外光景）
 - negative 是否 ≥ 20 个标签、是否含反向颜色
 
 【示例】
@@ -1992,6 +2001,17 @@ async function characterFactsByTag(tag) {
     ].filter(Boolean).join(" | ");
   }
 
+// 名字匹配：中文用包含，英文必须词边界（避免 satin 命中 sin (nikke) 这种惨案）
+  function containsName(haystack, name) {
+    const text = String(haystack || "").toLowerCase();
+    const needle = String(name || "").toLowerCase().trim();
+    if (!needle) return false;
+    if (/[\u4e00-\u9fa5]/.test(needle)) return needle.length >= 2 && text.includes(needle);
+    if (needle.length < 4) return false;
+    const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i").test(text);
+  }
+
   // 作品名（中文）→ canonical work 的映射，来自角色库的 work_zh 字段
   let workAliasCache = null;
   async function loadWorkAliases() {
@@ -2010,14 +2030,33 @@ async function characterFactsByTag(tag) {
     return map;
   }
 
+// 把文本里的作品名抹掉（否则「碧蓝航线」会命中同作品所有角色的 zh 片段）
+  async function stripWorkNames(text) {
+    let out = String(text || "");
+    const map = await loadWorkAliases();
+    const aliases = [...map.keys()]
+      .filter((alias) => /[\u4e00-\u9fa5]/.test(alias) && alias.length >= 2)
+      .sort((a, b) => b.length - a.length);
+    for (const alias of aliases) {
+      if (out.toLowerCase().includes(alias)) {
+        out = out.split(alias).join(" ");
+      }
+    }
+    return out;
+  }
+
   async function detectWorksInText(text) {
     const query = String(text || "").toLowerCase();
     if (!query) return [];
     const map = await loadWorkAliases();
     const found = [];
     for (const [alias, work] of map) {
-      if (alias.length < 2) continue;
-      if (query.includes(alias) && !found.includes(work)) found.push(work);
+      // 中文作品名（原神/碧蓝航线…）直接包含匹配；英文作品名必须词边界且足够长
+      if (/[\u4e00-\u9fa5]/.test(alias)) {
+        if (alias.length >= 2 && query.includes(alias) && !found.includes(work)) found.push(work);
+      } else if (alias.length >= 6 && containsName(query, alias) && !found.includes(work)) {
+        found.push(work);
+      }
     }
     return found;
   }
@@ -2034,9 +2073,10 @@ async function characterFactsByTag(tag) {
 
   async function characterFactsFor(text) {
     const rows = await loadCharacterCatalog();
-    const query = String(text || "").toLowerCase();
+    const cleaned = await stripWorkNames(text);
+    const query = String(cleaned || "").toLowerCase();
     if (!rows.length || !query) return "";
-    const segments = splitCharacterMentions(text);
+    const segments = splitCharacterMentions(cleaned);
 
     const scoreRow = (row, haystack, exact) => {
       const zhFull = String(row.zh || "").toLowerCase().trim();
@@ -2053,7 +2093,9 @@ async function characterFactsByTag(tag) {
       }
       if (zhFull.length >= 2 && haystack.includes(zhFull)) hit = Math.max(hit, zhFull.length * 4);
       for (const part of zhParts) if (haystack.includes(part)) hit = Math.max(hit, part.length * 3);
-      for (const name of names) if (name.length >= 3 && haystack.includes(name)) hit = Math.max(hit, name.length * 3);
+      for (const name of names) {
+        if (containsName(haystack, name)) hit = Math.max(hit, Math.min(name.length, 24) * 3);
+      }
       return hit;
     };
 
@@ -2082,7 +2124,7 @@ async function characterFactsByTag(tag) {
     }
     pickBest(query, null);
 
-    const works = await detectWorksInText(text);
+    const works = await detectWorksInText(text);  // 用原文，因为作品名被清理过
 
     // 变体收敛：xxx (装扮) (作品) 若库里存在 xxx (作品) 的基础条目，优先用基础条目
     const collapseToBase = (row) => {
@@ -2374,9 +2416,25 @@ async function characterFactsByTag(tag) {
     const userWorks = await detectWorksInText(String(userText || ""));
     if (userWorks.length) data.work = userWorks[0];
 
-    // ③ 单调性：prompt 里不允许出现负面词（自相矛盾）
+    // ②c 人数一致：prompt 里出现 2girls/2boys 就删掉 solo/1girl，并从负面移除人数限制
+    const COUNT_TAGS = ["1girl", "1boy", "2girls", "2boys", "solo", "multiple girls", "multiple boys", "group"];
+    const multiInPrompt = promptTags.some((tag) => /^(2girls|2boys|3girls|multiple girls|multiple boys|group)$/i.test(tag));
+    if (multiInPrompt) {
+      promptTags = promptTags.filter((tag) => !/^(solo|1girl|1boy)$/i.test(tag));
+      for (let i = negativeTags.length - 1; i >= 0; i -= 1) {
+        if (/^(1girl|1boy|2girls|2boys|multiple girls|multiple boys|crowd|duplicate)$/i.test(negativeTags[i])) {
+          negativeTags.splice(i, 1);
+        }
+      }
+    }
+
+    // ③ 单调性：prompt 里不允许出现负面词（人数标签除外，人数冲突在上一步处理）
     const negativeSet = new Set(lower(negativeTags));
-    promptTags = promptTags.filter((tag) => !negativeSet.has(tag.toLowerCase()));
+    promptTags = promptTags.filter((tag) => {
+      const key = tag.toLowerCase();
+      if (COUNT_TAGS.includes(key)) return true;
+      return !negativeSet.has(key);
+    });
 
     // ③b 负面不许封角色本人的服装/特征（库里给的 tags 与负面冲突时，删负面）
     if (factsTags.length) {

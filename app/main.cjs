@@ -413,7 +413,20 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
     }
   }
 
-  const soloRequested = /(^|,|\s)(solo|1girl|1boy)(,|\s|$)/i.test(prompt);
+  // 人数一致性：多人请求时不注入「多人」负面，并删掉矛盾的 solo / 1girl
+  const multiRequested = /(^|,\s*)(2girls|2boys|3girls|3boys|multiple girls|multiple boys|group)(,|$)/i.test(prompt);
+  if (multiRequested) {
+    prompt = prompt
+      .replace(/(^|,\s*)solo(,|$)/gi, "$1$2")
+      .replace(/(^|,\s*)1girl(,|$)/gi, "$1$2")
+      .replace(/(^|,\s*)1boy(,|$)/gi, "$1$2")
+      .replace(/,\s*,/g, ",").replace(/^,\s*/, "").replace(/,\s*$/, "").trim();
+    // 反向：负面里如果写了人数限制，删掉，否则模型被要求「不要两个人」
+    negative = negative
+      .replace(/(^|,\s*)(2girls|2boys|multiple girls|multiple boys|crowd|duplicate)(,|$)/gi, "$1$2")
+      .replace(/,\s*,/g, ",").replace(/^,\s*/, "").replace(/,\s*$/, "").trim();
+  }
+  const soloRequested = !multiRequested && /(^|,|\s)(solo|1girl|1boy)(,|\s|$)/i.test(prompt);
   if (soloRequested) {
     const crowdNegatives = [
       "2girls", "multiple girls", "crowd", "group", "character sheet",
