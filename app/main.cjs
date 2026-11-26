@@ -69,7 +69,7 @@ const DEFAULT_CONFIG = {
   apiKey: "",
   nsfwWorkflow: true,
   llmMode: "local",
-  llmModel: "F:\\novel\\DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic.Q4_K_M.gguf",
+  llmModel: "",
   llmBin: "F:\\novel\\llama-cpp\\llama-server.exe",
   llmDevice: "gpu",
   llmCtxSize: 8192,
@@ -374,6 +374,36 @@ async function startComfy() {
   throw new Error("ComfyUI request failed");
 }
 
+// ---------- 角色外观覆盖（用户/策展数据，优先于内置库） ----------
+function appearancePath() {
+  return path.join(dataRoot(), "character-appearance.json");
+}
+
+function readAppearances() {
+  try {
+    const raw = fs.readFileSync(appearancePath(), "utf8");
+    const data = JSON.parse(raw);
+    return data && typeof data === "object" && !Array.isArray(data) ? data : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeAppearances(data) {
+  try {
+    fs.mkdirSync(dataRoot(), { recursive: true });
+    fs.writeFileSync(appearancePath(), JSON.stringify(data, null, 2), "utf8");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// key 归一化：小写、去多余空格
+function normalizeCharKey(name) {
+  return String(name || "").toLowerCase().replace(/[_]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
 // ---------- 角色特征禁用（主进程兜底，手写提示词也生效） ----------
 let traitCatalogCache = null;
 function loadTraitCatalog() {
@@ -409,6 +439,17 @@ function containsToken(text, needle) {
 function analyzeCharacterTraits(prompt) {
   const rows = loadTraitCatalog();
   if (!rows.length) return { rows: [], forbidden: [] };
+  // 应用外观覆盖：覆盖里有的角色，用覆盖标签替换内置标签
+  const overrides = readAppearances();
+  if (Object.keys(overrides).length) {
+    for (const row of rows) {
+      const key = normalizeCharKey(row.tag);
+      const extra = overrides[key] || overrides[normalizeCharKey(row.zh)];
+      if (extra && Array.isArray(extra.tags) && extra.tags.length) {
+        row.tags = extra.tags.slice();
+      }
+    }
+  }
   const matched = [];
   for (const row of rows) {
     const names = [row.tag, row.name, row.zh, ...(row.aliases || [])].filter(Boolean);
@@ -2046,6 +2087,25 @@ ipcMain.handle("flow:llm:start", () => startLlm());
 ipcMain.handle("flow:llm:stop", () => stopLlm());
 ipcMain.handle("flow:llm:chat", (_event, payload) => chatLlm(payload));
 ipcMain.handle("flow:llm:resolve-tag", (_event, payload) => resolveCharacterTag(payload?.text));
+ipcMain.handle("flow:character:appearance:list", () => readAppearances());
+ipcMain.handle("flow:character:appearance:set", (_event, payload) => {
+  const key = normalizeCharKey(payload?.name);
+  const tags = Array.isArray(payload?.tags)
+    ? payload.tags.map((tag) => String(tag || "").trim()).filter(Boolean)
+    : String(payload?.tags || "").split(",").map((tag) => tag.trim()).filter(Boolean);
+  if (!key || !tags.length) return { ok: false, reason: "name/tags required" };
+  const data = readAppearances();
+  data[key] = { tags, updatedAt: new Date().toISOString() };
+  const ok = writeAppearances(data);
+  return { ok, count: Object.keys(data).length };
+});
+ipcMain.handle("flow:character:appearance:remove", (_event, payload) => {
+  const key = normalizeCharKey(payload?.name);
+  const data = readAppearances();
+  if (data[key]) delete data[key];
+  const ok = writeAppearances(data);
+  return { ok, count: Object.keys(data).length };
+});
 
 // ---------- 隐藏作品 ----------
 function hiddenWorksPath() {

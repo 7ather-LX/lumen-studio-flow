@@ -1974,7 +1974,9 @@ masterpiece, best quality, score_7, safe, ultra detailed, very aesthetic, 1girl,
         const response = await fetch(file);
         const data = await response.json();
         const rows = Array.isArray(data?.characters) ? data.characters : (Array.isArray(data) ? data : []);
-        return rows;
+          const overrides = await loadAppearances();
+    applyAppearanceOverrides(rows, overrides);
+    return rows;
       } catch {
         return [];
       }
@@ -2831,6 +2833,81 @@ async function characterFactsByTag(tag) {
   }
 
 // ---------- 成人标签面板 ----------
+// ---------- 角色外观覆盖（用户写入，优先于内置库） ----------
+  let appearanceCache = null;
+  async function loadAppearances(force = false) {
+    if (appearanceCache && !force) return appearanceCache;
+    try {
+      const data = await bridge.appearanceList();
+      appearanceCache = data && typeof data === "object" ? data : {};
+    } catch {
+      appearanceCache = {};
+    }
+    return appearanceCache;
+  }
+
+  function normalizeCharKey(name) {
+    return String(name || "").toLowerCase().replace(/_+/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  function applyAppearanceOverrides(rows, overrides) {
+    if (!overrides) return rows;
+    const keys = Object.keys(overrides);
+    if (!keys.length) return rows;
+    for (const row of rows) {
+      const tagKey = normalizeCharKey(row.tag);
+      const zhKey = normalizeCharKey(row.zh);
+      const extra = overrides[tagKey] || (zhKey ? overrides[zhKey] : null);
+      if (extra && Array.isArray(extra.tags) && extra.tags.length) {
+        row.tags = extra.tags.slice();
+        row.tags_source = "appearance-override";
+      }
+    }
+    return rows;
+  }
+
+  async function renderAppearanceList() {
+    const host = $("#appearanceList");
+    if (!host) return;
+    const data = await loadAppearances(true);
+    const keys = Object.keys(data);
+    if ($("#appearanceCount")) $("#appearanceCount").textContent = `${keys.length} 条`;
+    host.innerHTML = keys.length
+      ? keys.sort().map((key) => `<div class="appearance-row"><b>${escapeHtml(key)}</b><span>${escapeHtml((data[key].tags || []).join(", "))}</span><button data-appearance-remove="${escapeHtml(key)}">删除</button></div>`).join("")
+      : '<p class="hint">还没有自定义外观。写上角色名与外观标签即可覆盖内置数据。</p>';
+    host.querySelectorAll("[data-appearance-remove]").forEach((node) => {
+      node.addEventListener("click", async () => {
+        try {
+          await bridge.appearanceRemove({ name: node.dataset.appearanceRemove });
+          toast("已删除该角色的外观覆盖。");
+          await renderAppearanceList();
+        } catch (error) {
+          toast(error?.message || String(error));
+        }
+      });
+    });
+  }
+
+  async function saveAppearance() {
+    const name = String($("#appearanceName")?.value || "").trim();
+    const tags = String($("#appearanceTags")?.value || "").trim();
+    if (!name || !tags) {
+      toast("请填写角色名与外观标签。");
+      return;
+    }
+    try {
+      const result = await bridge.appearanceSet({ name, tags });
+      if (!result?.ok) throw new Error("保存失败");
+      toast("外观已保存，生成时优先使用。");
+      if ($("#appearanceName")) $("#appearanceName").value = "";
+      if ($("#appearanceTags")) $("#appearanceTags").value = "";
+      appearanceCache = null;
+      await renderAppearanceList();
+    } catch (error) {
+      toast(error?.message || String(error));
+    }
+  }
+
   // ---------- NSFW 标签设置 ----------
   const nsfwTagState = { data: null, collapsed: false, ready: false };
 
@@ -3634,6 +3711,8 @@ async function characterFactsByTag(tag) {
     $("#settingsButton").addEventListener("click", openSettings);
     $("#closeSettings").addEventListener("click", () => $("#settingsModal").classList.add("hidden"));
     $("#cancelSettings").addEventListener("click", () => $("#settingsModal").classList.add("hidden"));
+    $("#appearanceSave")?.addEventListener("click", () => void saveAppearance());
+    $("#settingsButton")?.addEventListener("click", () => { void renderAppearanceList(); });
     $("#saveSettings").addEventListener("click", () => void saveSettings());
     $("#settingFontScale").addEventListener("input", () => applyUiScale($("#settingFontScale").value));
     $("#browseDir").addEventListener("click", async () => {
