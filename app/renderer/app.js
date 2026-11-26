@@ -1868,6 +1868,10 @@ function setupUpscaleImport() {
 - 用户没指定角色时，不要自动补一个角色。
 - **只能使用用户明确提到的角色**：禁止补充用户没提过的角色（哪怕同一作品里的常见角色），
   character 字段只写用户提到的角色；多角色用逗号分隔。
+- **以当前这条消息为准**：历史消息里出现过的角色/场景可能与这次无关，不要沿用；
+  如果历史里出现过柴郡、这次说的是厌战，就只写厌战。
+- **属性未知时不要编造**：当 CHARACTER_FACTS 只给出 canonical 名与 attributes: unknown 时，
+  不要凭印象写具体发色/瞳色/发型/服装，只写通用描述，并在 notes 的「未确认项」里注明。
 - **角色数量必须与用户一致**：用户说「两个 / 2girl / 两个相同角色」时写 2girls 并**不要写 solo**；
   说「一个」时写 1girl, solo。人数词与 solo 不允许同时出现。
 - **场景元素必须来自用户描述**：用户说卧室/床上，就不要写 dappled sunlight / tree shade / outdoors
@@ -1950,6 +1954,8 @@ detailed eyes, detailed hair, detailed hands, detailed skin, clean soft lineart
 - 负面里是否误封了该角色的标志性服装
 - prompt 与 negative 是否有同词冲突
 - character 字段里是否混入了用户没提到的角色
+- 是否沿用了历史消息里的角色（应以当前消息为准）
+- 属性未知的角色是否被编造了发色/瞳色/服装
 - 人数词与 solo 是否同时出现
 - 场景是否与用户描述冲突（室内写了户外光景）
 - negative 是否 ≥ 20 个标签、是否含反向颜色
@@ -2077,6 +2083,8 @@ async function characterFactsByTag(tag) {
     const query = String(cleaned || "").toLowerCase();
     if (!rows.length || !query) return "";
     const segments = splitCharacterMentions(cleaned);
+    // 用户提到的作品（用于区分同名角色：碧蓝航线 vs 舰C）
+    const preferredWorks = (await detectWorksInText(text)).map((work) => String(work).toLowerCase());
 
     const scoreRow = (row, haystack, exact) => {
       const zhFull = String(row.zh || "").toLowerCase().trim();
@@ -2095,6 +2103,13 @@ async function characterFactsByTag(tag) {
       for (const part of zhParts) if (haystack.includes(part)) hit = Math.max(hit, part.length * 3);
       for (const name of names) {
         if (containsName(haystack, name)) hit = Math.max(hit, Math.min(name.length, 24) * 3);
+      }
+      // 作品命中加权：明确说了「碧蓝航线」时，优先碧蓝航线版本而不是舰C同名角色
+      if (hit > 0 && preferredWorks.length) {
+        const rowWork = String(row.work || "").toLowerCase().trim();
+        if (rowWork && preferredWorks.some((work) => rowWork === work || rowWork.startsWith(work) || work.startsWith(rowWork))) {
+          hit += 45;
+        }
       }
       return hit;
     };
@@ -2124,7 +2139,7 @@ async function characterFactsByTag(tag) {
     }
     pickBest(query, null);
 
-    const works = await detectWorksInText(text);  // 用原文，因为作品名被清理过
+    const works = preferredWorks.length ? await detectWorksInText(text) : [];
 
     // 变体收敛：xxx (装扮) (作品) 若库里存在 xxx (作品) 的基础条目，优先用基础条目
     const collapseToBase = (row) => {

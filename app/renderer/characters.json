@@ -853,7 +853,7 @@
   {
    "tag": "shimakaze (kancolle)",
    "name": "shimakaze (kancolle)",
-   "zh": "",
+   "zh": "岛风",
    "work": "kantai collection",
    "work_zh": "",
    "aliases": [
@@ -877,7 +877,8 @@
     "crop top"
    ],
    "pop": 18583,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "miki sayaka",
@@ -1169,7 +1170,7 @@
   {
    "tag": "shigure (kancolle)",
    "name": "shigure (kancolle)",
-   "zh": "",
+   "zh": "时雨",
    "work": "kantai collection",
    "work_zh": "",
    "aliases": [
@@ -1190,7 +1191,8 @@
     "hair ornament"
    ],
    "pop": 16343,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "kamishirasawa keine",
@@ -1553,7 +1555,7 @@
   {
    "tag": "kongou (kancolle)",
    "name": "kongou (kancolle)",
-   "zh": "",
+   "zh": "金刚",
    "work": "kantai collection",
    "work_zh": "",
    "aliases": [
@@ -1577,7 +1579,8 @@
     "headgear"
    ],
    "pop": 13586,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "nazrin",
@@ -1923,7 +1926,7 @@
   {
    "tag": "yuudachi (kancolle)",
    "name": "yuudachi (kancolle)",
-   "zh": "",
+   "zh": "夕立",
    "work": "kantai collection",
    "work_zh": "",
    "aliases": [
@@ -1941,7 +1944,8 @@
     "black ribbon"
    ],
    "pop": 11622,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "gotoh hitori",
@@ -2057,7 +2061,7 @@
   {
    "tag": "fubuki (kancolle)",
    "name": "fubuki (kancolle)",
-   "zh": "",
+   "zh": "吹雪",
    "work": "kantai collection",
    "work_zh": "",
    "aliases": [
@@ -2079,7 +2083,8 @@
     "pleated skirt"
    ],
    "pop": 11339,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "tifa lockhart",
@@ -2518,7 +2523,7 @@
   {
    "tag": "haruna (kancolle)",
    "name": "haruna (kancolle)",
-   "zh": "",
+   "zh": "榛名",
    "work": "kantai collection",
    "work_zh": "",
    "aliases": [
@@ -2542,7 +2547,8 @@
     "nontraditional miko"
    ],
    "pop": 9787,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "2b (nier:automata)",
@@ -3391,7 +3397,7 @@
   {
    "tag": "ryuujou (kancolle)",
    "name": "ryuujou (kancolle)",
-   "zh": "",
+   "zh": "龙骧",
    "work": "kantai collection",
    "work_zh": "",
    "aliases": [
@@ -3409,7 +3415,8 @@
     "magatama"
    ],
    "pop": 8549,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "scathach (fate)",
@@ -3693,7 +3700,7 @@
   {
    "tag": "houshou (kancolle)",
    "name": "houshou (kancolle)",
-   "zh": "",
+   "zh": "凤翔",
    "work": "kantai collection",
    "work_zh": "",
    "aliases": [
@@ -3708,7 +3715,8 @@
     "ponytail"
    ],
    "pop": 7869,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "doctor (arknights)",
@@ -4712,7 +4720,7 @@
   {
    "tag": "yamato (kancolle)",
    "name": "yamato (kancolle)",
-   "zh": "",
+   "zh": "大和",
    "work": "kantai collection",
    "work_zh": "",
    "aliases": [
@@ -4732,7 +4740,8 @@
     "headgear"
    ],
    "pop": 6892,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "chun-li",
@@ -8529,7 +8538,7 @@
   {
    "tag": "bremerton (azur lane)",
    "name": "bremerton (azur lane)",
-   "zh": "",
+   "zh": "布莱默顿",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -8553,7 +8562,8 @@
     "huge breasts"
    ],
    "pop": 4713,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "kiryuuin satsuki",
@@ -8636,7 +8646,7 @@
   {
    "tag": "hiei (kancolle)",
    "name": "hiei (kancolle)",
-   "zh": "",
+   "zh": "比叡",
    "work": "kantai collection",
    "work_zh": "",
    "aliases": [
@@ -8657,7 +8667,8 @@
     "nontraditional miko"
    ],
    "pop": 4683,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "ijichi nijika",
@@ -9049,7 +9060,7 @@
   {
    "tag": "kirishima (kancolle)",
    "name": "kirishima (kancolle)",
-   "zh": "",
+   "zh": "雾岛",
    "work": "kantai collection",
    "work_zh": "",
    "aliases": [
@@ -9073,7 +9084,8 @@
     "headgear"
    ],
    "pop": 4520,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "verniy (kancolle)",
@@ -9107,7 +9119,7 @@
   {
    "tag": "atago (azur lane)",
    "name": "atago (azur lane)",
-   "zh": "",
+   "zh": "爱宕",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -9131,7 +9143,8 @@
     "black thighhighs"
    ],
    "pop": 4464,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "toki (bunny) (blue archive)",
@@ -9241,7 +9254,7 @@
   {
    "tag": "formidable (azur lane)",
    "name": "formidable (azur lane)",
-   "zh": "",
+   "zh": "可畏",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -9264,7 +9277,8 @@
     "two-tone ribbon"
    ],
    "pop": 4455,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "ako (blue archive)",
@@ -9316,7 +9330,7 @@
   {
    "tag": "prinz eugen (azur lane)",
    "name": "prinz eugen (azur lane)",
-   "zh": "",
+   "zh": "欧根亲王",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -9340,7 +9354,8 @@
     "large breasts"
    ],
    "pop": 4420,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "meltryllis (fate)",
@@ -10760,7 +10775,7 @@
   {
    "tag": "sirius (azur lane)",
    "name": "sirius (azur lane)",
-   "zh": "",
+   "zh": "天狼星",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -10780,7 +10795,8 @@
     "white thighhighs"
    ],
    "pop": 3917,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "belfast (azur lane)",
@@ -12442,7 +12458,7 @@
   {
    "tag": "unicorn (azur lane)",
    "name": "unicorn (azur lane)",
-   "zh": "",
+   "zh": "独角兽",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -12466,7 +12482,8 @@
     "black ribbon"
    ],
    "pop": 3466,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "kama (fate)",
@@ -14022,7 +14039,7 @@
   {
    "tag": "ayanami (azur lane)",
    "name": "ayanami (azur lane)",
-   "zh": "",
+   "zh": "绫波",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -14046,7 +14063,8 @@
     "serafuku"
    ],
    "pop": 3167,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "irys (hololive)",
@@ -14704,7 +14722,7 @@
   {
    "tag": "warspite (kancolle)",
    "name": "warspite (kancolle)",
-   "zh": "",
+   "zh": "厌战",
    "work": "kantai collection",
    "work_zh": "",
    "aliases": [
@@ -14728,7 +14746,8 @@
     "mini crown"
    ],
    "pop": 3019,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "neru (blue archive)",
@@ -15187,7 +15206,7 @@
   {
    "tag": "illustrious (azur lane)",
    "name": "illustrious (azur lane)",
-   "zh": "",
+   "zh": "光辉",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -15210,7 +15229,8 @@
     "bare shoulders"
    ],
    "pop": 2962,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "nitocris (fate)",
@@ -18077,7 +18097,7 @@
   {
    "tag": "takao (azur lane)",
    "name": "takao (azur lane)",
-   "zh": "",
+   "zh": "高雄",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -18100,7 +18120,8 @@
     "white bow"
    ],
    "pop": 2499,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "futami mami",
@@ -18668,7 +18689,7 @@
   {
    "tag": "akagi (azur lane)",
    "name": "akagi (azur lane)",
-   "zh": "",
+   "zh": "赤城",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -18692,7 +18713,8 @@
     "kitsune"
    ],
    "pop": 2401,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "mutsuki (kancolle)",
@@ -19388,7 +19410,7 @@
   {
    "tag": "kaga (azur lane)",
    "name": "kaga (azur lane)",
-   "zh": "",
+   "zh": "加贺",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -19412,7 +19434,8 @@
     "white kimono"
    ],
    "pop": 2332,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "jeanne d'arc alter (swimsuit berserker) (fate)",
@@ -23169,7 +23192,7 @@
   {
    "tag": "st. louis (azur lane)",
    "name": "st. louis (azur lane)",
-   "zh": "",
+   "zh": "圣路易斯",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -23193,7 +23216,8 @@
     "silver dress"
    ],
    "pop": 1998,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "nishizumi shiho",
@@ -28777,7 +28801,7 @@
   {
    "tag": "z23 (azur lane)",
    "name": "z23 (azur lane)",
-   "zh": "",
+   "zh": "Z23",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -28797,7 +28821,8 @@
     "beret"
    ],
    "pop": 1670,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "hatoba tsugu",
@@ -29048,7 +29073,7 @@
   {
    "tag": "honolulu (azur lane)",
    "name": "honolulu (azur lane)",
-   "zh": "",
+   "zh": "火奴鲁鲁",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -29069,7 +29094,8 @@
     "black ribbon"
    ],
    "pop": 1660,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "martha (fate)",
@@ -29859,7 +29885,7 @@
   {
    "tag": "baltimore (azur lane)",
    "name": "baltimore (azur lane)",
-   "zh": "",
+   "zh": "巴尔的摩",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -29883,7 +29909,8 @@
     "black choker"
    ],
    "pop": 1610,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "rensouhou-kun",
@@ -32531,7 +32558,7 @@
   {
    "tag": "dido (azur lane)",
    "name": "dido (azur lane)",
-   "zh": "",
+   "zh": "狄多",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -32555,7 +32582,8 @@
     "thighs"
    ],
    "pop": 1478,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "nishida satono",
@@ -38300,7 +38328,7 @@
   {
    "tag": "zara (azur lane)",
    "name": "zara (azur lane)",
-   "zh": "",
+   "zh": "扎拉",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -38324,7 +38352,8 @@
     "navel"
    ],
    "pop": 1256,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "yoshimi (blue archive)",
@@ -41461,7 +41490,7 @@
   {
    "tag": "nagato (azur lane)",
    "name": "nagato (azur lane)",
-   "zh": "",
+   "zh": "长门",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -41485,7 +41514,8 @@
     "bare shoulders"
    ],
    "pop": 1155,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "dorothea arnault",
@@ -48902,7 +48932,7 @@
   {
    "tag": "graf zeppelin (azur lane)",
    "name": "graf zeppelin (azur lane)",
-   "zh": "",
+   "zh": "齐柏林伯爵",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -48924,7 +48954,8 @@
     "peaked cap"
    ],
    "pop": 954,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "kiki (majo no takkyuubin)",
@@ -50616,7 +50647,7 @@
   {
    "tag": "bismarck (azur lane)",
    "name": "bismarck (azur lane)",
-   "zh": "",
+   "zh": "俾斯麦",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -50635,7 +50666,8 @@
     "thighs"
    ],
    "pop": 919,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "hinata (blue archive)",
@@ -51340,7 +51372,7 @@
   {
    "tag": "roon (azur lane)",
    "name": "roon (azur lane)",
-   "zh": "",
+   "zh": "罗恩",
    "work": "azur lane",
    "work_zh": "碧蓝航线",
    "aliases": [
@@ -51363,7 +51395,8 @@
     "iron cross"
    ],
    "pop": 904,
-   "pinyin": []
+   "pinyin": [],
+   "zh_source": "curated"
   },
   {
    "tag": "satake minako",
