@@ -439,6 +439,26 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
     prompt += ", detailed toes, five toes per foot, accurate toe count, clean foot anatomy, detailed soles";
     negative += ", missing toes, extra toes, fused toes, deformed feet, bad feet";
   }
+  // 场景一致性：室内请求不要出现户外光景（AI 偶尔会自作主张加树影阳光）
+  {
+    const indoor = /卧室|床上|床|室内|房间|浴室|浴室|客厅|教室|办公室|bedroom|indoor|bed\b|bathroom|room/i.test(prompt);
+    if (indoor) {
+      const OUTDOOR = [
+        "under tree", "tree shade", "tree trunk", "dappled sunlight", "sunlight through leaves",
+        "natural sunlight", "outdoors", "forest", "sky", "clouds", "grass field", "beach",
+      ];
+      let cleaned = prompt;
+      for (const tag of OUTDOOR) {
+        cleaned = cleaned.replace(new RegExp(`(^|,\\s*)${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(,|$)`, "gi"), "$1$2");
+      }
+      const next = cleaned.replace(/,\s*,/g, ",").replace(/^,\s*/, "").replace(/,\s*$/, "").trim();
+      if (next !== prompt) {
+        prompt = next;
+        negative += ", outdoors, tree, sunlight through leaves, dappled sunlight";
+      }
+    }
+  }
+
   // 反水彩/反凌乱：除非用户明确要水彩，否则剔除这类正向词并压制
   {
     const askedWatercolor = /水彩|水粉|水墨|watercolo?r|gouache|ink wash|painterly|厚涂/i.test(String(payload.prompt || ""));

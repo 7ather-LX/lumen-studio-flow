@@ -2443,6 +2443,19 @@ async function characterFactsByTag(tag) {
       }
     }
 
+    // ②d 场景一致性：用户说室内，就不要户外光景
+    if (/卧室|床上|室内|房间|浴室|教室|办公室|bedroom|indoor|bathroom|room/i.test(String(userText || ""))) {
+      const OUTDOOR = [
+        "under tree", "tree shade", "tree trunk", "dappled sunlight", "sunlight through leaves",
+        "natural sunlight", "outdoors", "forest", "sky", "clouds", "grass field", "beach",
+      ];
+      promptTags = promptTags.filter((tag) => !OUTDOOR.includes(tag.toLowerCase()));
+      for (let i = negativeTags.length - 1; i >= 0; i -= 1) {
+        if (/^(outdoors|tree|dappled sunlight)$/i.test(negativeTags[i].trim())) negativeTags.splice(i, 1);
+      }
+      negativeTags.push("outdoors", "dappled sunlight");
+    }
+
     // ③ 单调性：prompt 里不允许出现负面词（人数标签除外，人数冲突在上一步处理）
     const negativeSet = new Set(lower(negativeTags));
     promptTags = promptTags.filter((tag) => {
@@ -2496,8 +2509,10 @@ async function characterFactsByTag(tag) {
         });
       }
       if (canonical && !has(promptTags, canonical)) {
-        const soloIndex = promptTags.findIndex((item) => item.toLowerCase() === "solo");
-        promptTags.splice(soloIndex >= 0 ? soloIndex + 1 : promptTags.length, 0, canonical);
+        // 插在人数词（2girls / 1girl / solo）之后，保证角色标签权重靠前
+        const countIndex = promptTags.findIndex((item) => /^(solo|1girl|1boy|2girls|2boys|3girls|multiple girls|multiple boys)$/i.test(item));
+        const insertAt = countIndex >= 0 ? countIndex + 1 : promptTags.length;
+        promptTags.splice(insertAt, 0, canonical);
       }
     }
 
@@ -2540,6 +2555,12 @@ async function characterFactsByTag(tag) {
         const key = tag.toLowerCase();
         if (SKIP.has(key)) continue;
         if (has(promptTags, tag)) continue;
+        // 已有包含关系时不重复添加（maid ⊂ maid headdress；hair ⊂ long hair）
+        const redundant = promptTags.some((existing) => {
+          const e = existing.toLowerCase();
+          return e.includes(key) || key.includes(e);
+        });
+        if (redundant) continue;
         promptTags.push(tag);
         addedFacts += 1;
       }
