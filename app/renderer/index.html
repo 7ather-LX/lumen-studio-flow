@@ -702,6 +702,24 @@
           </div>
           <p class="modal-note">Anima 使用 UNET/CLIP/VAE；标准模型使用 Checkpoint + LoRA。模型文件必须在 ComfyUI 的 models 目录。</p>
         </div>
+        <div class="panel" id="appearancePanel">
+          <div class="panel-head">
+            <div>
+              <span class="eyebrow">CHARACTER LOOK</span>
+              <h2>角色外观库</h2>
+            </div>
+            <span class="hint" id="appearanceCount">0 条</span>
+          </div>
+          <p class="hint">写入角色的外貌标签（发色 / 瞳色 / 发型 / 身材 / 兽耳尾巴），生成时优先使用这里的数据。衣服不用写，可以换。</p>
+          <label class="field"><span>角色名（中文或英文 tag）</span><input id="appearanceName" type="text" placeholder="例如：厌战 / warspite (azur lane)" /></label>
+          <label class="field"><span>外观标签</span><input id="appearanceTags" type="text" placeholder="例如：blonde hair, long hair, purple eyes, flat chest" /></label>
+          <div class="dir-row">
+            <button class="mini-button primary-mini" id="appearanceSave">保存外观</button>
+            <span class="modal-note" id="appearanceHint">留空表示不写</span>
+          </div>
+          <div id="appearanceList" class="appearance-list"></div>
+        </div>
+
         <div class="modal-footer">
           <button class="ghost-button" id="cancelSettings">取消</button>
           <button class="primary-button" id="saveSettings">保存设置</button>

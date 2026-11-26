@@ -1847,3 +1847,45 @@ html, body { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: aut
   font-size: 12px;
   letter-spacing: .04em;
 }
+
+
+/* ---------- 角色外观库 ---------- */
+.appearance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.appearance-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  border: 1px solid #26262e;
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: #12121a;
+}
+.appearance-row b {
+  color: #e8d9a8;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.appearance-row span {
+  color: #a8a8b2;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.appearance-row button {
+  background: none;
+  border: 0;
+  color: #8a8a92;
+  cursor: pointer;
+}
+.appearance-row button:hover {
+  color: #e07a7a;
+}

@@ -3,13 +3,13 @@ const fs = require("node:fs");
 const path = require("node:path");
 const L = "F:\\DSH WORKSPACE\\lumen-flow";
 const main = fs.readFileSync(path.join(L, "app", "main.cjs"), "utf8");
-const start = main.indexOf("let traitCatalogCache = null;");
+const start = main.indexOf("function appearancePath() {");
 const end = main.indexOf("function buildWorkflow(config, payload,");
 const CODE = main.slice(start, end);
 
-const factory = new Function("fs", "path", "__dirname",
+const factory = new Function("fs", "path", "__dirname", "dataRoot",
   `${CODE}\n return { analyzeCharacterTraits, TRAIT_TAGS };`);
-const api = factory(fs, path, path.join(L, "app"));
+const api = factory(fs, path, path.join(L, "app"), () => path.join(L, "app", "renderer"));
 
 const CASES = [
   { prompt: "1girl, solo, belfast (azur lane), maid headdress, cat ears", expect: { ears: false } },

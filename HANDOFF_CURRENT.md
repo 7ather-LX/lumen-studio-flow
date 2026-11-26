@@ -1171,6 +1171,38 @@ hunter (bloodborne)
 
 ---
 
+### 4.28 0.2.85–0.2.90：提示词系统性修复 + 角色外观库
+
+这一段是「贝尔法斯特/厌战测试」驱动的连续修复，核心是**不再让模型瞎猜**。
+
+```text
+提示词后处理（renderer）
+  负向词不点亮 NSFW 标签；prompt/negative/character 三处清 undefined
+  躺卧姿势删除 standing/akimbo；室内删户外光景；瞳色唯一；水彩词压制
+  用户姿势标签提到角色之后
+主进程兜底（main）
+  角色特征禁用（兽耳/尾巴/异瞳）读角色库判定，手写提示词也生效
+  多尺度人数检测（全图 + 2x2 分块，抓背景小头像）
+  仍多人 → 自动裁到主体
+角色外观库
+  characters.json / characters-extra.json 增加 tags_source=curated-appearance 的 38 条
+  设置页新增「角色外观库」：可写任意角色的外貌标签，存 %APPDATA%\Lumen Studio Flow\character-appearance.json
+  生成时覆盖优先于内置库
+回归测试
+  scripts/qa-prompts.cjs  10/10
+  scripts/qa-traits.cjs   6/6
+```
+
+已知边界：
+
+```text
+扩充库 13538 条只有名字，没有外观标签；这类角色会显示「外观未收录」提示，
+建议在该角色的条目里补外观，或直接在设置页的「角色外观库」写入。
+从公开图库自动反推外观的做法已放弃（会把别的角色发色瞳色带进来）。
+```
+
+---
+
 ## 5. 画风定义
 
 ```text
