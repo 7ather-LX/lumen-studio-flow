@@ -485,6 +485,8 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
       "film still", "detailed background", "anamorphic", "anime cel shading",
       "flat colors", "bold clean lineart", "crisp lineart", "sharp outlines",
       "limited palette", "2D animation key visual",
+      "professional illustration", "dynamic composition", "depth of field",
+      "vibrant colors", "high contrast", "detailed eyes",
     ];
     const lowerPrompt = `, ${prompt.toLowerCase()}, `;
     const missing = DEFAULT_STYLE.filter((tag) => !lowerPrompt.includes(`, ${tag}, `));

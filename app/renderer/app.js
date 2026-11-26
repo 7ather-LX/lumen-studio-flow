@@ -2175,7 +2175,9 @@ async function characterFactsByTag(tag) {
     for (const msg of state.aiMessages) {
       const div = document.createElement("div");
       div.className = `ai-message ${msg.role === "user" ? "user" : "assistant"}`;
-      div.textContent = msg.content;
+      div.textContent = msg.role === "assistant"
+        ? String(msg.content || "").replace(/,\s*(undefined|null|none|n\/a)\b/gi, "").replace(/"(undefined|null)"/gi, '""')
+        : msg.content;
       box.appendChild(div);
     }
     box.scrollTop = box.scrollHeight;
@@ -2389,6 +2391,7 @@ async function characterFactsByTag(tag) {
 
   // 用角色库 + 规则做确定性清洗（模型不可靠的部分全部在后处理里纠正）
   async function enforceCharacterFacts(text, factsText, userText) {
+    const userTextRaw = userText;
     let body = String(text || "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
     const first = body.indexOf("{");
     const last = body.lastIndexOf("}");
@@ -2408,8 +2411,14 @@ async function characterFactsByTag(tag) {
       [workHint, ...canonicalLines.map(() => factsWork)].map((item) => String(item || "").trim()).filter(Boolean)
     )];
 
-    let promptTags = splitTags(data.prompt);
-    const negativeTags = splitTags(data.negative_prompt);
+    const scrub = (value) => String(value || "")
+      .replace(/,\s*(undefined|null|none|n\/a|nan)\b/gi, "")
+      .replace(/^(undefined|null|none|n\/a|nan)\s*,\s*/gi, "")
+      .replace(/,\s*,/g, ",")
+      .replace(/^,\s*/, "").replace(/,\s*$/, "")
+      .trim();
+    let promptTags = splitTags(scrub(data.prompt));
+    const negativeTags = splitTags(scrub(data.negative_prompt));
     const lower = (list) => list.map((item) => item.toLowerCase());
     const has = (list, tag) => lower(list).includes(String(tag).toLowerCase());
 
@@ -2421,7 +2430,8 @@ async function characterFactsByTag(tag) {
     }
 
     // ② 角色 canonical + 作品必须来自库（不许臆造作品名）
-    data.character = cleanTagValue(data.character) || canonical;
+    data.character = cleanTagValue(String(data.character || "").replace(/,\s*(undefined|null|none|n\/a|nan)\b/gi, ""));
+    if (!data.character) data.character = canonical;
     if (canonical) {
       data.character = multiCharacters.length ? multiCharacters.join(", ") : canonical;
     }
@@ -2443,17 +2453,79 @@ async function characterFactsByTag(tag) {
       }
     }
 
+    // ②c2 姿势：用户给了具体姿势时，删掉模型自带的对立姿势，并把用户姿势提到角色后面
+    {
+      const userText = String(userTextRaw || "");
+      const lyingish = /lying|side-lying|sitting|kneeling|squatting|crouching|lying on|卧|躺|坐|跪|趴/i.test(userText);
+      if (lyingish) {
+        const CONFLICT = ["standing", "hands on hips", "akimbo", "straight posture", "walking", "running", "legs together"];
+        promptTags = promptTags.filter((tag) => !CONFLICT.includes(tag.toLowerCase()));
+        for (const tag of CONFLICT) {
+          if (!negativeTags.some((n) => n.toLowerCase() === tag)) negativeTags.push(tag);
+        }
+      }
+      const poseMatch = userText.match(/姿势[：:]\s*([^\n]+)/);
+      if (poseMatch) {
+        const poseTags = poseMatch[1]
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s && /^[a-zA-Z0-9 '\-]+$/.test(s));
+        if (poseTags.length) {
+          const charIdx = promptTags.findIndex((t) => t.toLowerCase() === String(canonical || "").toLowerCase());
+          const insertAt = charIdx >= 0 ? charIdx + 1 : promptTags.length;
+          const fresh = poseTags.filter((t) => !promptTags.some((p) => p.toLowerCase() === t.toLowerCase()));
+          promptTags.splice(insertAt, 0, ...fresh);
+        }
+      }
+    }
+
+    // ②c3 水彩/凌乱风：除非用户明确要，否则从 AI 输出里删掉
+    {
+      const askedWatercolor = /水彩|水粉|水墨|watercolo?r|gouache|ink wash|painterly|厚涂/i.test(String(userTextRaw || ""));
+      if (!askedWatercolor) {
+        const MESSY = [
+          "watercolor", "watercolour", "watercolor (medium)", "gouache", "painterly",
+          "painterly brushwork", "oil painting", "brush strokes", "messy lines",
+          "rough lineart", "sketchy lineart", "rough sketch", "soft focus", "hazy",
+          "blurry lines", "muddy colors", "impressionist",
+        ];
+        promptTags = promptTags.filter((tag) => !MESSY.includes(tag.toLowerCase()));
+        for (const tag of ["watercolor", "painterly", "brush strokes", "messy lines", "rough lineart"]) {
+          if (!negativeTags.some((n) => n.toLowerCase() === tag)) negativeTags.push(tag);
+        }
+      }
+    }
+
     // ②d 场景一致性：用户说室内，就不要户外光景
-    if (/卧室|床上|室内|房间|浴室|教室|办公室|bedroom|indoor|bathroom|room/i.test(String(userText || ""))) {
+    if (/卧室|床上|室内|房间|浴室|教室|办公室|客厅|沙发|餐厅|床上|bedroom|indoor|bathroom|living room|sofa|couch|room/i.test(String(userTextRaw || ""))) {
       const OUTDOOR = [
-        "under tree", "tree shade", "tree trunk", "dappled sunlight", "sunlight through leaves",
-        "natural sunlight", "outdoors", "forest", "sky", "clouds", "grass field", "beach",
+        "under tree", "tree", "tree shade", "tree trunk", "leaves", "dappled sunlight",
+        "sunlight through leaves", "natural sunlight", "sunlight", "outdoors", "forest",
+        "sky", "clouds", "grass field", "beach", "blue sky",
       ];
       promptTags = promptTags.filter((tag) => !OUTDOOR.includes(tag.toLowerCase()));
       for (let i = negativeTags.length - 1; i >= 0; i -= 1) {
         if (/^(outdoors|tree|dappled sunlight)$/i.test(negativeTags[i].trim())) negativeTags.splice(i, 1);
       }
       negativeTags.push("outdoors", "dappled sunlight");
+    }
+
+    // ②f 瞳色唯一：库里有明确瞳色时，删掉其它瞳色（避免异瞳）
+    {
+      const EYE_COLORS = ["blue", "green", "red", "purple", "golden", "yellow", "pink", "orange", "grey", "aqua", "brown", "gray"];
+      const factsEye = EYE_COLORS.filter((c) => factsTags.some((t) => t.toLowerCase() === `${c} eyes`));
+      if (factsEye.length === 1 && !factsTags.some((t) => /heterochromia/i.test(t))) {
+        const keep = `${factsEye[0]} eyes`;
+        promptTags = promptTags.filter((tag) => {
+          const low = tag.toLowerCase();
+          if (!EYE_COLORS.some((c) => low === `${c} eyes`)) return true;
+          return low === keep;
+        });
+        for (const c of EYE_COLORS) {
+          const tag = `${c} eyes`;
+          if (tag !== keep && !negativeTags.some((n) => n.toLowerCase() === tag)) negativeTags.push(tag);
+        }
+      }
     }
 
     // ③ 单调性：prompt 里不允许出现负面词（人数标签除外，人数冲突在上一步处理）
@@ -2513,6 +2585,17 @@ async function characterFactsByTag(tag) {
         const countIndex = promptTags.findIndex((item) => /^(solo|1girl|1boy|2girls|2boys|3girls|multiple girls|multiple boys)$/i.test(item));
         const insertAt = countIndex >= 0 ? countIndex + 1 : promptTags.length;
         promptTags.splice(insertAt, 0, canonical);
+      }
+    }
+
+    // ④b 库事实判定非人形：删掉 1girl/1boy 与人类专属细节
+    if (factsTags.length) {
+      const factsLower = factsTags.map((t) => t.toLowerCase());
+      const creatureish = factsLower.some((t) => /^(creature|quadruped|animal|dragon|monster|pokemon|beast|bird|fish|insect|robot|mecha)$/.test(t));
+      const noHumanCount = !factsLower.includes("1girl") && !factsLower.includes("1boy");
+      if (creatureish || noHumanCount) {
+        promptTags = promptTags.filter((tag) => !/^(1girl|1boy|2girls|2boys|solo)$/i.test(tag));
+        if (creatureish) promptTags = promptTags.filter((tag) => !HUMAN_DETAIL_TAGS.includes(tag.toLowerCase()));
       }
     }
 
@@ -2757,6 +2840,19 @@ async function characterFactsByTag(tag) {
     return raw.split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
   }
 
+  // 负向提示词里的标签：绝不允许被面板点亮
+  function negativeTags() {
+    const box = $("#negative");
+    const raw = box ? box.value : "";
+    return raw.split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
+  }
+
+  function negativeHasTag(tag) {
+    const have = new Set(negativeTags());
+    const parts = tagParts(tag);
+    return parts.length > 0 && parts.some((part) => have.has(part));
+  }
+
   function tagParts(tag) {
     return String(tag || "").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
   }
@@ -2826,7 +2922,7 @@ async function characterFactsByTag(tag) {
     for (const group of nsfwTagState.data.groups || []) {
       for (const item of group.items || []) all.push(item);
     }
-    const active = all.filter((item) => promptHasTag(item.tag));
+    const active = all.filter((item) => promptHasTag(item.tag) && !negativeHasTag(item.tag));
     host.textContent = active.length
       ? "提示词中已包含 " + active.length + " 个标签：" + active.map((item) => item.zh).join("、")
       : "还没有命中标签，点一下就会写入提示词。";
@@ -2844,7 +2940,15 @@ async function characterFactsByTag(tag) {
       });
       if (!items.length) return "";
       const chips = items.map((item) => {
-        const active = promptHasTag(item.tag) ? " active" : "";
+        const GENERIC = new Set([
+          "standing", "sitting", "lying", "kneeling", "full body", "upper body", "close-up",
+          "from side", "from above", "from below", "from behind", "wide shot", "depth of field",
+          "film grain", "soft lighting", "detailed skin", "long hair", "short hair", "twintails",
+          "toned", "thick thighs", "flat chest", "huge breasts",
+        ]);
+        const active = promptHasTag(item.tag) &&
+          !negativeHasTag(item.tag) &&
+          !GENERIC.has(String(item.tag).toLowerCase()) ? " active" : "";
         return '<button class="nsfw-tag' + active + '" data-nsfw-tag="' + escapeHtml(item.tag) + '" title="' + escapeHtml(item.tag) + '">' + escapeHtml(item.zh) + "</button>";
       }).join("");
       return '<div class="nsfw-group"><h4>' + escapeHtml(group.name) + '</h4><div class="nsfw-chips">' + chips + "</div></div>";
