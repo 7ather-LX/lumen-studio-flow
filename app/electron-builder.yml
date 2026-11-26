@@ -51,6 +51,8 @@ extraResources:
     to: crop-single.py
   - from: count-people.py
     to: count-people.py
+  - from: enhance-detail.py
+    to: enhance-detail.py
   - from: ../docs/tutorial
     to: tutorial
   - from: parsing

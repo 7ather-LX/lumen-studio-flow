@@ -1885,6 +1885,13 @@ masterpiece, best quality, score_7, safe, ultra detailed, very aesthetic,
 - 场景要用可执行标签：under tree, tree shade, dappled sunlight, sunlight through leaves, indoor, window light, city street, night
 - 禁止「好看的构图」「优雅氛围」这类无法执行的描述，一律换成具体标签。
 
+【线条与质感底线（除用户明确要水彩/水墨，否则必须坚守）】
+- 必须：bold clean lineart, crisp lineart, sharp outlines, flat colors, clean color fills
+- 禁止：watercolor, painterly, brush strokes, messy lines, rough lineart, sketchy,
+       soft focus, hazy, muddy colors, blurry lines, impressionist
+- 负面提示词里要固定带上：watercolor, painterly, brush strokes, messy lines, rough lineart, sketchy, soft focus, hazy, muddy colors
+- 判断标准：放大后线条依然清晰、色块分明；出现「水彩晕开 / 笔触凌乱 / 颜色糊成一坨」即为不合格
+
 【默认画面风格（每张都带，除非用户明确反对）】
 film still, detailed background, anamorphic, anime cel shading, flat colors, bold clean lineart, limited palette, 2D animation key visual
 —— 这组词保证「线条明朗、画面丰富、纹理细节足够」，用户偏好这种质感；

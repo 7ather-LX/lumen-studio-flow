@@ -426,11 +426,31 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
     prompt += ", detailed toes, five toes per foot, accurate toe count, clean foot anatomy, detailed soles";
     negative += ", missing toes, extra toes, fused toes, deformed feet, bad feet";
   }
+  // 反水彩/反凌乱：除非用户明确要水彩，否则剔除这类正向词并压制
+  {
+    const askedWatercolor = /水彩|水粉|水墨|watercolo?r|gouache|ink wash|painterly|厚涂/i.test(String(payload.prompt || ""));
+    const MESSY_TAGS = [
+      "watercolor", "watercolour", "watercolor (medium)", "gouache",
+      "painterly", "painterly brushwork", "oil painting", "brush strokes",
+      "messy lines", "rough lineart", "sketchy lineart", "rough sketch",
+      "soft focus", "hazy", "blurry lines", "muddy colors", "impressionist",
+    ];
+    if (!askedWatercolor) {
+      let cleaned = prompt;
+      for (const tag of MESSY_TAGS) {
+        cleaned = cleaned.replace(new RegExp(`(^|,\\s*)${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(,|$)`, "gi"), "$1$2");
+      }
+      prompt = cleaned.replace(/,\s*,/g, ",").replace(/^,\s*/, "").replace(/,\s*$/, "").trim();
+      negative += ", watercolor, painterly, oil painting, brush strokes, messy lines, rough lineart, sketchy, soft focus, hazy, blurry lines, muddy colors, impressionist";
+    }
+  }
+
   // 默认画面风格：线条明朗 + 画面丰富（用户可自行删掉，已存在则不重复追加）
   {
     const DEFAULT_STYLE = [
       "film still", "detailed background", "anamorphic", "anime cel shading",
-      "flat colors", "bold clean lineart", "limited palette", "2D animation key visual",
+      "flat colors", "bold clean lineart", "crisp lineart", "sharp outlines",
+      "limited palette", "2D animation key visual",
     ];
     const lowerPrompt = `, ${prompt.toLowerCase()}, `;
     const missing = DEFAULT_STYLE.filter((tag) => !lowerPrompt.includes(`, ${tag}, `));
@@ -1288,6 +1308,31 @@ async function runComfy(payload) {
   return { images, seed: built.seed, promptId, width: built.width, height: built.height };
 }
 
+function enhanceDetailScript() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "enhance-detail.py")
+    : path.join(__dirname, "enhance-detail.py");
+}
+
+// 高清化后做一次线条/细节强化，避免放大后糊成一坨
+function enhanceDetail(config, imagePath, strength = 1.0) {
+  const script = enhanceDetailScript();
+  if (!fs.existsSync(script)) return { ok: false, reason: "script missing" };
+  const python = resolvePythonForTools(config);
+  if (!python) return { ok: false, reason: "python missing" };
+  const tmp = path.join(writableTempDir(), `enhance-${Date.now()}${path.extname(imagePath) || ".png"}`);
+  const result = spawnSync(python, [script, imagePath, tmp, String(strength)], { encoding: "utf8", timeout: 180000, windowsHide: true });
+  if (!fs.existsSync(tmp)) {
+    return { ok: false, reason: String(result?.stderr || result?.stdout || "").slice(-140) };
+  }
+  try {
+    fs.copyFileSync(tmp, imagePath);
+  } finally {
+    try { fs.unlinkSync(tmp); } catch {}
+  }
+  return { ok: true };
+}
+
 function countPeopleScript() {
   return app.isPackaged
     ? path.join(process.resourcesPath, "count-people.py")
@@ -2026,6 +2071,14 @@ async function repairRegion(payload) {
   const outName = `${baseName}-fix.png`;
   const outPath = path.join(outputDir(), outName);
   await fsp.copyFile(files[0].path, outPath);
+  // 放大后强化线条与细节（可被 payload.sharpen === false 关闭）
+  let sharpened = false;
+  if (options?.sharpen !== false) {
+    try {
+      const result = enhanceDetail(config, outPath, Number(options?.sharpenStrength) || 1.0);
+      sharpened = Boolean(result?.ok);
+    } catch {}
+  }
   const meta = {
     ...(await readOutputMeta(sourcePath)),
     name: outName,
@@ -2229,6 +2282,7 @@ async function upscaleImage(config, options) {
     model: sourceMeta.model ?? "",
     lora: sourceMeta.lora ?? "",
     upscaled: true,
+    sharpened,
     source: path.basename(sourcePath),
     factor,
     engine: model ? `model:${model}` : "lanczos",
