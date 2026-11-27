@@ -521,6 +521,93 @@ function analyzeCharacterTraits(prompt) {
   return { rows: matched, forbidden, present };
 }
 
+// ---------- 提示词清洗：粘进来的 JSON / 负向段 / 人数冲突 ----------
+function extractJsonPrompt(text) {
+  const raw = String(text || "");
+  const first = raw.indexOf("{");
+  const last = raw.lastIndexOf("}");
+  if (first < 0 || last <= first) return null;
+  const slice = raw.slice(first, last + 1);
+  try {
+    const data = JSON.parse(slice);
+    if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+    const prompt = typeof data.prompt === "string" ? data.prompt : "";
+    const negative = typeof data.negative_prompt === "string" ? data.negative_prompt : "";
+    if (!prompt.trim()) return null;
+    return { prompt, negative, character: String(data.character || ""), before: raw.slice(0, first), after: raw.slice(last + 1) };
+  } catch {
+    return null;
+  }
+}
+
+// 去掉提示词里的负向段落（"negative:" / "NEGATIVE：" / "negative_prompt" 之后的内容）
+function stripInlineNegative(text) {
+  let out = String(text || "");
+  const markers = [/\bnegative_prompt\b\s*[:：]?/i, /\bnegative\s*[:：]/i, /\bnegative\b\s*[:：]/i, /负面(提示词)?\s*[:：]/];
+  for (const marker of markers) {
+    const match = marker.exec(out);
+    if (match && match.index > 0) {
+      out = out.slice(0, match.index);
+    }
+  }
+  return out;
+}
+
+// 单人/多人冲突：以明确写法为准，冲突的一方进负面
+function reconcileHeadcount(promptTags, negative) {
+  const lower = promptTags.map((tag) => tag.toLowerCase());
+  const single = lower.some((tag) => tag === "1girl" || tag === "1boy" || tag === "solo");
+  const multi = lower.filter((tag) => /^(2girls|3girls|multiple girls|2boys|multiple boys|group)$/.test(tag));
+  if (single && multi.length) {
+    const keepSolo = !lower.includes("solo") ? [...promptTags, "solo"] : promptTags;
+    const cleaned = keepSolo.filter((tag) => !/^(2girls|3girls|multiple girls|2boys|multiple boys)$/i.test(tag));
+    for (const tag of multi) {
+      if (!new RegExp(`(^|,\\s*)${tag}(,|$)`, "i").test(negative)) negative = `${tag}, ${negative}`;
+    }
+    return { promptTags: cleaned, negative };
+  }
+  return { promptTags, negative };
+}
+
+// 单人声明下只保留第一个角色，其余角色进负面
+function collapseCharacters(promptTags, negative) {
+  const lower = promptTags.map((tag) => tag.toLowerCase());
+  const single = lower.some((tag) => tag === "1girl" || tag === "1boy" || tag === "solo");
+  if (!single) return { promptTags, negative, dropped: [] };
+  const charTags = promptTags.filter((tag) => /\([^)]+\)\s*$/.test(tag) && !/^\d+girls?|^\d+boys?/i.test(tag));
+  if (charTags.length <= 1) return { promptTags, negative, dropped: [] };
+  const keep = charTags[0];
+  const dropped = charTags.slice(1);
+  const cleaned = promptTags.filter((tag) => tag === keep || !dropped.includes(tag));
+  for (const tag of dropped) {
+    if (!negative.toLowerCase().includes(tag.toLowerCase())) negative = `${tag} (wrong character), ${negative}`;
+  }
+  return { promptTags: cleaned, negative, dropped };
+}
+
+function sanitizePromptText(prompt, negative) {
+  let text = String(prompt || "");
+  let neg = String(negative || "");
+  const extracted = extractJsonPrompt(text);
+  if (extracted) {
+    const around = `${extracted.before} ${extracted.after}`.replace(/[{}\[\]"]/g, " ").replace(/\s+/g, " ").trim();
+    text = around ? `${extracted.prompt}, ${around}` : extracted.prompt;
+    // JSON 里的角色字段只作参考，真正的角色以 prompt 内为准
+    if (extracted.negative) {
+      neg = neg ? `${neg}, ${extracted.negative}` : extracted.negative;
+    }
+  }
+  text = stripInlineNegative(text);
+  let tags = text.split(",").map((tag) => tag.trim()).filter(Boolean);
+  const reconciled = reconcileHeadcount(tags, neg);
+  tags = reconciled.promptTags;
+  neg = reconciled.negative;
+  const collapsed = collapseCharacters(tags, neg);
+  tags = collapsed.promptTags;
+  neg = collapsed.negative;
+  return { prompt: tags.join(", "), negative: neg, droppedCharacters: collapsed.dropped, extractedJson: Boolean(extracted) };
+}
+
 // ---------- 外观注入：角色库的外观标签强制写进提示词 ----------
 const APPEARANCE_TAG_RE = /^(?:(?:blonde|brown|black|blue|green|red|pink|purple|silver|white|orange|grey|gray|aqua)\s+hair|(?:long|short|very long|medium|absurdly long)\s+hair|twintails|ponytail|braid|french braid|bun|bob cut|hime cut|drill hair|side ponytail|twin braids|hair intakes|blunt bangs|ahoge|hair between eyes|(?:blue|green|red|purple|golden|yellow|pink|orange|grey|gray|aqua|brown|amber)\s+eyes|small breasts|medium breasts|large breasts|huge breasts|flat chest|cleavage|collarbone|navel|thick thighs|toned|animal ears|cat ears|fox ears|wolf ears|horse ears|rabbit ears|fake animal ears|kemonomimi|horns|cat tail|tail|halo|wings|elf ears|pointy ears|heterochromia)$/i;
 
@@ -620,6 +707,19 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
       .replace(/(^|,\s*)(2girls|2boys|multiple girls|multiple boys|crowd|duplicate)(,|$)/gi, "$1$2")
       .replace(/,\s*,/g, ",").replace(/^,\s*/, "").replace(/,\s*$/, "").trim();
   }
+  // ⓪ 清洗：粘进来的 JSON、负向段、人数冲突、多余角色
+  try {
+    const cleaned = sanitizePromptText(prompt, negative);
+    prompt = cleaned.prompt;
+    negative = cleaned.negative;
+    if (cleaned.extractedJson) {
+      try { send("flow:progress", { stage: "已从粘贴的 JSON 中提取提示词", progress: 0.02 }); } catch {}
+    }
+    if (cleaned.droppedCharacters?.length) {
+      try { send("flow:progress", { stage: `单人请求：已移除多余角色 ${cleaned.droppedCharacters.join(", ")}`, progress: 0.03 }); } catch {}
+    }
+  } catch {}
+
   // ① 用角色库里的外观强制纠正提示词（手写也能生效）
   try {
     const matched = analyzeCharacterTraits(prompt).rows || [];
@@ -920,6 +1020,8 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
     seed,
     width: Math.round(width * (hires ? hiresScale : 1)),
     height: Math.round(height * (hires ? hiresScale : 1)),
+    prompt,
+    negative,
     steps,
     totalSteps: steps + (hires ? hiresSteps : 0),
     hiresSteps: hires ? hiresSteps : 0,
@@ -1347,6 +1449,9 @@ async function chatLlm(payload) {
   return { content, status: llmStatus() };
 }
 
+// 当前生成任务（用于取消）
+const activeJob = { promptId: "", aborted: false };
+
 async function runComfy(payload) {
   // CPU LLM still holds several GB of RAM; release it while sampling.
   await stopLlm();
@@ -1410,6 +1515,8 @@ async function runComfy(payload) {
   if (submit?.error) throw new Error(JSON.stringify(submit.error));
   const promptId = submit.prompt_id;
   if (!promptId) throw new Error("ComfyUI request failed");
+  activeJob.promptId = promptId;
+  activeJob.aborted = false;
 
   let entry = null;
   const started = Date.now();
@@ -1424,6 +1531,7 @@ async function runComfy(payload) {
       }
       break;
     }
+    if (activeJob.aborted) throw new Error("已取消生成");
     if (Date.now() - started > 15 * 60 * 1000) throw new Error("ComfyUI request failed");
     send("flow:progress", {
       stage: "Working...",
@@ -1447,11 +1555,16 @@ async function runComfy(payload) {
       await fsp.writeFile(filePath, buffer);
       const metadata = {
         name,
-        prompt: String(payload.prompt || ""),
-        negativePrompt: String(payload.negative || ""),
+        prompt: String(built.prompt || payload.prompt || ""),
+        negativePrompt: String(built.negative || payload.negative || ""),
+        rawPrompt: String(payload.prompt || ""),
         seed: built.seed,
         steps: built.steps,
+        totalSteps: built.totalSteps,
+        hires: built.hires,
+        hiresSteps: built.hiresSteps,
         cfg: built.cfg,
+        batch: built.batch,
         width: built.width,
         height: built.height,
         model: payload.unet || config.unet,
@@ -1469,7 +1582,7 @@ async function runComfy(payload) {
     }
   }
   // 单人校验：声明 solo/1girl 时逐张数人，多于 1 人自动重跑（最多 2 次）
-  const soloWanted = /(^|,|\s)(solo|1girl|1boy)(,|\s|$)/i.test(String(payload.prompt || ""));
+  const soloWanted = /(^|,|\s)(solo|1girl|1boy)(,|\s|$)/i.test(String(built.prompt || payload.prompt || ""));
   if (soloWanted && images.length && String(payload.engine || config.engine || "local") !== "api") {
     const boost = "2girls, multiple girls, crowd, group, character sheet, duplicate, extra person, background characters, audience";
     for (let index = 0; index < images.length; index += 1) {
@@ -1482,7 +1595,7 @@ async function runComfy(payload) {
           progress: 0.96,
         });
         try {
-          let retryPrompt = String(payload.prompt || "");
+          let retryPrompt = String(built.prompt || payload.prompt || "");
           if (attempt >= 2) {
             retryPrompt = retryPrompt
               .replace(/,?\s*(japanese\s+)?anime\s+key\s+visual/gi, "")
@@ -1498,7 +1611,7 @@ async function runComfy(payload) {
             prompt: retryPrompt,
             batch: 1,
             seed: Math.floor(Math.random() * 2 ** 31),
-            negative: `${boost}, key visual, ensemble cast, ${payload.negative || ""}`,
+            negative: `${boost}, key visual, ensemble cast, ${built.negative || payload.negative || ""}`,
           };
           const retryBuilt = buildWorkflow(config, retryPayload, initImageName, characterImageName, textureImageName);
           const files = await runWorkflowRaw(config, retryBuilt.workflow);
@@ -1511,8 +1624,9 @@ async function runComfy(payload) {
               images[index].path.replace(/\.png$/i, ".json"),
               JSON.stringify({
                 name: images[index].name,
-                prompt: String(payload.prompt || ""),
-                negativePrompt: String(retryPayload.negative || ""),
+                prompt: String(retryBuilt.prompt || payload.prompt || ""),
+                negativePrompt: String(retryBuilt.negative || retryPayload.negative || ""),
+                rawPrompt: String(payload.prompt || ""),
                 seed: retryBuilt.seed,
                 steps: retryBuilt.steps,
                 cfg: retryBuilt.cfg,
@@ -1588,8 +1702,8 @@ async function runComfy(payload) {
         });
         const repaired = await repairFeet({
           path: images[index].path,
-          prompt: payload.prompt,
-          negativePrompt: payload.negative,
+          prompt: built.prompt || payload.prompt,
+          negativePrompt: built.negative || payload.negative,
           repairNote,
           width: built.width,
           height: built.height,
@@ -1636,6 +1750,7 @@ async function runComfy(payload) {
     }
   }
   send("flow:progress", { stage: "Working...", progress: 1 });
+  activeJob.promptId = "";
   return { images, seed: built.seed, promptId, width: built.width, height: built.height };
 }
 
@@ -2194,6 +2309,16 @@ ipcMain.handle("flow:llm:start", () => startLlm());
 ipcMain.handle("flow:llm:stop", () => stopLlm());
 ipcMain.handle("flow:llm:chat", (_event, payload) => chatLlm(payload));
 ipcMain.handle("flow:llm:resolve-tag", (_event, payload) => resolveCharacterTag(payload?.text));
+ipcMain.handle("flow:cancel", async () => {
+  activeJob.aborted = true;
+  try {
+    const config = readConfig();
+    await comfyFetch(config.comfyUrl, "/interrupt", { method: "POST", body: "{}", headers: { "Content-Type": "application/json" } }, 5000);
+    await comfyFetch(config.comfyUrl, "/queue", { method: "POST", body: JSON.stringify({ clear: true }), headers: { "Content-Type": "application/json" } }, 5000);
+  } catch {}
+  return { ok: true };
+});
+
 ipcMain.handle("flow:character:appearance:list", () => readAppearances());
 ipcMain.handle("flow:character:appearance:set", (_event, payload) => {
   const key = normalizeCharKey(payload?.name);

@@ -53,7 +53,7 @@
     "1:1": { width: 1024, height: 1024, label: "1024 × 1024" },
     "3:4": { width: 896, height: 1152, label: "896 × 1152" },
     "2:3": { width: 832, height: 1216, label: "832 × 1216" },
-    "16:9": { width: 1216, height: 688, label: "1216 × 688" },
+    "16:9": { width: 1344, height: 768, label: "1344 × 768" },
   };
 
   const STYLE_MODELS = {
@@ -722,9 +722,19 @@
   function setBusy(busy) {
     state.busy = busy;
     const button = $("#generateButton");
-    button.disabled = busy;
-    button.querySelector("span").textContent = busy ? "生成中…" : "生成图片";
+    button.disabled = false;
+    button.classList.toggle("is-busy", busy);
+    button.querySelector("span").textContent = busy ? "取消生成" : "生成图片";
     $("#progressWrap").classList.toggle("hidden", !busy);
+  }
+
+  async function cancelGeneration() {
+    try {
+      await bridge.cancel();
+      toast("已发送取消请求。");
+    } catch (error) {
+      toast(error?.message || String(error));
+    }
   }
 
   function updateProgress({ stage, progress }) {
@@ -3543,7 +3553,13 @@ async function characterFactsByTag(tag) {
     });
     $("#performanceProfile").addEventListener("change", () => applyPerformanceProfile());
     syncNsfwPanel();
-    $("#generateButton").addEventListener("click", () => void generate());
+  $("#generateButton").addEventListener("click", () => {
+    if (state.busy) {
+      void cancelGeneration();
+      return;
+    }
+    void generate();
+  });
     $("#refreshGallery").addEventListener("click", () => void loadGallery());
     $("#galleryModeVisible")?.addEventListener("click", () => applyGalleryMode("visible"));
     $("#galleryModeHidden")?.addEventListener("click", () => applyGalleryMode("hidden"));
@@ -3785,6 +3801,25 @@ async function characterFactsByTag(tag) {
     $("#settingsButton").addEventListener("click", openSettings);
     $("#closeSettings").addEventListener("click", () => $("#settingsModal").classList.add("hidden"));
     $("#cancelSettings").addEventListener("click", () => $("#settingsModal").classList.add("hidden"));
+    // 粘贴整段 AI JSON 时自动拆成正向/负向，避免把 JSON 当标签送进模型
+    $("#prompt")?.addEventListener("paste", (event) => {
+      const text = String(event.clipboardData?.getData("text") || "");
+      const first = text.indexOf("{");
+      const last = text.lastIndexOf("}");
+      if (first < 0 || last <= first) return;
+      try {
+        const data = JSON.parse(text.slice(first, last + 1));
+        if (!data || typeof data.prompt !== "string" || !data.prompt.trim()) return;
+        event.preventDefault();
+        $("#prompt").value = data.prompt.trim();
+        if (typeof data.negative_prompt === "string" && data.negative_prompt.trim() && $("#negative")) {
+          $("#negative").value = data.negative_prompt.trim();
+        }
+        if (typeof updateAnimaPreview === "function") updateAnimaPreview();
+        toast("识别到 AI JSON：已自动拆分为正向 / 负向提示词。");
+      } catch {}
+    });
+
     $("#appearanceSave")?.addEventListener("click", () => void saveAppearance());
     $("#appearanceBulkImport")?.addEventListener("click", () => void bulkImportAppearances());
     $("#appearanceExport")?.addEventListener("click", () => void exportAppearances());

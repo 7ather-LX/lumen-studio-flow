@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld("flow", {
   installRuntime: (payload) => ipcRenderer.invoke("flow:runtime:install", payload),
   stopLlm: () => ipcRenderer.invoke("flow:llm:stop"),
   llmChat: (payload) => ipcRenderer.invoke("flow:llm:chat", payload),
+  cancel: () => ipcRenderer.invoke("flow:cancel"),
   appearanceList: () => ipcRenderer.invoke("flow:character:appearance:list"),
   appearanceSet: (payload) => ipcRenderer.invoke("flow:character:appearance:set", payload),
   appearanceRemove: (payload) => ipcRenderer.invoke("flow:character:appearance:remove", payload),
