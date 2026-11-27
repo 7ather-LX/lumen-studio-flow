@@ -771,16 +771,16 @@
       mode = free > 0 && free < 3.5 * 1024 ** 3 ? "low" : "quality";
     }
     if (mode === "fast") {
-      return { mode, unet: "anima-base-v1.0.safetensors", steps: 20, cfg: 4, hires: false, hiresScale: 1, batch: 1, label: "快速档" };
+      return { mode, unet: "anima-base-v1.0.safetensors", steps: null, cfg: null, hires: false, hiresScale: 1, batch: 1, label: "快速档" };
     }
     if (mode === "low") {
-      return { mode, unet: "anima-base-v1.0.safetensors", steps: 16, cfg: 3.5, hires: false, hiresScale: 1, batch: 1, label: "低显存" };
+      return { mode, unet: "anima-base-v1.0.safetensors", steps: null, cfg: null, hires: false, hiresScale: 1, batch: 1, label: "低显存" };
     }
     if (mode === "custom") {
       // 自定义：完全用手动滑杆，不做任何覆盖
       return { mode: "custom", unet: "anima-base-v1.0.safetensors", steps: null, cfg: null, hires: null, hiresScale: 1, batch: null, label: "自定义" };
     }
-    return { mode: "quality", unet: "Anima-2.9B-preview-v1.safetensors", steps: 24, cfg: 3.5, hires: true, hiresScale: 1.15, batch: 1, label: "质量档" };
+    return { mode: "quality", unet: "Anima-2.9B-preview-v1.safetensors", steps: null, cfg: null, hires: true, hiresScale: 1.15, batch: 1, label: "质量档" };
   }
 
   function applyPerformanceProfile() {
@@ -900,7 +900,9 @@
         ? `${image.sourceWidth} × ${image.sourceHeight} → ${image.width} × ${image.height}`
         : `${image.width} × ${image.height}`)
       : "—";
-    $("#imageDetailSteps").textContent = image.steps ?? "—";
+    $("#imageDetailSteps").textContent = image.steps
+      ? `${image.steps}${image.hires && image.totalSteps && image.totalSteps > image.steps ? " (+" + (image.totalSteps - image.steps) + " 高清修复)" : ""}`
+      : "—";
     $("#imageDetailCfg").textContent = image.cfg ?? "—";
     $("#imageDetailSeed").textContent = image.seed ?? "—";
     $("#imageDetailModel").textContent = image.model || "—";
@@ -1455,9 +1457,8 @@ function setupUpscaleImport() {
     const faceDetail = Boolean($("#faceDetail")?.checked);
     const denoise = Number($("#denoise")?.value || 0.5);
     const referenceMode = $("#referenceMode")?.value || "img2img";
+    // 性能档只决定模型/高清/张数，步数与 CFG 一律以用户滑杆为准
     if (performance && performance.mode !== "custom") {
-      steps = performance.steps;
-      cfg = performance.cfg;
       batch = performance.mode === "low" ? 1 : batch;
       hires = performance.hires;
       hiresScale = performance.hiresScale;
@@ -2972,7 +2973,7 @@ async function characterFactsByTag(tag) {
   }
 
   // ---------- NSFW 标签设置 ----------
-  const nsfwTagState = { data: null, collapsed: false, ready: false };
+  const nsfwTagState = { data: null, collapsed: false, ready: false, selected: new Set() };
 
   async function loadNsfwTags() {
     if (nsfwTagState.data) return nsfwTagState.data;
@@ -3074,10 +3075,11 @@ async function characterFactsByTag(tag) {
     for (const group of nsfwTagState.data.groups || []) {
       for (const item of group.items || []) all.push(item);
     }
-    const active = all.filter((item) => promptHasTag(item.tag) && !negativeHasTag(item.tag));
+    const selected = nsfwTagState.selected || new Set();
+    const active = all.filter((item) => selected.has(String(item.tag).toLowerCase()));
     host.textContent = active.length
-      ? "提示词中已包含 " + active.length + " 个标签：" + active.map((item) => item.zh).join("、")
-      : "还没有命中标签，点一下就会写入提示词。";
+      ? "已手动选择 " + active.length + " 个标签：" + active.map((item) => item.zh).join("、")
+      : "手动选择才会写入提示词（不再自动匹配）。";
   }
 
   async function renderNsfwTags() {
@@ -3092,15 +3094,10 @@ async function characterFactsByTag(tag) {
       });
       if (!items.length) return "";
       const chips = items.map((item) => {
-        const GENERIC = new Set([
-          "standing", "sitting", "lying", "kneeling", "full body", "upper body", "close-up",
-          "from side", "from above", "from below", "from behind", "wide shot", "depth of field",
-          "film grain", "soft lighting", "detailed skin", "long hair", "short hair", "twintails",
-          "toned", "thick thighs", "flat chest", "huge breasts",
-        ]);
-        const active = promptHasTag(item.tag) &&
-          !negativeHasTag(item.tag) &&
-          !GENERIC.has(String(item.tag).toLowerCase()) ? " active" : "";
+        // 取消自动勾选：只反映用户手动点过的标签
+        const active = nsfwTagState.selected && nsfwTagState.selected.has(String(item.tag).toLowerCase())
+          ? " active"
+          : "";
         return '<button class="nsfw-tag' + active + '" data-nsfw-tag="' + escapeHtml(item.tag) + '" title="' + escapeHtml(item.tag) + '">' + escapeHtml(item.zh) + "</button>";
       }).join("");
       return '<div class="nsfw-group"><h4>' + escapeHtml(group.name) + '</h4><div class="nsfw-chips">' + chips + "</div></div>";
@@ -3112,6 +3109,13 @@ async function characterFactsByTag(tag) {
         const forbidden = Array.isArray(state.forbiddenTags) ? state.forbiddenTags : [];
         if (forbidden.some((item) => String(item).toLowerCase() === String(tag).toLowerCase())) {
           toast("这个特征与该角色设定不符（角色库无此特征），已照你所点写入，建议确认。");
+        }
+        if (!nsfwTagState.selected) nsfwTagState.selected = new Set();
+        const key = String(tag).toLowerCase();
+        if (nsfwTagState.selected.has(key)) {
+          nsfwTagState.selected.delete(key);
+        } else {
+          nsfwTagState.selected.add(key);
         }
         toggleTagInPrompt(tag);
         void renderNsfwTags();
