@@ -700,10 +700,16 @@
       state.health = health;
       if (health.ok) {
         const device = health.devices?.[0] || {};
-        const name = device.name || "本地 GPU";
+        const name = device.name || "";
         const vram = device.vram_total ? `${Math.round(device.vram_total / 1024 ** 3)} GB` : "--";
-        setStatus(true, "在线", `${name} · ${vram}`);
-        $("#gpuLabel").textContent = name.replace(/^cuda:\d+\s*/, "").slice(0, 22);
+        if (!name) {
+          // 没有 CUDA 设备：CPU 模式，明确告知
+          setStatus(true, "CPU 模式", "未检测到 NVIDIA 显卡，生成会很慢");
+          $("#gpuLabel").textContent = "CPU";
+        } else {
+          setStatus(true, "在线", `${name} · ${vram}`);
+          $("#gpuLabel").textContent = name.replace(/^cuda:\d+\s*/, "").slice(0, 22);
+        }
       } else {
         setStatus(false, "离线", health.error || "ComfyUI 未启动");
         $("#gpuLabel").textContent = "--";

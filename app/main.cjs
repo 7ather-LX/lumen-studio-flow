@@ -13,7 +13,7 @@ let comfyProcess = null;
 let comfyLog = null;
 
 const LLM_PORT = Number(process.env.LUMEN_LLM_PORT || 8091);
-const LLM_BIN = process.env.LUMEN_LLM_BIN || "F:\\novel\\llama-cpp\\llama-server.exe";
+const LLM_BIN = process.env.LUMEN_LLM_BIN || "";
 const LLM_MODEL = process.env.LUMEN_LLM_MODEL || "F:\\novel\\DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic.Q4_K_M.gguf";
 let llmProcess = null;
 let llmStartPromise = null;
@@ -42,7 +42,7 @@ const LLM_RESPONSE_FORMAT = {
 const DEFAULT_CONFIG = {
   engine: "local",
   comfyUrl: "http://127.0.0.1:8188",
-  comfyDir: "F:\\DSH WORKSPACE\\lumen-flow\\comfy",
+  comfyDir: "",
   pythonExe: "",
   modelMode: "anima",
   performanceProfile: "auto",
@@ -70,15 +70,33 @@ const DEFAULT_CONFIG = {
   nsfwWorkflow: true,
   llmMode: "local",
   llmModel: "",
-  llmBin: "F:\\novel\\llama-cpp\\llama-server.exe",
+  llmBin: "",
   llmDevice: "gpu",
   llmCtxSize: 8192,
   llmApiUrl: "https://api.openai.com/v1",
   llmApiKey: "",
   llmApiModel: "gpt-4o-mini",
-  outputDir: "F:\\DSH WORKSPACE\\lumen-flow\\outputs",
-  referenceDir: "F:\\DSH WORKSPACE\\lumen-flow\\references\\library",
+  outputDir: "",
+  referenceDir: "",
 };
+
+// ---------- 本机资源自动发现（避免写死路径） ----------
+function resolveLlmBin(config) {
+  const candidates = [
+    config?.llmBin,
+    process.env.LUMEN_LLM_BIN,
+    path.join(dataRoot(), "models", "llm", "llama-server.exe"),
+    path.join(path.dirname(app.getPath("exe")), "models", "llm", "llama-server.exe"),
+    "F:\\novel\\llama-cpp\\llama-server.exe",
+    "C:\\llama.cpp\\llama-server.exe",
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      if (candidate && fs.existsSync(candidate)) return candidate;
+    } catch {}
+  }
+  return "";
+}
 
 function dataRoot() {
   return path.join(app.getPath("appData"), "Lumen Studio Flow");
@@ -91,7 +109,7 @@ function outputDir() {
 
 function referenceLibraryRoot() {
   const config = readConfig();
-  return config.referenceDir || path.join(__dirname, "..", "references", "library");
+  return config.referenceDir || path.join(dataRoot(), "references", "library") || path.join(__dirname, "..", "references", "library");
 }
 
 function referenceLibraryIndex() {
@@ -242,6 +260,28 @@ function send(channel, payload) {
   }
 }
 
+// 默认运行时位置：%APPDATA%\Lumen Studio Flow\runtime（可由用户改）
+function defaultRuntimeDir() {
+  return path.join(dataRoot(), "runtime");
+}
+
+function resolveComfyDir(config) {
+  const configured = normalizeComfyDir(config?.comfyDir);
+  if (configured) return configured;
+  const candidates = [
+    path.join(defaultRuntimeDir(), "ComfyUI_windows_portable"),
+    path.join(defaultRuntimeDir(), "ComfyUI"),
+    defaultRuntimeDir(),
+  ];
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(path.join(candidate, "ComfyUI", "main.py"))) return candidate;
+      if (fs.existsSync(path.join(candidate, "main.py"))) return candidate;
+    } catch {}
+  }
+  return defaultRuntimeDir();
+}
+
 function normalizeComfyDir(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -320,7 +360,7 @@ function previewWorkflow(payload) {
 
 async function startComfy() {
   const config = readConfig();
-  const root = normalizeComfyDir(config.comfyDir);
+  const root = resolveComfyDir(config);
   const pythonCandidates = [
     config.pythonExe,
     path.join(root, "python_embeded", "python.exe"),
@@ -895,7 +935,7 @@ function llmStatus() {
     running: Boolean(llmProcess),
     port: LLM_PORT,
     model: config.llmModel || LLM_MODEL,
-    bin: config.llmBin || LLM_BIN,
+    bin: resolveLlmBin(config) || LLM_BIN,
     mode: config.llmMode || "local",
     device: config.llmDevice || "gpu",
     label: config.llmMode === "external" ? "外部 API" : ((config.llmDevice || "gpu") === "gpu" ? "本地 GPU 加速 · 生成前暂停 ComfyUI" : "本地 CPU · 不占显存"),
@@ -951,7 +991,7 @@ async function startLlm() {
   if ((config.llmMode || "local") === "external") return llmStatus();
   if (await llmHealthy()) return llmStatus();
   if (llmStartPromise) return llmStartPromise;
-  const bin = config.llmBin || LLM_BIN;
+  const bin = resolveLlmBin(config) || LLM_BIN;
   const model = resolveLlmModelPath(config);
   if (!fs.existsSync(bin)) throw new Error("本地 AI 运行时不存在，请在设置中配置 llama-server 路径");
   if (!fs.existsSync(model)) throw new Error("本地 AI 模型不存在，请在设置中配置 GGUF 路径");
@@ -1010,7 +1050,7 @@ function runtimePaths() {
 
 function runtimeCheck() {
   const config = readConfig();
-  const root = normalizeComfyDir(config.comfyDir);
+  const root = resolveComfyDir(config);
   const python = [
     config.pythonExe,
     path.join(root, "python_embeded", "python.exe"),
@@ -2463,7 +2503,7 @@ function readImageSize(buffer) {
 }
 
 function upscaleModelDir(config) {
-  return path.join(normalizeComfyDir(config.comfyDir), "models", "upscale_models");
+  return path.join(resolveComfyDir(config), "models", "upscale_models");
 }
 
 function listUpscaleModels(config) {

@@ -1,212 +1,167 @@
-# Lumen Studio Flow
+# Lumen Studio Flow · 本地 AI 绘画工作台
 
-**Lumen Studio Flow** is a separate, focused anime image studio built around a local **ComfyUI + Anima** pipeline.
+完全免费、本地优先的 AI 动漫绘画软件。基于 Electron + ComfyUI + Anima，**所有生成都在你自己的电脑上完成，图片和素材不上传任何服务器**。
 
-**Local first:** the default mode runs entirely on your machine, with no credits, queue or remote moderation. An optional external image API can be configured for machines that cannot run a local model.
+---
 
-It is not a replacement for the original Lumen Studio. The original project keeps its multi-engine, reference-library and local-learning workflow. Flow is a new project with a different goal:
+## 一、下载
 
-```text
-one prompt -> one frame -> one local ComfyUI workflow
+到 [Releases](https://github.com/7ather-LX/lumen-studio-flow/releases/latest) 页面，按需要选一个：
+
+| 文件 | 适合谁 | 说明 |
+|---|---|---|
+| `Lumen-Studio-Flow-Setup-x.y.z.exe` | **推荐**，绝大多数人 | 安装版，可选安装路径，自动建桌面快捷方式，可卸载 |
+| `Lumen-Studio-Flow-x.y.z.exe` | 想放 U 盘 / 不想安装 | 免安装单文件版，双击即用 |
+| `character-appearance-template.csv` | 想补角色外观的人 | 649 个热门角色待填表，填好后在软件内批量导入 |
+
+> 只下载**最新一个 Release**。旧版本不需要保留，覆盖安装即可升级。
+
+---
+
+## 二、系统要求
+
+| 项目 | 最低 | 推荐 |
+|---|---|---|
+| 系统 | Windows 10 64 位 | Windows 11 64 位 |
+| 显卡 | 无独显也能跑（CPU，很慢） | NVIDIA RTX 3060 12GB 及以上 |
+| 显存 | — | 8GB+（6GB 可用低显存档） |
+| 内存 | 16 GB | 32 GB |
+| 磁盘 | 20 GB 可用空间 | 40 GB（含模型与作品） |
+| 网络 | 首次启动需要联网下载运行时 | — |
+
+**显卡说明**
+
+- **NVIDIA**：开箱即用，自动安装 CUDA 版运行时。
+- **AMD / Intel 核显 / 无独显**：安装程序会自动改装 CPU 版 PyTorch，软件能跑，但一张图可能要几分钟到十几分钟。界面右上角会显示 `CPU 模式`。
+- **苹果 / Linux**：目前只提供 Windows x64 安装包。
+
+---
+
+## 三、安装步骤（标准流程）
+
+### 1. 运行安装程序
+
+双击 `Lumen-Studio-Flow-Setup-x.y.z.exe`。
+
+- 若出现「Windows 已保护你的电脑」：点 **更多信息 → 仍要运行**（安装包未做付费代码签名）。
+- 安装界面可以**自定义安装路径**（默认 `C:\Users\<你>\AppData\Local\Programs\Lumen Studio Flow`）。
+  建议路径只用英文、不要放在 C 盘根目录或需要管理员权限的目录。
+
+### 2. 完成安装
+
+安装程序会自动：
+
+- 创建**桌面快捷方式** `Lumen Studio Flow`
+- 创建开始菜单项
+- 不修改系统 PATH，不写注册表启动项
+
+### 3. 首次启动
+
+双击桌面图标。首次启动会**自动部署运行时**（只有第一次需要）：
+
+```
+下载 ComfyUI 便携版（约 300 MB）
+下载 Anima 模型 / 文本编码器 / VAE（约 4 GB，走 hf-mirror 镜像）
+安装 Python 依赖（CPU 机器会额外安装 CPU 版 PyTorch）
 ```
 
-![Flow UI](docs/flow-app.png)
+进度会显示在界面左下角。**中途不要关闭软件**，网络慢时可能需要 10–30 分钟。
+部署失败可以重开软件重试，已下载的部分不会重复下载。
 
-## Why a new project
+### 4. 确认可用
 
-The original Lumen Studio grew around Diffusers, IP-Adapter references, feet repair and cloud providers. Flow deliberately removes that complexity from the main path:
+启动后看左侧「ENGINE」卡片：
 
-- ComfyUI does the execution
-- Anima + Qwen3 text encoder does the image generation
-- Lumen Studio Flow only exposes the controls a normal user needs
-- The generated image is always saved locally
+- 显示 **在线** + 显卡型号 → 正常
+- 显示 **CPU 模式** → 也能用，只是慢
+- 显示 **离线** → 点「启动本地引擎」，或看下文 FAQ
 
-## Features
+然后到「创作」页：输入提示词 → 设 3:4、3 张 → 点生成。出图即安装成功。
 
-- Local ComfyUI backend (default, no credits)
-- Optional external image API
-- **Local AI prompt assistant**: CPU-only llama.cpp, does not consume GPU VRAM
-- **Optional OpenAI-compatible prompt API** for machines without a local GGUF
-- One-click local AI download (Qwen2.5 0.5B GGUF + llama.cpp CPU runtime, about 520 MB)
-- Strict prompt JSON: character / work / style / artist left empty when not specified
-- Structured Anima prompt: quality -> subject -> series -> @artist -> tags -> natural language
-- Built-in offline prompt generator (Chinese/English idea -> Anima tags)
-- Chinese character and scene recognition
-- Character disambiguation (2400+ entries)
-- Hires Fix, prompt checker, and img2img reference workflow
-- Multi-image results with thumbnail switching
-- Batch 1–10, batch select / favorite / delete / reprocess
-- Hover style previews for every style preset
-- Pose / costume / portrait catalog with 6,162 Chinese metadata entries and English pose tags
-- Sidebar shortcuts for create, gallery, pose/costume, reference, prompt, settings, training, workflow, help
-- Anima or standard Checkpoint + LoRA
-- Hidden-by-default ComfyUI workflow editor
-- 1:1 / 3:4 / 2:3 / 16:9 frames
-- Steps / CFG / seed / performance profiles
-- Local output gallery with metadata, ratings, notes, and detail zoom
-- One-click ComfyUI health check and launch
-- No account, no cloud, no remote queue
+---
 
-## AI prompt assistant
+## 四、文件都放在哪（不会乱放）
 
-Open **Create -> AI 一起写**, describe the image, then click **填入创作区**.
+| 内容 | 位置 |
+|---|---|
+| 程序本体 | 你选择的安装目录（默认 `%LOCALAPPDATA%\Programs\Lumen Studio Flow`） |
+| 配置、作品、角色外观、参考库、日志 | `%APPDATA%\Lumen Studio Flow\` |
+| 运行时（ComfyUI + 模型） | 默认在 `%APPDATA%\Lumen Studio Flow\runtime`（可在设置里改到其他盘） |
 
-Two modes are available in **Settings -> AI 关键词模式**:
+安装包**只写这两个目录**：安装目录 + `%APPDATA%\Lumen Studio Flow`。
+不在桌面、文档、C 盘根目录散落文件；卸载时只删安装目录，**作品数据默认保留**。
 
-| Mode | Requirement | VRAM / speed |
-| --- | --- | --- |
-| Local GPU | Local GGUF + llama.cpp; ComfyUI pauses while chatting | 9B Q4 ≈ 6 GB, first reply ~10 s |
-| Local CPU | One-click download, about 520 MB | 0 VRAM, slower |
-| External API | OpenAI-compatible URL, model, key | 0, network latency |
+卸载：设置 → 应用 → Lumen Studio Flow → 卸载，或运行安装目录里的 `Uninstall Lumen Studio Flow.exe`。
 
-In GPU mode the app pauses ComfyUI before loading the assistant, then releases the assistant before image sampling. The two models are never kept resident at the same time. CPU mode uses `--n-gpu-layers 0` and never touches VRAM. The app never requires an account or a cloud subscription.
+---
 
-### Local setup
+## 五、免安装版
 
-1. Open Settings
-2. Choose `本地 AI（CPU，不占显存）`
-3. Choose `GPU 加速` or `CPU`
-4. Click `下载 / 安装本地 AI` if you need the small model and runtime
-5. Wait for the download to finish
-6. Use **AI 一起写**
+`Lumen-Studio-Flow-x.y.z.exe` 双击即用，不安装、不建快捷方式。
+数据同样写到 `%APPDATA%\Lumen Studio Flow\`，删掉这个 exe 就算移除程序，作品还在。
 
-For a larger model, point `本地模型 GGUF` and `llama-server 路径` at your own files. The assistant supports any llama.cpp-compatible GGUF.
+---
 
-### External API setup
+## 六、低配置 / 无独显怎么调
 
-1. Choose `外部 OpenAI 兼容 API`
-2. Fill API URL, model, and key
-3. The key is stored only in the local config file
+设置页 → 性能档：
 
-## One installer, first-run setup
+| 档位 | 适用 |
+|---|---|
+| 快速档 | 老显卡（GTX 10 系）、想快点出图 |
+| 低显存 | 6GB 及以下显存 |
+| 质量档 | 8GB+ 显存 |
+| 自定义 | 手动控制步数/CFG/高清修复 |
 
-The GitHub release contains one app installer:
+再配合：
 
-```text
-Lumen-Studio-Flow-Setup-0.2.36.exe
-```
+- 画面比例选 1:1 或 3:4，别用更高分辨率起步
+- 张数设 1
+- 关闭「高清修复」「面部精修」
+- 无独显机器：只建议出 512×768、1 张，单张数分钟属正常
 
-On first launch, if ComfyUI or Python is missing, the app offers:
+---
 
-```text
-一键部署完整环境
-```
+## 七、常见问题
 
-It downloads ComfyUI portable, Python, Anima Base, Qwen3 text encoder, Qwen Image VAE, and the required custom nodes into `F:\LumenFlow` (configurable). The download is about 8 GB.
+**Q：模型/运行时下载失败**
+首次部署走 `hf-mirror.com`（国内镜像）。失败就重开软件重试；也可以手动运行安装目录下 `resources\bootstrap_runtime.ps1`。
 
-This keeps the GitHub release below the 2 GB per-asset limit while still giving normal users a one-click setup.
+**Q：ComfyUI 一直离线**
+1. 看 `%APPDATA%\Lumen Studio Flow\comfyui.log` 末尾报错
+2. 检查端口 8188 是否被占用：`netstat -ano | findstr 8188`
+3. 杀毒软件可能拦截 python 子进程，加信任
 
-### Optional offline bundle
+**Q：生成很慢 / 一张要很久**
+先看右上角是「在线」还是「CPU 模式」。CPU 模式属正常现象；NVIDIA 显卡请确认驱动已更新，并在设置里选「质量档」。
 
-For offline machines, maintainers can build a full runtime archive from:
+**Q：提示 `PortAudio` / `onnxruntime` 缺失**
+自动部位检测会退回预设区域，不影响主流程。想要精确检测可在运行时里 `pip install onnxruntime`。
 
-```text
-comfy/
-models/
-.venv/ or ComfyUI portable python_embeded/
-runtime-plugins/
-```
+**Q：安装路径能不能放在中文目录**
+可以，但更推荐纯英文路径，避免个别 Python 依赖解析异常。
 
-and distribute it outside GitHub (HuggingFace, object storage, or physical media). The app supports pointing `ComfyUI 目录` and `Python` at that extracted runtime.
+**Q：一张图都生成不出来，提示显存不足**
+换「低显存」档、分辨率降到 512×768、张数 1，或在设置里开启显存保留。
 
-## Requirements
+---
 
-- Windows 10/11
-- ComfyUI (portable or source)
-- Python environment for ComfyUI
-- Optional for AI prompt assistant: local llama.cpp runtime + a GGUF model, or an OpenAI-compatible API
+## 八、升级
 
-- Anima model files:
+下新版本安装包 → 直接覆盖安装。作品、配置、角色外观库都在 `%APPDATA%`，不会被覆盖。
+GitHub 上只保留最新一个 Release，旧版不需要留。
 
-```text
-ComfyUI/models/diffusion_models/anima-base-v1.0.safetensors
-ComfyUI/models/text_encoders/qwen_3_06b_base.safetensors
-ComfyUI/models/vae/qwen_image_vae.safetensors
-```
+---
 
-If you use the portable `ComfyUI_windows_portable` layout, point Flow at its root. If you use a source checkout, point Flow at the folder containing `main.py`.
+## 九、隐私
 
-## Reference material
+- 生成、放大、修复全部在本机完成
+- 不收集数据、不上传图片
+- 只有「AI 写提示词」可选用本地 llama.cpp 或你自己的 OpenAI 兼容 API（默认本地）
 
-- Bilibili series: https://www.bilibili.com/video/BV1CcuH6sESW
-- ComfyUI Anima guide: https://docs.comfy.org/tutorials/image/anima/anima
-- Anima workflow template: https://github.com/Comfy-Org/workflow_templates
-- Anima model card: https://huggingface.co/circlestone-labs/Anima
+---
 
-The Flow workflow is a simplified subset of the official Anima template:
-UNET + Qwen3 CLIP + VAE + KSampler + SaveImage. No custom nodes are required.
+## 十、反馈
 
-## Docs
-
-- [Setup / local deployment](docs/SETUP.md)
-- [Optional offline bundle](docs/OFFLINE_BUNDLE.md)
-- [Pose / costume reference import](docs/REFERENCE_IMPORT.md)
-- [Anima prompt format](docs/PROMPT_FORMAT.md)
-- [Built-in prompt generator](docs/PROMPT_GENERATOR.md)
-- [Character recognition and disambiguation](docs/CHARACTERS.md)
-- [Reference image comparison](docs/REFERENCE_COMPARE.md)
-- [Models and workflow editor](docs/MODELS_AND_WORKFLOWS.md)
-- [2.5D / Galgame style LoRA](docs/STYLE_LORA.md)
-- [Installed plugins and tools](docs/PLUGINS.md)
-- [Keep Anima composition, refine quality](docs/QUALITY_REFINE.md)
-- [Style training toolkit](training/README.md)
-- [B站画师推荐目录](docs/BILIBILI_COLUMNS.md)
-- [v0.2.4 release notes](docs/RELEASE_NOTES_0.2.4.md)
-- [训练数据分享](F:/DSH%20WORKSPACE/lumen-flow/training/TRAINING_SHARE.md)
-- [Artist / style library](docs/STYLE_LIBRARY.md)
-- [Local vs external API](docs/PROVIDERS.md)
-- [v0.1.2 release notes](docs/RELEASE_NOTES_0.1.2.md)
-
-## Model sources
-
-- Anima: https://huggingface.co/circlestone-labs/Anima
-- ComfyUI: https://github.com/Comfy-Org/ComfyUI
-- ComfyUI Anima workflows: https://github.com/Comfy-Org/workflow_templates
-
-The model files are not included in this repository.
-
-## Development
-
-```powershell
-# from this folder
-npm install
-npm run dev
-```
-
-The app expects a running ComfyUI at `http://127.0.0.1:8188` unless launched from the app's "start local engine" button.
-
-## Simplified workflow
-
-The app submits this graph to ComfyUI:
-
-```text
-UNETLoader(Anima)
-CLIPLoader(Qwen3, stable_diffusion)
-VAELoader(qwen_image_vae)
-CLIPTextEncode(positive / negative)
-EmptyLatentImage
-KSampler(euler / simple)
-VAEDecode
-SaveImage
-```
-
-No custom nodes are required for the base workflow.
-
-## Differences from the original Lumen Studio
-
-| | Lumen Studio | Lumen Studio Flow |
-| --- | --- | --- |
-| Main engine | Diffusers / cloud / ComfyUI | ComfyUI first |
-| Anime model | MeinaMix | Anima |
-| UI | Full studio | One-screen flow |
-| References | Character / body library | Later, optional |
-| Training | Not included | Not included |
-| Goal | Platform | Focused anime generator |
-
-## License
-
-MIT for the Flow app. ComfyUI, Anima and model files follow their own licenses.
-
-## Disclaimer
-
-Use the software at your own risk. You are responsible for the prompts you enter, the images you generate and the rights attached to any reference or model you use.
+- 问题 / 建议：[Issues](https://github.com/7ather-LX/lumen-studio-flow/issues)
+- 角色外观缺失或写错：在软件「设置 → 角色外观库」改，或提 Issue 附角色名

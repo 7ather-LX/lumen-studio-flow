@@ -34,6 +34,22 @@ Download "https://hf-mirror.com/circlestone-labs/Anima/resolve/main/split_files/
 Download "https://hf-mirror.com/circlestone-labs/Anima/resolve/main/split_files/text_encoders/qwen_3_06b_base.safetensors" (Join-Path $modelRoot "text_encoders\qwen_3_06b_base.safetensors")
 Download "https://hf-mirror.com/circlestone-labs/Anima/resolve/main/split_files/vae/qwen_image_vae.safetensors" (Join-Path $modelRoot "vae\qwen_image_vae.safetensors")
 
+# 显卡检测：没有 NVIDIA 时换成 CPU 版 torch，否则 portable 自带的 CUDA torch 无法加载
+$nvidia = $false
+try {
+  $nvidia = @(Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "NVIDIA" }).Count -gt 0
+} catch { $nvidia = $false }
+$device = if ($nvidia) { "cuda" } else { "cpu" }
+if (-not $nvidia) {
+  Write-Host "No NVIDIA GPU detected - installing CPU build of PyTorch (slow but works)"
+  try {
+    & $python -m pip install --force-reinstall --no-cache-dir --disable-pip-version-check `
+      torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu 2>&1 | Select-Object -Last 5
+  } catch {
+    Write-Host "CPU torch install failed: $($_.Exception.Message)"
+  }
+}
+
 # 自动检测（自动部位区域）需要 onnxruntime；失败不影响主流程
 try {
   & $python -m pip install --disable-pip-version-check --quiet onnxruntime 2>$null
@@ -53,6 +69,7 @@ $meta = [ordered]@{
   unet = "anima-base-v1.0.safetensors"
   clip = "qwen_3_06b_base.safetensors"
   vae = "qwen_image_vae.safetensors"
+  device = $device
   installedAt = (Get-Date).ToString("o")
 }
 $meta | ConvertTo-Json | Set-Content (Join-Path $Root "runtime.json") -Encoding UTF8
