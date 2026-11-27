@@ -2659,6 +2659,7 @@ async function characterFactsByTag(tag) {
       "worst quality", "low quality", "blurry", "jpeg artifacts", "text", "watermark",
       "bad anatomy", "bad hands", "extra fingers", "missing fingers", "fused fingers",
       "bad feet", "extra toes", "missing toes", "deformed face", "asymmetrical eyes",
+      "extra legs", "extra limbs", "fused limbs", "malformed limbs", "missing legs", "conjoined",
     ];
     const builtNeg = [...BASE_NEG];
     const pushNeg = (tag) => {

@@ -481,6 +481,52 @@ function analyzeCharacterTraits(prompt) {
   return { rows: matched, forbidden, present };
 }
 
+// ---------- 外观注入：角色库的外观标签强制写进提示词 ----------
+const APPEARANCE_TAG_RE = /^(?:(?:blonde|brown|black|blue|green|red|pink|purple|silver|white|orange|grey|gray|aqua)\s+hair|(?:long|short|very long|medium|absurdly long)\s+hair|twintails|ponytail|braid|french braid|bun|bob cut|hime cut|drill hair|side ponytail|twin braids|hair intakes|blunt bangs|ahoge|hair between eyes|(?:blue|green|red|purple|golden|yellow|pink|orange|grey|gray|aqua|brown|amber)\s+eyes|small breasts|medium breasts|large breasts|huge breasts|flat chest|cleavage|collarbone|navel|thick thighs|toned|animal ears|cat ears|fox ears|wolf ears|horse ears|rabbit ears|fake animal ears|kemonomimi|horns|cat tail|tail|halo|wings|elf ears|pointy ears|heterochromia)$/i;
+
+const HAIR_COLORS = ["blonde", "brown", "black", "blue", "green", "red", "pink", "purple", "silver", "white", "orange", "grey", "gray", "aqua"];
+const EYE_COLORS = ["blue", "green", "red", "purple", "golden", "yellow", "pink", "orange", "grey", "gray", "aqua", "brown", "amber"];
+
+function appearanceTagsOf(tags) {
+  return (tags || []).map((tag) => String(tag).trim().toLowerCase()).filter((tag) => APPEARANCE_TAG_RE.test(tag));
+}
+
+// 把库里的外观写进提示词：删掉冲突的发色/瞳色，插入正确标签
+function injectAppearance(prompt, tags) {
+  const appearance = appearanceTagsOf(tags);
+  if (!appearance.length) return { prompt, added: [] };
+  const wantHair = appearance.filter((tag) => /^(blonde|brown|black|blue|green|red|pink|purple|silver|white|orange|grey|gray|aqua) hair$/.test(tag));
+  const wantEyes = appearance.filter((tag) => /^(blue|green|red|purple|golden|yellow|pink|orange|grey|gray|aqua|brown|amber) eyes$/.test(tag));
+
+  let parts = prompt.split(",").map((item) => item.trim()).filter(Boolean);
+  const lower = parts.map((item) => item.toLowerCase());
+
+  // 1) 删掉与库冲突的发色（库里有明确发色时）
+  if (wantHair.length) {
+    parts = parts.filter((item, index) => {
+      const low = lower[index];
+      const isHairColor = HAIR_COLORS.some((color) => low === `${color} hair`);
+      return !isHairColor || wantHair.includes(low);
+    });
+  }
+  // 2) 删掉与库冲突的瞳色
+  if (wantEyes.length) {
+    parts = parts.filter((item, index) => {
+      const low = lower[index];
+      const isEyeColor = EYE_COLORS.some((color) => low === `${color} eyes`);
+      return !isEyeColor || wantEyes.includes(low);
+    });
+  }
+  // 3) 补进缺失的外观标签（插在角色 tag 之后更靠前的位置）
+  const have = new Set(parts.map((item) => item.toLowerCase()));
+  const missing = appearance.filter((tag) => !have.has(tag));
+  if (missing.length) {
+    const insertAt = Math.min(parts.length, 8);
+    parts = [...parts.slice(0, insertAt), ...missing, ...parts.slice(insertAt)];
+  }
+  return { prompt: parts.join(", "), added: missing };
+}
+
 function buildWorkflow(config, payload, initImageName = "", characterImageName = "", textureImageName = "") {
   const width = Math.max(256, Math.min(2048, Number(payload.width) || 1024));
   const height = Math.max(256, Math.min(2048, Number(payload.height) || 1024));
@@ -534,6 +580,15 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
       .replace(/(^|,\s*)(2girls|2boys|multiple girls|multiple boys|crowd|duplicate)(,|$)/gi, "$1$2")
       .replace(/,\s*,/g, ",").replace(/^,\s*/, "").replace(/,\s*$/, "").trim();
   }
+  // ① 用角色库里的外观强制纠正提示词（手写也能生效）
+  try {
+    const matched = analyzeCharacterTraits(prompt).rows || [];
+    if (matched.length) {
+      const result = injectAppearance(prompt, matched[0].tags);
+      prompt = result.prompt;
+    }
+  } catch {}
+
   // 角色设定禁止的特征（兽耳/尾巴/异瞳…）：从正向删掉，写进负面
   {
     const fromPayload = Array.isArray(payload.forbiddenTags)
@@ -555,6 +610,16 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
       prompt = cleaned.replace(/,\s*,/g, ",").replace(/^,\s*/, "").replace(/,\s*$/, "").trim();
       const missing = forbidden.filter((tag) => !new RegExp(`(^|,\\s*)${tag}(,|$)`, "i").test(negative));
       if (missing.length) negative = `${missing.join(", ")}, ${negative}`;
+    }
+  }
+
+  if (!multiRequested && /(^|,|\s)(solo|1girl|1boy)(,|\s|$)/i.test(prompt)) {
+    // 单人请求：加重反群像权重
+    const antiCrowd = ["multiple girls:1.35", "2girls:1.35", "crowd:1.25", "background characters:1.25", "character sheet:1.2"];
+    for (const tag of antiCrowd) {
+      if (!new RegExp(`(^|,\\s*)${tag.split(":")[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s*:|,|$)`, "i").test(negative)) {
+        negative = `${tag}, ${negative}`;
+      }
     }
   }
 
