@@ -1,6 +1,6 @@
 "use strict";
 
-const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell, nativeImage } = require("electron");
 const { spawn, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -2566,6 +2566,36 @@ async function upscaleImage(config, options) {
   };
 }
 
+// ---------- 缩略图（画廊/结果小窗用，避免大图直接缩放导致颗粒感） ----------
+function thumbDir() {
+  return path.join(outputDir(), ".thumbs");
+}
+
+async function ensureThumb(filePath, name) {
+  try {
+    const dir = thumbDir();
+    await fsp.mkdir(dir, { recursive: true });
+    const target = path.join(dir, `${name.replace(/\.[^.]+$/, "")}.jpg`);
+    const statSrc = await fsp.stat(filePath);
+    let need = true;
+    try {
+      const statThumb = await fsp.stat(target);
+      need = statThumb.mtimeMs < statSrc.mtimeMs;
+    } catch {}
+    if (need) {
+      const image = nativeImage.createFromPath(filePath);
+      if (image.isEmpty()) return "";
+      const size = image.getSize();
+      const width = Math.min(520, size.width || 520);
+      const resized = image.resize({ width, quality: "good" });
+      await fsp.writeFile(target, resized.toJPEG(90));
+    }
+    return `file:///${target.replace(/\\/g, "/")}`;
+  } catch {
+    return "";
+  }
+}
+
 ipcMain.handle("flow:list-outputs", async (_event, payload) => {
   ensureDirs();
   const mode = payload?.mode === "hidden" ? "hidden" : "visible";
@@ -2596,10 +2626,12 @@ ipcMain.handle("flow:list-outputs", async (_event, payload) => {
     try {
       metadata = JSON.parse(await fsp.readFile(filePath.replace(/\.[^.]+$/, ".json"), "utf8"));
     } catch {}
+    const thumbUrl = await ensureThumb(filePath, name);
     items.push({
       name,
       path: filePath,
       mtime: stat.mtimeMs,
+      thumbUrl,
       url: `data:image/${ext === "jpg" ? "jpeg" : ext};base64,${buffer.toString("base64")}`,
       hidden: hiddenSet.has(name),
       ...metadata,

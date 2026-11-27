@@ -717,6 +717,14 @@
             <button class="mini-button primary-mini" id="appearanceSave">保存外观</button>
             <span class="modal-note" id="appearanceHint">留空表示不写</span>
           </div>
+          <label class="field"><span>批量导入（每行：角色tag, 外观标签）</span>
+            <textarea id="appearanceBulk" rows="4" spellcheck="false" placeholder="warspite (azur lane), blonde hair, long hair, purple eyes, flat chest&#10;belfast (azur lane), white hair, long hair, blue eyes, large breasts"></textarea>
+          </label>
+          <div class="dir-row">
+            <button class="mini-button" id="appearanceBulkImport">批量导入</button>
+            <button class="mini-button" id="appearanceExport">导出全部</button>
+            <span class="modal-note" id="appearanceBulkHint">支持逗号分隔；也可粘贴 JSON</span>
+          </div>
           <div id="appearanceList" class="appearance-list"></div>
         </div>
 

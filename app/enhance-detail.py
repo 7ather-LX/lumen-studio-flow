@@ -28,17 +28,17 @@ def main():
 
     # 1) 非锐化掩模：半径随分辨率放大，避免大图上锐化无感
     radius = max(1.2, min(4.0, im.width / 900))
-    percent = int(90 * max(0.2, min(2.0, strength)))
-    threshold = 2
+    percent = int(55 * max(0.2, min(2.0, strength)))
+    threshold = 4
     sharp = im.filter(ImageFilter.UnsharpMask(radius=radius, percent=percent, threshold=threshold))
 
     # 2) 边缘增强：让线稿更「实」，但同时压一点毛刺
     edges = sharp.filter(ImageFilter.EDGE_ENHANCE_MORE)
-    sharp = Image.blend(sharp, edges, 0.18 * max(0.2, min(2.0, strength)))
+    sharp = Image.blend(sharp, edges, 0.06 * max(0.2, min(2.0, strength)))
 
     # 3) 轻微对比与饱和回正（避免锐化后发灰）
-    sharp = ImageEnhance.Contrast(sharp).enhance(1.04)
-    sharp = ImageEnhance.Color(sharp).enhance(1.03)
+    sharp = ImageEnhance.Contrast(sharp).enhance(1.02)
+    sharp = ImageEnhance.Color(sharp).enhance(1.01)
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     sharp.save(dst)

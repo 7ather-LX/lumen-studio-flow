@@ -1002,7 +1002,7 @@ let upscaleEngineFilled = false;
       }
       grid.innerHTML = images.slice(0, 24).map((image) => `
         <div class="gallery-item" data-upscale-path="${escapeHtml(image.path)}" data-upscale-name="${escapeHtml(image.name)}">
-          <img src="${image.url}" alt="${escapeHtml(image.name)}" loading="lazy" />
+          <img src="${escapeHtml(image.thumbUrl || image.url)}" alt="${escapeHtml(image.name)}" loading="lazy" />
           <span class="gallery-caption"><span>${escapeHtml(image.name)}</span><span>${image.width || ""}x${image.height || ""}</span></span>
         </div>`).join("");
       grid.querySelectorAll("[data-upscale-path]").forEach((node) => {
@@ -1272,7 +1272,7 @@ function setupUpscaleImport() {
             <div class="gallery-item" data-path="${escapeHtml(image.path)}">
               <input class="gallery-check" type="checkbox" data-path="${escapeHtml(image.path)}" ${state.selectedPaths.has(image.path) ? "checked" : ""} />
               <button class="gallery-fav ${state.favorites.has(image.path) ? "active" : ""}" data-fav="${escapeHtml(image.path)}">★</button>
-              <img src="${image.url}" alt="${escapeHtml(image.name)}" loading="lazy" />
+              <img src="${escapeHtml(image.thumbUrl || image.url)}" alt="${escapeHtml(image.name)}" loading="lazy" />
               <span class="gallery-caption"><span>${escapeHtml(image.name)}</span><span>OPEN</span></span>
             </div>`,
         )
@@ -2888,6 +2888,69 @@ async function characterFactsByTag(tag) {
     });
   }
 
+  async function bulkImportAppearances() {
+    const raw = String($("#appearanceBulk")?.value || "").trim();
+    if (!raw) {
+      toast("先粘贴要导入的内容。");
+      return;
+    }
+    const entries = [];
+    if (raw.startsWith("{")) {
+      try {
+        const obj = JSON.parse(raw);
+        for (const [name, value] of Object.entries(obj)) {
+          const tags = Array.isArray(value) ? value.join(", ") : String(value);
+          if (name && tags.trim()) entries.push({ name, tags });
+        }
+      } catch {
+        toast("JSON 解析失败，请检查格式。");
+        return;
+      }
+    } else {
+      for (const line of raw.split(/\r?\n/)) {
+        const text = line.trim();
+        if (!text) continue;
+        const index = text.indexOf(",");
+        if (index <= 0) continue;
+        const name = text.slice(0, index).trim();
+        const tags = text.slice(index + 1).trim();
+        if (name && tags) entries.push({ name, tags });
+      }
+    }
+    if (!entries.length) {
+      toast("没有解析到有效条目。");
+      return;
+    }
+    let ok = 0;
+    for (const entry of entries) {
+      try {
+        const result = await bridge.appearanceSet(entry);
+        if (result?.ok) ok += 1;
+      } catch {}
+    }
+    appearanceCache = null;
+    await renderAppearanceList();
+    if ($("#appearanceBulk")) $("#appearanceBulk").value = "";
+    toast(`已导入 ${ok}/${entries.length} 条外观。`);
+  }
+
+  async function exportAppearances() {
+    const data = await loadAppearances(true);
+    const lines = Object.keys(data).sort().map((key) => `${key},${(data[key].tags || []).join(", ")}`);
+    if (!lines.length) {
+      toast("还没有可导出的外观数据。");
+      return;
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "character-appearance.csv";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+    toast(`已导出 ${lines.length} 条。`);
+  }
+
   async function saveAppearance() {
     const name = String($("#appearanceName")?.value || "").trim();
     const tags = String($("#appearanceTags")?.value || "").trim();
@@ -3712,6 +3775,8 @@ async function characterFactsByTag(tag) {
     $("#closeSettings").addEventListener("click", () => $("#settingsModal").classList.add("hidden"));
     $("#cancelSettings").addEventListener("click", () => $("#settingsModal").classList.add("hidden"));
     $("#appearanceSave")?.addEventListener("click", () => void saveAppearance());
+    $("#appearanceBulkImport")?.addEventListener("click", () => void bulkImportAppearances());
+    $("#appearanceExport")?.addEventListener("click", () => void exportAppearances());
     $("#settingsButton")?.addEventListener("click", () => { void renderAppearanceList(); });
     $("#saveSettings").addEventListener("click", () => void saveSettings());
     $("#settingFontScale").addEventListener("input", () => applyUiScale($("#settingFontScale").value));
