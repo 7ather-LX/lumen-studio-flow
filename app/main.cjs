@@ -492,7 +492,8 @@ function analyzeCharacterTraits(prompt) {
   }
   const matched = [];
   for (const row of rows) {
-    const names = [row.tag, row.name, row.zh, ...(row.aliases || [])].filter(Boolean);
+    // 只认规范角色名与中文名：短别名（knight/castle 之类）会造成误匹配
+    const names = [row.tag, row.zh].filter(Boolean);
     if (names.some((name) => containsToken(prompt, name))) matched.push(row);
     if (matched.length >= 3) break;
   }
@@ -820,9 +821,9 @@ function buildWorkflow(config, payload, initImageName = "", characterImageName =
     const DEFAULT_STYLE = [
       "film still", "detailed background", "anamorphic", "anime cel shading",
       "flat colors", "bold clean lineart", "crisp lineart", "sharp outlines",
-      "limited palette", "2D animation key visual",
+      "2D animation key visual",
       "professional illustration", "dynamic composition", "depth of field",
-      "vibrant colors", "high contrast", "detailed eyes",
+      "detailed eyes",
     ];
     const lowerPrompt = `, ${prompt.toLowerCase()}, `;
     const missing = DEFAULT_STYLE.filter((tag) => !lowerPrompt.includes(`, ${tag}, `));
