@@ -94,17 +94,19 @@ add("删除作品时清理缩略图与隐藏标记", () => {
   return main.includes("path.join(thumbDir(), name.replace(") && main.includes("readHiddenWorks()");
 });
 
-add("批量高清走覆盖模式且不删原图", () => {
-  return main.includes("upscaleImage(config, { name: original.name, factor, model, overwrite: true })") &&
-    !main.includes("safeToRemove");
+add("批量高清不删原图、不改覆盖", () => {
+  return main.includes("upscaleImage(config, { name: original.name, factor, model })") &&
+    !main.includes("overwrite: true") && !main.includes("safeToRemove");
 });
 
-add("高清化与局部修正直接覆盖原图（不留副本）", () => {
-  const upscaleOverwrite = main.includes("const overwrite = options?.overwrite !== false") &&
-    main.includes("await fsp.copyFile(outPath, sourcePath)");
-  const repairOverwrite = main.includes("const outName = path.basename(sourcePath);\n  const outPath = sourcePath;");
-  const noToggle = !html.includes('id="showDerived"');
-  return upscaleOverwrite && repairOverwrite && noToggle;
+add("高清化保留原图，生成独立高清版本", () => {
+  const keepsOriginal = !main.includes("options?.overwrite") && !main.includes("await fsp.copyFile(outPath, sourcePath)");
+  const writesHd = main.includes("const outName = `${baseName}-hd${factor}x.png`");
+  return keepsOriginal && writesHd;
+});
+
+add("重修流程已取消（无自动修正/面部精修入口）", () => {
+  return !html.includes("imageDetailRepair") && !html.includes("autoRepair") && !html.includes("repairModal");
 });
 
 add("生成有超时保护", () => {

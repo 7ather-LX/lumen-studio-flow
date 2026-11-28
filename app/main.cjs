@@ -1684,7 +1684,7 @@ async function runComfy(payload) {
           progress: 0.985,
         });
         const original = images[index];
-        const upgraded = await upscaleImage(config, { name: original.name, factor, model, overwrite: true });
+        const upgraded = await upscaleImage(config, { name: original.name, factor, model });
         images[index] = upgraded;
       } catch (error) {
         send("flow:progress", {
@@ -2731,31 +2731,6 @@ async function upscaleImage(config, options) {
     height: built.height,
     createdAt: new Date().toISOString(),
   };
-  // 覆盖模式（默认）：高清结果直接替换原图，不再保留 -hd 副本
-  const overwrite = options?.overwrite !== false;
-  if (overwrite && path.resolve(outPath) !== path.resolve(sourcePath)) {
-    const finalMeta = {
-      ...meta,
-      name: path.basename(sourcePath),
-      upscaled: true,
-      upscaledFrom: path.basename(outPath),
-      source: undefined,
-    };
-    await fsp.copyFile(outPath, sourcePath);
-    await fsp.writeFile(sourcePath.replace(/\.[^.]+$/, ".json"), JSON.stringify(finalMeta, null, 2), "utf8");
-    try { await fsp.unlink(outPath); } catch {}
-    try { await fsp.unlink(outPath.replace(/\.[^.]+$/, ".json")); } catch {}
-    try { fs.unlinkSync(tmpIn); } catch {}
-    // 覆盖后立刻重建缩略图，避免画廊还显示旧图
-    try { await ensureThumb(sourcePath, path.basename(sourcePath)); } catch {}
-    return {
-      name: path.basename(sourcePath),
-      path: sourcePath,
-      url: `data:image/png;base64,${(await fsp.readFile(sourcePath)).toString("base64")}`,
-      hidden: readHiddenWorks().has(path.basename(sourcePath)),
-      ...finalMeta,
-    };
-  }
   await fsp.writeFile(outPath.replace(/\.[^.]+$/, ".json"), JSON.stringify(meta, null, 2), "utf8");
   return {
     name: outName,
