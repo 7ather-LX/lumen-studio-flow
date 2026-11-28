@@ -1675,13 +1675,31 @@ async function runComfy(payload) {
 
   if (payload.faceDetail && images.length) {
     try {
-      images[0] = await detailFace(
+      const original = images[0];
+      const detailed = await detailFace(
         config,
-        images[0].path,
+        original.path,
         built.width,
         built.height,
         String(payload.prompt || ""),
       );
+      // 精修结果覆盖原图：不再生成 -detail 副本，也不再留下没有元数据的重复图
+      if (detailed?.path && detailed.path !== original.path) {
+        await fsp.copyFile(detailed.path, original.path);
+        try { await fsp.unlink(detailed.path); } catch {}
+        const buffer = await fsp.readFile(original.path);
+        images[0] = {
+          ...original,
+          url: `data:image/png;base64,${buffer.toString("base64")}`,
+          faceDetail: true,
+        };
+        const metaPath = original.path.replace(/\.png$/i, ".json");
+        try {
+          const meta = JSON.parse(await fsp.readFile(metaPath, "utf8"));
+          meta.faceDetail = true;
+          await fsp.writeFile(metaPath, JSON.stringify(meta, null, 2), "utf8");
+        } catch {}
+      }
     } catch (error) {
       send("flow:progress", {
         stage: `Face detailer skipped: ${error?.message || error}`,
@@ -1738,9 +1756,20 @@ async function runComfy(payload) {
         const original = images[index];
         const upgraded = await upscaleImage(config, { name: original.name, factor, model });
         images[index] = upgraded;
-        // 低清原图与它的元数据一起删除，作品栏里只留高清结果
-        try { await fsp.unlink(original.path); } catch {}
-        try { await fsp.unlink(original.path.replace(/\.[^.]+$/, ".json")); } catch {}
+        // 安全规则：新文件存在且非空才删除原图，避免批量高清失败时把作品弄丢
+        let safeToRemove = false;
+        try {
+          const stat = await fsp.stat(upgraded.path);
+          safeToRemove = stat.size > 1024 && upgraded.path !== original.path;
+        } catch {
+          safeToRemove = false;
+        }
+        if (safeToRemove) {
+          try { await fsp.unlink(original.path); } catch {}
+          try { await fsp.unlink(original.path.replace(/\.[^.]+$/, ".json")); } catch {}
+        } else {
+          send("flow:progress", { stage: `高清结果异常，已保留原图 ${original.name}`, progress: 0.99 });
+        }
       } catch (error) {
         send("flow:progress", {
           stage: `Upscale skipped (${index + 1}/${images.length}): ${error?.message || error}`,
@@ -2859,10 +2888,12 @@ ipcMain.handle("flow:list-outputs", async (_event, payload) => {
       metadata = JSON.parse(await fsp.readFile(filePath.replace(/\.[^.]+$/, ".json"), "utf8"));
     } catch {}
     const thumbUrl = await ensureThumb(filePath, name);
+    const derived = Boolean(metadata.upscaled || metadata.faceDetail || metadata.fixed || metadata.source);
     items.push({
       name,
       path: filePath,
       mtime: stat.mtimeMs,
+      derived,
       thumbUrl,
       url: `data:image/${ext === "jpg" ? "jpeg" : ext};base64,${buffer.toString("base64")}`,
       hidden: hiddenSet.has(name),
