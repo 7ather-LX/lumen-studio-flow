@@ -1673,77 +1673,7 @@ async function runComfy(payload) {
     }
   }
 
-  if (payload.faceDetail && images.length) {
-    try {
-      const original = images[0];
-      const detailed = await detailFace(
-        config,
-        original.path,
-        built.width,
-        built.height,
-        String(payload.prompt || ""),
-      );
-      // 精修结果覆盖原图：不再生成 -detail 副本，也不再留下没有元数据的重复图
-      if (detailed?.path && detailed.path !== original.path) {
-        await fsp.copyFile(detailed.path, original.path);
-        try { await fsp.unlink(detailed.path); } catch {}
-        const buffer = await fsp.readFile(original.path);
-        images[0] = {
-          ...original,
-          url: `data:image/png;base64,${buffer.toString("base64")}`,
-          faceDetail: true,
-        };
-        const metaPath = original.path.replace(/\.png$/i, ".json");
-        try {
-          const meta = JSON.parse(await fsp.readFile(metaPath, "utf8"));
-          meta.faceDetail = true;
-          await fsp.writeFile(metaPath, JSON.stringify(meta, null, 2), "utf8");
-        } catch {}
-      }
-    } catch (error) {
-      send("flow:progress", {
-        stage: `Face detailer skipped: ${error?.message || error}`,
-        progress: 0.98,
-      });
-    }
-  }
   const repairNote = String(payload.repairNote || "").trim();
-  const needsCorrection = payload.autoCorrect && !payload.skipFootRepair && images.length &&
-    (repairNote || /feet|foot|toes|barefoot|footwear|足|脚|丝袜|裸足/i.test(String(payload.prompt || "")));
-  if (needsCorrection) {
-    // 逐张精修，保持张数不变（旧实现只修第一张并用单图替换整批，导致提示「完成 1 张」）
-    for (let index = 0; index < images.length; index += 1) {
-      try {
-        send("flow:progress", {
-          stage: `Detail correction ${index + 1}/${images.length}...`,
-          progress: 0.95 + (0.04 * (index + 1)) / images.length,
-        });
-        const repaired = await repairFeet({
-          path: images[index].path,
-          prompt: built.prompt || payload.prompt,
-          negativePrompt: built.negative || payload.negative,
-          repairNote,
-          width: built.width,
-          height: built.height,
-          steps: built.steps,
-          cfg: built.cfg,
-          seed: built.seed,
-          batch: 1,
-          unet: payload.unet,
-          detailPart: payload.detailPart,
-          detailRegion: payload.detailRegion,
-          detailZoom: payload.detailZoom,
-          detailPasses: payload.detailPasses,
-        });
-        if (repaired?.images?.length) images[index] = repaired.images[0];
-      } catch (error) {
-        send("flow:progress", {
-          stage: `Detail skipped (${index + 1}/${images.length}): ${error?.message || error}`,
-          progress: 0.98,
-        });
-      }
-    }
-  }
   if (payload.autoUpscale && images.length) {
     const factor = Math.max(1, Math.min(4, Number(payload.upscaleFactor) || 2));
     const model = String(payload.upscaleModel || "") || pickBestUpscaleModel(config);
@@ -2816,6 +2746,8 @@ async function upscaleImage(config, options) {
     try { await fsp.unlink(outPath); } catch {}
     try { await fsp.unlink(outPath.replace(/\.[^.]+$/, ".json")); } catch {}
     try { fs.unlinkSync(tmpIn); } catch {}
+    // 覆盖后立刻重建缩略图，避免画廊还显示旧图
+    try { await ensureThumb(sourcePath, path.basename(sourcePath)); } catch {}
     return {
       name: path.basename(sourcePath),
       path: sourcePath,
@@ -2918,6 +2850,12 @@ ipcMain.handle("flow:delete-output", async (_event, payload) => {
   if (!resolved.startsWith(path.resolve(outputDir()) + path.sep)) throw new Error("Invalid path");
   try { await fsp.unlink(resolved); } catch {}
   try { await fsp.unlink(resolved.replace(/\.[^.]+$/, ".json")); } catch {}
+  // 缩略图缓存与隐藏标记一并清理，避免残留占空间
+  try { await fsp.unlink(path.join(thumbDir(), name.replace(/\.[^.]+$/, ".jpg"))); } catch {}
+  try {
+    const hidden = readHiddenWorks();
+    if (hidden.delete(name)) setHiddenWorks({ hidden: [...hidden], add: [], remove: [] });
+  } catch {}
   return { ok: true };
 });
 

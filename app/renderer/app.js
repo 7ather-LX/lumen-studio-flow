@@ -1512,7 +1512,7 @@ function setupUpscaleImport() {
         hires,
         hiresScale,
         hiresSteps: 10,
-        faceDetail,
+        faceDetail: false,
         initImage: state.initImage,
         characterImage: state.characterImage,
         characterGuidance: Number($("#characterStrength")?.value || 5),
@@ -1523,7 +1523,7 @@ function setupUpscaleImport() {
         characterStrength: 1,
         denoise,
         referenceMode,
-        autoCorrect: Boolean(state.initImage) && $("#autoRepair")?.checked !== false,
+        autoCorrect: false, // 重修功能已取消：不再自动修正，用户直接重新生成
         detailPart: $("#detailPart")?.value || "auto",
         detailRegion: $("#detailRegion")?.value || "bottom",
         detailZoom: Number($("#detailZoom")?.value || 1),

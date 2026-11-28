@@ -84,8 +84,14 @@ add("ComfyUI 未启动会自动拉起", () => {
   return main.includes("await startComfy()") && main.includes("if (!status.ok) throw new Error");
 });
 
-add("面部精修覆盖原图并保留元数据（不再产生 -detail 副本）", () => {
-  return main.includes("精修结果覆盖原图") && main.includes("faceDetail = true") && main.includes("await fsp.unlink(detailed.path)");
+add("生成流程不再包含面部精修与自动修正", () => {
+  return !main.includes("payload.faceDetail && images.length") &&
+    !main.includes("needsCorrection") &&
+    app.includes("autoCorrect: false");
+});
+
+add("删除作品时清理缩略图与隐藏标记", () => {
+  return main.includes("path.join(thumbDir(), name.replace(") && main.includes("readHiddenWorks()");
 });
 
 add("批量高清走覆盖模式且不删原图", () => {

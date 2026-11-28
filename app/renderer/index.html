@@ -169,7 +169,6 @@
                 </div>
                 <p class="hint" id="referenceMeta">未选择参考图 · 当前按所选画幅生成</p>
                 <label class="toggle-line auto-style-toggle"><input type="checkbox" id="autoStyle" checked /><span>自动识别提示词中的画风</span></label>
-                <label class="toggle-line auto-repair-toggle"><input type="checkbox" id="autoRepair" checked /><span>生成后自动修正足部/手部细节</span></label>
                 <div class="control-grid detail-region-row">
                   <label class="control">
                     <span>精修部位</span>
@@ -211,10 +210,6 @@
                 <label class="control reference-strength">
                   <span>重绘幅度 <b id="denoiseValue">50%</b></span>
                   <input type="range" id="denoise" min="0.15" max="0.9" step="0.01" value="0.5" />
-                </label>
-                <label class="control repair-note-control">
-                  <span>重绘要求 / 问题</span>
-                  <textarea id="repairNote" rows="3" placeholder="例如：脚趾少一根，改成五根；手指不要融合；脸再圆一点"></textarea>
                 </label>
                 <p class="hint">15–30% 只修细节；35–50% 保构图换质感；55–90% 借构图重画。</p>
                 <label class="control">
@@ -853,7 +848,6 @@
           <p><b>种子（seed）</b>：同 seed + 同参数 = 同构图，便于比较。想复现某张就填回那张的 seed；每次换 seed 才能得到新构图。</p>
           <p><b>出图档位</b>：一次设好「重绘幅度 + 风格强度」的组合，省得手动试。选完仍可手动微调。</p>
           <p><b>构图档位</b>：按你要的构图直接设好画幅和推荐重绘幅度。实测结论——特写用 3:4 + 88%，半身用 2:3 + 82%，全身/全景用 16:9 + 75%。<b>全景千万不要用 0.85 以上</b>：提示词会压过参考图，人物缩小、跑色，甚至把整张图重画成特写。另外提示词里的构图词（close-up / cowboy shot / full body）必须和你要的构图一致，否则再低的 denoise 也留不住构图。</p>
-          <p><b>精修（自动修正足部/手部）</b>：生成后再对选中区域做一次局部重绘并羽化贴回。<b>精修部位</b>决定补脚还是补手；<b>精修区域</b>决定裁哪一块（脚在画面下方选下半部，特写脚在中间选中部）；<b>精修范围</b>越小、放大倍数越高，趾头/指头看得越清（小范围更准）；<b>精修轮次</b>两次会在第一次结果上再修一遍，趾列更稳但更慢。</p>
           <h3>9. 常见问题</h3>
           <p><b>找不到 ComfyUI：</b>目录要选到包含 <code>ComfyUI</code> 和 <code>python_embeded</code> 的那一层。</p>
           <p><b>角色不像：</b>换复杂度更高的官方/立绘参考，角色引导提高到 6–8，并检查 negative 是否包含 hat / sunglasses / 错误发色。</p>
@@ -948,7 +942,6 @@
             <div class="detail-image-tools">
               <button class="mini-button" id="imageDetailFav">☆ 收藏</button>
               <button class="mini-button" id="imageDetailUpscale">✨ 高清化</button>
-              <button class="mini-button" id="imageDetailRepair">🩹 局部修正</button>
               <button class="mini-button" id="imageDetailHide">隐藏此作品</button>
               <button class="mini-button" id="imageDetailDownload">↓ 下载</button>
             </div>
@@ -1067,43 +1060,5 @@
     <script src="./characters.js"></script>
     <script src="./app.js"></script>
 
-    <div class="modal-backdrop hidden" id="repairModal">
-      <div class="modal repair-modal">
-        <div class="modal-head">
-          <div>
-            <span class="eyebrow">LOCAL FIX</span>
-            <h2>局部修正</h2>
-          </div>
-          <button class="icon-button" id="closeRepair">×</button>
-        </div>
-        <p class="hint">
-          在图上拖出矩形框选要处理的区域。修复＝重新生成该区域细节；擦除＝用邻近像素覆盖该区域（去多余人物/物体）。
-        </p>
-        <div class="repair-stage" id="repairStage">
-          <img id="repairImage" alt="repair target" />
-          <div class="repair-selection hidden" id="repairSelection"></div>
-        </div>
-        <div class="control-row">
-          <label class="control">
-            <span>模式</span>
-            <select id="repairMode" class="setting-select compact">
-              <option value="repair">修复细节</option>
-              <option value="erase">擦除对象</option>
-            </select>
-          </label>
-          <label class="control">
-            <span>强度</span>
-            <input type="range" id="repairDenoise" min="0.15" max="0.9" step="0.05" value="0.5" />
-            <b id="repairDenoiseValue">50%</b>
-          </label>
-          <label class="control grow">
-            <span>提示词（可选）</span>
-            <input type="text" id="repairPrompt" placeholder="留空则按模式自动填写" />
-          </label>
-          <button class="primary-button" id="runRepair">执行修正</button>
-          <span class="hint" id="repairStatus">先在图上框选区域</span>
-        </div>
-      </div>
-    </div>
-  </body>
+      </body>
 </html>
