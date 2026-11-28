@@ -8,6 +8,18 @@ const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
+// 产品变体：legacy（默认）/ pro / lite，由构建时写入 package.json
+const LUMEN_VARIANT = (() => {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"));
+    return String(pkg.lumenVariant || "legacy").toLowerCase();
+  } catch {
+    return "legacy";
+  }
+})();
+const IS_LITE = LUMEN_VARIANT === "lite";
+
+
 let mainWindow = null;
 let comfyProcess = null;
 let comfyLog = null;
@@ -98,8 +110,25 @@ function resolveLlmBin(config) {
   return "";
 }
 
+// Lite 版默认值：低配档 + 3B 提示词模型
+if (IS_LITE) {
+  Object.assign(DEFAULT_CONFIG, {
+    performanceProfile: "low",
+    steps: 20,
+    cfg: 4,
+    hires: false,
+    hiresScale: 1.2,
+    hiresSteps: 6,
+    unet: "anima-base-v1.0.safetensors",
+    llmCtxSize: 4096,
+    llmModel: "qwen2.5-coder-3b-instruct-q4_k_m.gguf",
+  });
+}
+
 function dataRoot() {
-  return path.join(app.getPath("appData"), "Lumen Studio Flow");
+  // 不同产品线使用独立数据目录，避免 Lite 覆盖主线的作品与配置
+  const name = IS_LITE ? "Lumen Studio Flow Lite" : "Lumen Studio Flow";
+  return path.join(app.getPath("appData"), name);
 }
 
 function outputDir() {
@@ -1068,21 +1097,23 @@ async function stopComfyForLlm() {
 function resolveLlmModelPath(config) {
   const configured = String(config.llmModel || "").trim();
   if (configured && fs.existsSync(configured)) return configured;
-  const candidates = [
-    configured,
-    LLM_MODEL,
-    path.join(app.getPath("userData"), "models", "llm"),
-    path.join(process.resourcesPath || "", "models", "llm"),
+  const dirs = [
+    path.join(dataRoot(), "models", "llm"),
     path.join(app.getAppPath(), "..", "models", "llm"),
+    path.join(process.resourcesPath || "", "models", "llm"),
   ].filter(Boolean);
+  const candidates = [configured, ...(IS_LITE ? dirs : []), LLM_MODEL, ...(IS_LITE ? [] : dirs)].filter(Boolean);
   for (const candidate of candidates) {
     try {
       if (!fs.existsSync(candidate)) continue;
       const stat = fs.statSync(candidate);
       if (stat.isFile() && /\.gguf$/i.test(candidate)) return candidate;
       if (stat.isDirectory()) {
-        const found = fs.readdirSync(candidate).filter((name) => /\.gguf$/i.test(name)).sort();
-        if (found.length) return path.join(candidate, found[0]);
+        const all = fs.readdirSync(candidate).filter((name) => /\.gguf$/i.test(name)).sort();
+        if (!all.length) continue;
+        // Lite 优先 3B，避免误用 9B
+        const preferred = IS_LITE ? all.find((name) => /coder-3b|qwen2\.5-3b/i.test(name)) : "";
+        return path.join(candidate, preferred || all[0]);
       }
     } catch {}
   }

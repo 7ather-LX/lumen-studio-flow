@@ -2,7 +2,7 @@
 # Run from an elevated PowerShell if ComfyUI needs to be installed on a protected path.
 param(
   [string]$Root = "F:\DSH WORKSPACE\lumen-flow",
-  [string]$LlmModel = ""   # 可选：llama-3b-8b | qwen3-14b | 留空则跳过
+  [string]$LlmModel = ""   # 可选：coder-3b（轻量）| llama-9b | qwen3-14b | 留空则跳过
 )
 
 $ErrorActionPreference = "Stop"
@@ -37,7 +37,8 @@ $LLM_CATALOG = @{
   "llama-9b"   = @{ Url = "https://hf-mirror.com/mradermacher/Qwen3-8B-abliterated-GGUF/resolve/main/Qwen3-8B-abliterated.Q4_K_M.gguf"; File = "Qwen3-8B-abliterated.Q4_K_M.gguf"; Size = 4.68 }
   "qwen3-8b"   = @{ Url = "https://hf-mirror.com/mradermacher/Qwen3-8B-abliterated-GGUF/resolve/main/Qwen3-8B-abliterated.Q4_K_M.gguf"; File = "Qwen3-8B-abliterated.Q4_K_M.gguf"; Size = 4.68 }
   "qwen3-14b"  = @{ Url = "https://hf-mirror.com/unsloth/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q4_K_M.gguf"; File = "Qwen3-14B-Q4_K_M.gguf"; Size = 8.38 }
-}
+
+"coder-3b"  = @{ Url = "https://hf-mirror.com/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF/resolve/main/qwen2.5-coder-3b-instruct-q4_k_m.gguf"; File = "qwen2.5-coder-3b-instruct-q4_k_m.gguf"; Size = 2.0 }}
 
 if ($LlmModel) {
   $entry = $LLM_CATALOG[$LlmModel.ToLower()]

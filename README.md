@@ -4,6 +4,24 @@
 
 ---
 
+## 产品线：标准版 / 轻量版
+
+| | 标准版 Lumen Studio Flow | 轻量版 Lumen Studio Flow Lite |
+|---|---|---|
+| 适合谁 | 8 GB+ 显存，想要最好的提示词质量 | 4–6 GB 显存、核显、轻薄本 |
+| 提示词模型 | 9B（5.2 GB，约 5.6 秒/次） | **3B（2.0 GB，约 2–4 秒/次）** |
+| 默认档位 | 自动（按显存） | **低显存 512×768** |
+| 默认步数 / 张数 | 30 / 3 | **20 / 1** |
+| 首次部署体积 | 约 9 GB | **约 6 GB** |
+| 数据目录 | `%APPDATA%\Lumen Studio Flow` | `%APPDATA%\Lumen Studio Flow Lite` |
+| 下载 | [最新 Release](https://github.com/7ather-LX/lumen-studio-flow/releases/latest) 里的 `Lumen-Studio-Flow-Setup-*.exe` | `Lumen-Studio-Flow-Lite-Setup-*.exe` |
+
+两条线功能一致、数据互相独立，可以同时安装。轻量版的本地提示词模型按需下载：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File bootstrap_models.ps1 -LlmModel coder-3b
+```
+
 ## 一、下载
 
 到 [Releases](https://github.com/7ather-LX/lumen-studio-flow/releases/latest) 页面，按需要选一个：
