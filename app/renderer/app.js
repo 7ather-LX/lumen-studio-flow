@@ -1274,11 +1274,7 @@ function setupUpscaleImport() {
   async function loadGallery() {
     if (!bridge) return;
     try {
-      let images = await bridge.listOutputs({ mode: state.hiddenMode });
-      // 默认隐藏高清化 / 精修 / 修正衍生图，避免同一张图在画廊里出现多份
-      if (!$("#showDerived")?.checked) {
-        images = images.filter((item) => !item.derived);
-      }
+      const images = await bridge.listOutputs({ mode: state.hiddenMode });
       state.images = images;
       const grid = $("#galleryGrid");
       if (!images.length) {
@@ -3565,7 +3561,6 @@ async function characterFactsByTag(tag) {
     void generate();
   });
     $("#refreshGallery").addEventListener("click", () => void loadGallery());
-  $("#showDerived")?.addEventListener("change", () => void loadGallery());
     $("#galleryModeVisible")?.addEventListener("click", () => applyGalleryMode("visible"));
     $("#galleryModeHidden")?.addEventListener("click", () => applyGalleryMode("hidden"));
     $("#galleryBatchUpscale")?.addEventListener("click", async () => {

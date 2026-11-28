@@ -1754,22 +1754,8 @@ async function runComfy(payload) {
           progress: 0.985,
         });
         const original = images[index];
-        const upgraded = await upscaleImage(config, { name: original.name, factor, model });
+        const upgraded = await upscaleImage(config, { name: original.name, factor, model, overwrite: true });
         images[index] = upgraded;
-        // 安全规则：新文件存在且非空才删除原图，避免批量高清失败时把作品弄丢
-        let safeToRemove = false;
-        try {
-          const stat = await fsp.stat(upgraded.path);
-          safeToRemove = stat.size > 1024 && upgraded.path !== original.path;
-        } catch {
-          safeToRemove = false;
-        }
-        if (safeToRemove) {
-          try { await fsp.unlink(original.path); } catch {}
-          try { await fsp.unlink(original.path.replace(/\.[^.]+$/, ".json")); } catch {}
-        } else {
-          send("flow:progress", { stage: `高清结果异常，已保留原图 ${original.name}`, progress: 0.99 });
-        }
       } catch (error) {
         send("flow:progress", {
           stage: `Upscale skipped (${index + 1}/${images.length}): ${error?.message || error}`,
@@ -2571,8 +2557,8 @@ async function repairRegion(payload) {
   if (mode === "erase" && blend <= 0.001) {
     // 不需要融合：直接把克隆填补的结果作为成品
     const baseName = name.replace(/\.[^.]+$/, "");
-    const outName = `${baseName}-fix.png`;
-    const outPath = path.join(outputDir(), outName);
+    const outName = path.basename(sourcePath);
+    const outPath = sourcePath;
     await fsp.copyFile(workingPath, outPath);
     const meta = {
       ...(await readOutputMeta(sourcePath)),
@@ -2580,7 +2566,6 @@ async function repairRegion(payload) {
       fixed: true,
       fixMode: "erase",
       fixRect: { x: rx, y: ry, w: rw, h: rh },
-      source: name,
       width: size.width,
       height: size.height,
       createdAt: new Date().toISOString(),
@@ -2593,8 +2578,8 @@ async function repairRegion(payload) {
   const files = await runWorkflowRaw(config, built.workflow);
   if (!files.length) throw new Error("修正没有输出结果");
   const baseName = name.replace(/\.[^.]+$/, "");
-  const outName = `${baseName}-fix.png`;
-  const outPath = path.join(outputDir(), outName);
+  const outName = path.basename(sourcePath);
+  const outPath = sourcePath;
   await fsp.copyFile(files[0].path, outPath);
   const meta = {
     ...(await readOutputMeta(sourcePath)),
@@ -2603,7 +2588,6 @@ async function repairRegion(payload) {
     fixMode: mode,
     fixRect: { x: rx, y: ry, w: rw, h: rh },
     fixDenoise: mode === "erase" ? blend : Math.max(0.15, Math.min(0.9, Number(payload?.denoise) || 0.5)),
-    source: name,
     width: size.width,
     height: size.height,
     createdAt: new Date().toISOString(),
@@ -2817,6 +2801,29 @@ async function upscaleImage(config, options) {
     height: built.height,
     createdAt: new Date().toISOString(),
   };
+  // 覆盖模式（默认）：高清结果直接替换原图，不再保留 -hd 副本
+  const overwrite = options?.overwrite !== false;
+  if (overwrite && path.resolve(outPath) !== path.resolve(sourcePath)) {
+    const finalMeta = {
+      ...meta,
+      name: path.basename(sourcePath),
+      upscaled: true,
+      upscaledFrom: path.basename(outPath),
+      source: undefined,
+    };
+    await fsp.copyFile(outPath, sourcePath);
+    await fsp.writeFile(sourcePath.replace(/\.[^.]+$/, ".json"), JSON.stringify(finalMeta, null, 2), "utf8");
+    try { await fsp.unlink(outPath); } catch {}
+    try { await fsp.unlink(outPath.replace(/\.[^.]+$/, ".json")); } catch {}
+    try { fs.unlinkSync(tmpIn); } catch {}
+    return {
+      name: path.basename(sourcePath),
+      path: sourcePath,
+      url: `data:image/png;base64,${(await fsp.readFile(sourcePath)).toString("base64")}`,
+      hidden: readHiddenWorks().has(path.basename(sourcePath)),
+      ...finalMeta,
+    };
+  }
   await fsp.writeFile(outPath.replace(/\.[^.]+$/, ".json"), JSON.stringify(meta, null, 2), "utf8");
   return {
     name: outName,

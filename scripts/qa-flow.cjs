@@ -88,12 +88,17 @@ add("面部精修覆盖原图并保留元数据（不再产生 -detail 副本）
   return main.includes("精修结果覆盖原图") && main.includes("faceDetail = true") && main.includes("await fsp.unlink(detailed.path)");
 });
 
-add("批量高清删除原图前校验新文件", () => {
-  return main.includes("safeToRemove = stat.size > 1024") && main.includes("已保留原图");
+add("批量高清走覆盖模式且不删原图", () => {
+  return main.includes("upscaleImage(config, { name: original.name, factor, model, overwrite: true })") &&
+    !main.includes("safeToRemove");
 });
 
-add("画廊默认隐藏高清/精修衍生图", () => {
-  return app.includes("item.derived") && html.includes('id="showDerived"');
+add("高清化与局部修正直接覆盖原图（不留副本）", () => {
+  const upscaleOverwrite = main.includes("const overwrite = options?.overwrite !== false") &&
+    main.includes("await fsp.copyFile(outPath, sourcePath)");
+  const repairOverwrite = main.includes("const outName = path.basename(sourcePath);\n  const outPath = sourcePath;");
+  const noToggle = !html.includes('id="showDerived"');
+  return upscaleOverwrite && repairOverwrite && noToggle;
 });
 
 add("生成有超时保护", () => {
